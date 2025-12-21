@@ -1,0 +1,11 @@
+---
+- name: Provision Kubernetes Node (CPU-only)
+  hosts: "{{ target_hosts | default('k8s_nodes') }}"
+  become: true
+  gather_facts: true
+  roles:
+    - base
+    - containerd
+    - kubernetes
+    - longhorn-prereqs
+    - tailscale

@@ -1,0 +1,55 @@
+---
+- name: Disable swap
+  ansible.builtin.command: swapoff -a
+  changed_when: false
+
+- name: Remove swap from fstab
+  ansible.builtin.replace:
+    path: /etc/fstab
+    regexp: '^([^#].*\sswap\s.*)$'
+    replace: '# \1'
+
+- name: Load kernel modules
+  community.general.modprobe:
+    name: "{{ item }}"
+    state: present
+  loop: "{{ kernel_modules }}"
+
+- name: Persist kernel modules
+  ansible.builtin.copy:
+    dest: /etc/modules-load.d/k8s.conf
+    content: |
+      overlay
+      br_netfilter
+    mode: '0644'
+
+- name: Apply sysctl settings
+  ansible.posix.sysctl:
+    name: "{{ item.key }}"
+    value: "{{ item.value }}"
+    sysctl_file: /etc/sysctl.d/k8s.conf
+    reload: true
+  loop: "{{ sysctl_settings | dict2items }}"
+
+- name: Set inotify limits
+  ansible.posix.sysctl:
+    name: "{{ item.name }}"
+    value: "{{ item.value }}"
+    sysctl_file: /etc/sysctl.d/99-inotify.conf
+    reload: true
+  loop:
+    - { name: "fs.inotify.max_user_instances", value: "{{ inotify_max_user_instances }}" }
+    - { name: "fs.inotify.max_user_watches", value: "{{ inotify_max_user_watches }}" }
+
+- name: Install base packages
+  ansible.builtin.apt:
+    name:
+      - curl
+      - wget
+      - git
+      - htop
+      - apt-transport-https
+      - ca-certificates
+      - gpg
+    state: present
+    update_cache: true

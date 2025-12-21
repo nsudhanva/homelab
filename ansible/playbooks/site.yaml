@@ -1,0 +1,15 @@
+---
+- name: Full Site Provisioning
+  import_playbook: provision-cpu.yaml
+  vars:
+    target_hosts: cpu_only
+
+- name: Intel GPU Nodes
+  import_playbook: provision-intel-gpu.yaml
+  vars:
+    target_hosts: gpu_intel
+
+- name: NVIDIA GPU Nodes
+  import_playbook: provision-nvidia-gpu.yaml
+  vars:
+    target_hosts: gpu_nvidia

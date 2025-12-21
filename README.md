@@ -756,20 +756,116 @@ kubectl get nodes
 
 ---
 
+## Automated Node Provisioning with Ansible
+
+Instead of running manual commands, use Ansible to provision nodes automatically.
+
+### Prerequisites
+
+```bash
+brew install ansible
+ssh-copy-id sudhanva@<node-tailscale-hostname>
+```
+
+### Quick Start
+
+```bash
+cd ansible
+
+ansible-playbook playbooks/provision-nvidia-gpu.yaml -l legion
+
+ansible-playbook playbooks/provision-intel-gpu.yaml -l <intel-node>
+
+ansible-playbook playbooks/provision-cpu.yaml -l <cpu-node>
+```
+
+### Adding a New Node
+
+1. Add the node to `ansible/inventory/hosts.yaml`:
+
+```yaml
+all:
+  children:
+    gpu_nvidia:
+      hosts:
+        new-node:
+          ansible_host: new-node-tailscale-name
+          ansible_user: your-username
+```
+
+2. Run the appropriate playbook:
+
+```bash
+ansible-playbook playbooks/provision-nvidia-gpu.yaml -l new-node
+```
+
+3. Generate join token on control plane and join the new node:
+
+```bash
+kubeadm token create --print-join-command
+sudo kubeadm join <control-plane>:6443 --token <token> --discovery-token-ca-cert-hash sha256:<hash>
+```
+
+4. Label node for Longhorn:
+
+```bash
+kubectl label node new-node node.longhorn.io/create-default-disk=true
+```
+
+### Playbook Variants
+
+| Playbook | Use Case |
+|----------|----------|
+| `provision-cpu.yaml` | CPU-only nodes (no GPU) |
+| `provision-intel-gpu.yaml` | Nodes with Intel iGPU (transcoding) |
+| `provision-nvidia-gpu.yaml` | Nodes with NVIDIA GPU (ML/transcoding) |
+| `site.yaml` | Provision all nodes by type |
+
+### Roles
+
+| Role | Description |
+|------|-------------|
+| `base` | Disable swap, kernel modules, sysctl, inotify limits |
+| `containerd` | Container runtime with SystemdCgroup |
+| `kubernetes` | kubeadm, kubelet, kubectl installation |
+| `nvidia-gpu` | NVIDIA container toolkit + CDI |
+| `longhorn-prereqs` | iSCSI, NFS, storage directory |
+| `tailscale` | Tailscale client installation |
+
+---
+
 ## Repository Structure
 
 ```
 homelab/
 ├── AGENTS.md               # AI assistant guidelines
 ├── README.md               # This file
+├── ansible/                # Automated node provisioning
+│   ├── ansible.cfg
+│   ├── inventory/hosts.yaml
+│   ├── group_vars/all.yaml
+│   ├── playbooks/
+│   │   ├── site.yaml
+│   │   ├── provision-cpu.yaml
+│   │   ├── provision-intel-gpu.yaml
+│   │   └── provision-nvidia-gpu.yaml
+│   └── roles/
+│       ├── base/
+│       ├── containerd/
+│       ├── kubernetes/
+│       ├── nvidia-gpu/
+│       ├── longhorn-prereqs/
+│       └── tailscale/
 ├── bootstrap/
 │   ├── root.yaml           # ArgoCD bootstrap Application
+│   ├── argocd.yaml         # ArgoCD self-managed (Helm)
 │   ├── longhorn.yaml       # Longhorn ArgoCD Application (Helm)
 │   └── templates/
 │       ├── infra-appset.yaml   # Infrastructure ApplicationSet
 │       └── apps-appset.yaml    # Apps ApplicationSet
 ├── infrastructure/
 │   ├── tailscale/          # Tailscale Operator
+│   ├── vault/              # HashiCorp Vault (Helm)
 │   ├── gpu/
 │   │   ├── intel-plugin.yaml   # Intel GPU DaemonSet
 │   │   └── nvidia-plugin.yaml  # NVIDIA GPU DaemonSet

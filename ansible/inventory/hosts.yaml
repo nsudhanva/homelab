@@ -1,0 +1,26 @@
+all:
+  children:
+    k8s_control_plane:
+      hosts:
+        legion:
+          ansible_host: legion
+          ansible_user: sudhanva
+          node_type: nvidia
+
+    k8s_workers:
+      hosts: {}
+
+    k8s_nodes:
+      children:
+        k8s_control_plane:
+        k8s_workers:
+
+    gpu_nvidia:
+      hosts:
+        legion:
+
+    gpu_intel:
+      hosts: {}
+
+    cpu_only:
+      hosts: {}

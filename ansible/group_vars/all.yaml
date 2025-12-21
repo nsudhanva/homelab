@@ -1,0 +1,15 @@
+k8s_version: "v1.34"
+cilium_version: "1.18.5"
+longhorn_storage_path: "/home/{{ ansible_user }}/longhorn-storage"
+
+inotify_max_user_instances: 512
+inotify_max_user_watches: 524288
+
+kernel_modules:
+  - overlay
+  - br_netfilter
+
+sysctl_settings:
+  net.bridge.bridge-nf-call-iptables: 1
+  net.bridge.bridge-nf-call-ip6tables: 1
+  net.ipv4.ip_forward: 1

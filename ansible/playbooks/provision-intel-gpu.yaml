@@ -1,0 +1,11 @@
+---
+- name: Provision Kubernetes Node (Intel GPU)
+  hosts: "{{ target_hosts | default('gpu_intel') }}"
+  become: true
+  gather_facts: true
+  roles:
+    - base
+    - containerd
+    - kubernetes
+    - longhorn-prereqs
+    - tailscale

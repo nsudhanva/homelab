@@ -1,0 +1,23 @@
+---
+- name: Install Longhorn prerequisites
+  ansible.builtin.apt:
+    name:
+      - open-iscsi
+      - nfs-common
+      - cryptsetup
+    state: present
+    update_cache: true
+
+- name: Enable and start iscsid
+  ansible.builtin.systemd:
+    name: iscsid
+    enabled: true
+    state: started
+
+- name: Create Longhorn storage directory
+  ansible.builtin.file:
+    path: "{{ longhorn_storage_path }}"
+    state: directory
+    owner: "{{ ansible_user }}"
+    group: "{{ ansible_user }}"
+    mode: '0755'

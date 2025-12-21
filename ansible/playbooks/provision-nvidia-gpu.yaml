@@ -1,0 +1,12 @@
+---
+- name: Provision Kubernetes Node (NVIDIA GPU)
+  hosts: "{{ target_hosts | default('gpu_nvidia') }}"
+  become: true
+  gather_facts: true
+  roles:
+    - base
+    - containerd
+    - kubernetes
+    - nvidia-gpu
+    - longhorn-prereqs
+    - tailscale
