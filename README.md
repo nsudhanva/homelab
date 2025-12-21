@@ -608,6 +608,46 @@ After GitOps activation, ArgoCD automatically deploys:
 
 ---
 
+## Transfer Media to Jellyfin
+
+Jellyfin stores media on a Longhorn PVC mounted at `/media` inside the pod. Use `tar` piped to `kubectl exec` for reliable large file transfers.
+
+### Get the Jellyfin Pod Name
+
+```bash
+JELLYFIN_POD=$(kubectl get pods -l app=jellyfin -o jsonpath='{.items[0].metadata.name}')
+echo $JELLYFIN_POD
+```
+
+### Create the Target Directory
+
+```bash
+kubectl exec $JELLYFIN_POD -- mkdir -p /media/Movies
+```
+
+### Transfer Files
+
+Transfer a movie folder from your local machine:
+
+```bash
+tar cf - -C "/path/to/local/movies" "Movie Name (Folder/Files)" | kubectl exec -i $JELLYFIN_POD -- tar xf - -C /media/Movies/
+```
+
+### Verify Transfer
+
+```bash
+kubectl exec $JELLYFIN_POD -- ls -la /media/Movies/
+```
+
+### Rescan Library
+
+Trigger a library scan from the Jellyfin web UI or wait for the scheduled scan.
+
+> [!NOTE]
+> For TV shows, use `/media/TV` instead of `/media/Movies`.
+
+---
+
 ## Expose Services via Tailscale (HTTPS)
 
 Use a Kubernetes Ingress with `ingressClassName: tailscale` for automatic HTTPS/TLS.
@@ -665,11 +705,11 @@ Access at: `https://my-app.<tailnet-name>.ts.net`
 
 To connect to the cluster from another machine (e.g., your laptop) using Tailscale:
 
-### 1. Prerequisites
+### Prerequisites
 - **Tailscale**: Installed and connected to the same tailnet as the cluster.
 - **kubectl**: Installed on your local machine.
 
-### 2. Fetch Kubeconfig
+### Fetch Kubeconfig
 SSH into the control plane node (e.g., `<node-name>`) is likely disabled for password auth, so use SCP to fetch the config:
 
 ```bash
@@ -677,7 +717,7 @@ SSH into the control plane node (e.g., `<node-name>`) is likely disabled for pas
 scp your-username@<node-name>:~/.kube/config ./kubeconfig-remote
 ```
 
-### 3. Configure Local Access
+### Configure Local Access
 The fetched config uses the local cluster IP (e.g., 192.168.x.x) and includes CA data that won't match the Tailscale IP. We need to modify it.
 
 ```bash
@@ -691,7 +731,7 @@ kubectl config set-cluster kubernetes --kubeconfig=./kubeconfig-remote --insecur
 kubectl config unset clusters.kubernetes.certificate-authority-data --kubeconfig=./kubeconfig-remote
 ```
 
-### 4. Merge and Activate
+### Merge and Activate
 Merge the new config into your local `~/.kube/config`:
 
 ```bash
@@ -709,7 +749,7 @@ kubectl config rename-context kubernetes-admin@kubernetes <node-name>
 kubectl config use-context <node-name>
 ```
 
-### 5. Verify
+### Verify
 ```bash
 kubectl get nodes
 ```
