@@ -5,6 +5,7 @@ metadata:
   namespace: default
   annotations:
     tailscale.com/tags: tag:k8s
+    tailscale.com/https: "true"
 spec:
   ingressClassName: tailscale
   tls:
