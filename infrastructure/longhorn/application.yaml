@@ -1,0 +1,28 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: longhorn
+  namespace: argocd
+spec:
+  project: default
+  source:
+    chart: longhorn
+    repoURL: https://charts.longhorn.io
+    targetRevision: 1.7.2
+    helm:
+      values: |
+        defaultSettings:
+          defaultDataPath: /home/sudhanva/longhorn-storage
+          createDefaultDiskLabeledNodes: true
+        persistence:
+          defaultClass: true
+          defaultClassReplicaCount: 1
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: longhorn-system
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true
