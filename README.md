@@ -457,13 +457,13 @@ spec:
   selector:
     app: my-app
 ---
-# ingress.yaml
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: my-app
   annotations:
     tailscale.com/tags: tag:k8s
+    tailscale.com/https: "true"
 spec:
   ingressClassName: tailscale
   tls:
@@ -481,6 +481,9 @@ spec:
                 port:
                   number: 80
 ```
+
+> [!IMPORTANT]
+> The `tailscale.com/https: "true"` annotation ensures all traffic is served over HTTPS with automatic TLS certificates from Let's Encrypt.
 
 Access at: `https://my-app.your-tailnet.ts.net`
 
