@@ -208,7 +208,7 @@ sudo systemctl enable --now iscsid
 > Longhorn needs a storage directory to exist. Create it on your preferred disk.
 
 ```bash
-mkdir -p /home/sudhanva/longhorn-storage
+mkdir -p /home/your-username/longhorn-storage
 ```
 
 ### Add Node Label for Longhorn Disk
@@ -413,7 +413,7 @@ kubectl label node <new-node-name> node.longhorn.io/create-default-disk=true
 Create storage directory on the new node:
 
 ```bash
-mkdir -p /home/sudhanva/longhorn-storage
+mkdir -p /home/your-username/longhorn-storage
 ```
 
 > [!NOTE]
@@ -477,7 +477,7 @@ sudo systemctl restart kubelet
 **Solution**:
 ```bash
 # 1. Ensure storage directory exists
-mkdir -p /home/sudhanva/longhorn-storage
+mkdir -p /home/your-username/longhorn-storage
 
 # 2. Add the label for automatic disk creation
 kubectl label node $(hostname) node.longhorn.io/create-default-disk=true
@@ -497,7 +497,6 @@ kubectl rollout restart daemonset longhorn-manager -n longhorn-system
 **Solution**: Disable the pre-upgrade checker in Longhorn Helm values:
 
 ```yaml
-# bootstrap/longhorn.yaml
 helm:
   values: |
     preUpgradeChecker:
@@ -616,7 +615,6 @@ Use a Kubernetes Ingress with `ingressClassName: tailscale` for automatic HTTPS/
 ### Example: Service + Ingress
 
 ```yaml
-# service.yaml
 apiVersion: v1
 kind: Service
 metadata:
@@ -628,7 +626,9 @@ spec:
       targetPort: 8080
   selector:
     app: my-app
----
+```
+
+```yaml
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
@@ -657,7 +657,62 @@ spec:
 > [!IMPORTANT]
 > The `tailscale.com/https: "true"` annotation ensures all traffic is served over HTTPS with automatic TLS certificates from Let's Encrypt.
 
-Access at: `https://my-app.your-tailnet.ts.net`
+Access at: `https://my-app.<tailnet-name>.ts.net`
+
+---
+
+## Remote Access via Tailscale
+
+To connect to the cluster from another machine (e.g., your laptop) using Tailscale:
+
+### 1. Prerequisites
+- **Tailscale**: Installed and connected to the same tailnet as the cluster.
+- **kubectl**: Installed on your local machine.
+
+### 2. Fetch Kubeconfig
+SSH into the control plane node (e.g., `<node-name>`) is likely disabled for password auth, so use SCP to fetch the config:
+
+```bash
+# Replace <node-name> with your control plane node's Tailscale name or IP
+scp your-username@<node-name>:~/.kube/config ./kubeconfig-remote
+```
+
+### 3. Configure Local Access
+The fetched config uses the local cluster IP (e.g., 192.168.x.x) and includes CA data that won't match the Tailscale IP. We need to modify it.
+
+```bash
+# 1. Set the server to the Tailscale IP (Replace 100.x.y.z with your node's Tailscale IP)
+# You can find the IP with `tailscale status` or `ping <node-name>`
+export REMOTE_IP="<tailscale-ip>" 
+kubectl config set-cluster kubernetes --kubeconfig=./kubeconfig-remote --server=https://${REMOTE_IP}:6443
+
+# 2. Disable TLS verification (required because the cert doesn't contain the Tailscale IP)
+kubectl config set-cluster kubernetes --kubeconfig=./kubeconfig-remote --insecure-skip-tls-verify=true
+kubectl config unset clusters.kubernetes.certificate-authority-data --kubeconfig=./kubeconfig-remote
+```
+
+### 4. Merge and Activate
+Merge the new config into your local `~/.kube/config`:
+
+```bash
+# Back up existing config
+cp ~/.kube/config ~/.kube/config.bak || true
+
+# Merge
+KUBECONFIG=~/.kube/config:./kubeconfig-remote kubectl config view --flatten > ~/.kube/config.new
+mv ~/.kube/config.new ~/.kube/config
+
+# Rename context for clarity (optional but recommended)
+kubectl config rename-context kubernetes-admin@kubernetes <node-name>
+
+# Switch to the new context
+kubectl config use-context <node-name>
+```
+
+### 5. Verify
+```bash
+kubectl get nodes
+```
 
 ---
 
