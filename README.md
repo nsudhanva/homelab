@@ -166,6 +166,32 @@ kubectl create secret generic operator-oauth \
 
 ---
 
+### Enable SSH for Remote Access
+
+```bash
+sudo apt-get install -y openssh-server
+sudo systemctl enable --now ssh
+```
+
+### Remote kubectl Access
+
+From another Tailnet device, SSH and run kubectl:
+
+```bash
+ssh user@<tailscale-hostname> kubectl get pods -A
+```
+
+Or copy kubeconfig to your other machine:
+
+```bash
+mkdir -p ~/.kube
+scp user@<tailscale-hostname>:~/.kube/config ~/.kube/config
+sed -i 's|server: https://.*:6443|server: https://<tailscale-hostname>:6443|' ~/.kube/config
+kubectl get pods -A
+```
+
+---
+
 ## Phase 8: Storage Prerequisites (Longhorn)
 
 ### Install Required Packages
