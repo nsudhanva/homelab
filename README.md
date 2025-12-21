@@ -128,6 +128,30 @@ kubectl create secret generic operator-oauth \
 # ArgoCD will deploy the operator from manifests/tailscale-operator.yaml
 ```
 
+## Phase 9: Host Prerequisites (Storage & GPU)
+
+Run these commands before deploying Longhorn or GPU workloads.
+
+```bash
+# Longhorn requires open-iscsi
+sudo apt-get update
+sudo apt-get install -y open-iscsi
+sudo systemctl enable --now iscsid
+
+# NVIDIA Container Toolkit (for NVIDIA GPU support)
+curl -fsSL https://nvidia.github.io/libnvidia-container/gpgkey | sudo gpg --dearmor -o /usr/share/keyrings/nvidia-container-toolkit-keyring.gpg --yes
+curl -s -L https://nvidia.github.io/libnvidia-container/stable/deb/nvidia-container-toolkit.list | \
+  sed 's#deb https://#deb [signed-by=/usr/share/keyrings/nvidia-container-toolkit-keyring.gpg] https://#g' | \
+  sudo tee /etc/apt/sources.list.d/nvidia-container-toolkit.list
+
+sudo apt-get update
+sudo apt-get install -y nvidia-container-toolkit
+
+# Configure containerd for NVIDIA
+sudo nvidia-ctk runtime configure --runtime=containerd
+sudo systemctl restart containerd
+```
+
 ## Quick Reference
 
 ```bash
@@ -147,16 +171,63 @@ cilium hubble ui
 kubectl -n argocd patch app root -p '{"metadata": {"annotations": {"argocd.argoproj.io/refresh": "hard"}}}' --type merge
 ```
 
-## Expose Service via Tailscale
 
+## New Components (Auto-Deployed)
+
+After you push the latest changes, ArgoCD will automatically deploy:
+
+1.  **ArgoCD UI**: Accessible at `https://argocd.your-tailnet.ts.net`.
+2.  **Longhorn Storage**:
+    - Distributed block storage engine.
+    - Data stored in `/home/sudhanva/longhorn-storage`.
+    - Dashboard accessible via port-forward or Ingress (if enabled).
+3.  **Intel GPU Plugin**: Enables hardware transcoding for Jellyfin.
+4.  **Jellyfin**:
+    - Accessible at `https://jellyfin.your-tailnet.ts.net`.
+    - Uses **300GB** Persistent Storage (on Longhorn).
+    - GPU Transcoding enabled (`/dev/dri`).
+
+### Expose Service via Tailscale (HTTPS)
+
+Use a Kubernetes `Ingress` with `ingressClassName: tailscale` for automatic HTTPS/TLS.
+
+**1. Create the Service (ClusterIP)**
 ```yaml
 apiVersion: v1
 kind: Service
 metadata:
   name: my-app
-  annotations:
-    tailscale.com/hostname: "my-app"
 spec:
-  type: LoadBalancer
-  loadBalancerClass: tailscale
+  type: ClusterIP
+  ports:
+  - port: 80
+    targetPort: 80
+  selector:
+    app: my-app
+```
+
+**2. Create the Ingress**
+```yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: my-app
+  annotations:
+    tailscale.com/tags: "tag:k8s"
+spec:
+  ingressClassName: tailscale
+  tls:
+  - hosts:
+    - my-app
+  rules:
+  - host: my-app
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: my-app
+            port:
+              number: 80
 ```

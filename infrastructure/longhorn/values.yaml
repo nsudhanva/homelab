@@ -1,0 +1,7 @@
+longhorn:
+  defaultSettings:
+    defaultDataPath: /home/sudhanva/longhorn-storage
+    createDefaultDiskLabeledNodes: true
+  persistence:
+    defaultClass: true
+    defaultClassReplicaCount: 1
