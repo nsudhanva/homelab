@@ -1,0 +1,20 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hello-homelab
+  namespace: default
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: hello-homelab
+  template:
+    metadata:
+      labels:
+        app: hello-homelab
+    spec:
+      containers:
+      - name: web
+        image: nginxdemos/hello:latest
+        ports:
+        - containerPort: 80

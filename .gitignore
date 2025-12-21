@@ -1,0 +1,15 @@
+# Secrets - NEVER commit these
+*secret*.yaml
+*-secret.yaml
+
+# Kubernetes config
+*.kubeconfig
+
+# Local development
+.vscode/
+.idea/
+
+# Temporary files
+*.tmp
+*.swp
+*~
