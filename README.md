@@ -147,9 +147,16 @@ curl -s -L https://nvidia.github.io/libnvidia-container/stable/deb/nvidia-contai
 sudo apt-get update
 sudo apt-get install -y nvidia-container-toolkit
 
-# Configure containerd for NVIDIA
-sudo nvidia-ctk runtime configure --runtime=containerd
+# Configure containerd with NVIDIA as default runtime
+sudo nvidia-ctk runtime configure --runtime=containerd --set-as-default --cdi.enabled
+sudo nvidia-ctk cdi generate --output=/etc/cdi/nvidia.yaml
 sudo systemctl restart containerd
+
+# Increase inotify limits (required for many containers)
+sudo sysctl -w fs.inotify.max_user_instances=512
+sudo sysctl -w fs.inotify.max_user_watches=524288
+echo "fs.inotify.max_user_instances=512" | sudo tee -a /etc/sysctl.d/99-inotify.conf
+echo "fs.inotify.max_user_watches=524288" | sudo tee -a /etc/sysctl.d/99-inotify.conf
 ```
 
 ## Quick Reference
