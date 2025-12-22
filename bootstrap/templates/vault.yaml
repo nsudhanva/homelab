@@ -29,10 +29,11 @@ spec:
               - hosts:
                   - vault
           dev:
-            enabled: true
-            devRootToken: "root"
-          dataStorage:
             enabled: false
+          dataStorage:
+            enabled: true
+            size: 10Gi
+            storageClass: longhorn
         ui:
           enabled: true
           serviceType: ClusterIP
