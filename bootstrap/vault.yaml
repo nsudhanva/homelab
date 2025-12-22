@@ -4,6 +4,11 @@ metadata:
   name: vault
   namespace: argocd
 spec:
+  ignoreDifferences:
+  - group: admissionregistration.k8s.io
+    kind: MutatingWebhookConfiguration
+    jsonPointers:
+    - /webhooks/0/clientConfig/caBundle
   project: default
   source:
     repoURL: https://helm.releases.hashicorp.com
@@ -12,6 +17,17 @@ spec:
     helm:
       valuesObject:
         server:
+          ingress:
+            enabled: true
+            ingressClassName: tailscale
+            annotations:
+              tailscale.com/tags: tag:k8s
+              tailscale.com/https: "true"
+            hosts:
+              - host: vault
+            tls:
+              - hosts:
+                  - vault
           dev:
             enabled: true
             devRootToken: "root"
