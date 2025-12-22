@@ -1,6 +1,63 @@
 # Homelab
 
-Bare-metal Kubernetes cluster on Ubuntu 24.04, managed via GitOps with ArgoCD.
+Single-node bare-metal Kubernetes cluster on Ubuntu 24.04 LTS, managed via GitOps with ArgoCD.
+
+This repo is the source of truth for:
+- Host provisioning (Ansible roles).
+- Cluster bootstrap (kubeadm + Cilium + ArgoCD).
+- Infrastructure and application manifests (ArgoCD ApplicationSets).
+
+---
+
+## Quick Map
+
+- `ansible/`: host provisioning roles and playbooks.
+- `bootstrap/`: ArgoCD bootstrap + ApplicationSets.
+- `infrastructure/`: cluster-wide components.
+- `apps/`: user workloads.
+- `clusters/home/`: cluster-specific kubeadm config.
+
+---
+
+## Architecture
+
+```mermaid
+graph TD
+  Host[Ubuntu 24.04 Node] --> Kubeadm[Kubeadm Control Plane]
+  Kubeadm --> Cilium[Cilium CNI]
+  Kubeadm --> ArgoCD[ArgoCD]
+  ArgoCD --> AppSets[ApplicationSets]
+  AppSets --> Infra[infrastructure/*]
+  AppSets --> Apps[apps/*]
+  Infra --> Tailscale[Tailscale Operator]
+  Infra --> Longhorn[Longhorn]
+  Apps --> Jellyfin[Jellyfin]
+  Apps --> Filebrowser[Filebrowser]
+  Apps --> Hello[hello-homelab]
+```
+
+```mermaid
+sequenceDiagram
+  participant Git as Git Repo
+  participant Argo as ArgoCD
+  participant K8s as Kubernetes API
+  Git->>Argo: Detect changes
+  Argo->>K8s: Apply manifests
+  K8s-->>Argo: Sync status
+```
+
+---
+
+## Versions (Pinned)
+
+- Kubernetes: `v1.34.3` in `ansible/group_vars/all.yaml` and `clusters/home/kubeadm-clusterconfiguration.yaml`.
+- Cilium: `1.18.5` in this README and `ansible/group_vars/all.yaml`.
+- Longhorn: `1.7.2` in `bootstrap/templates/longhorn.yaml`.
+- Tailscale Operator: `1.78.3` in `infrastructure/tailscale/tailscale-operator.yaml`.
+- Intel GPU plugin: `0.34.0` in `infrastructure/gpu/intel-plugin.yaml`.
+- NVIDIA GPU plugin: `0.17.0` in `infrastructure/gpu/nvidia-plugin.yaml`.
+
+---
 
 ## Phase 0: Prerequisites
 
@@ -12,6 +69,24 @@ curl https://baltocdn.com/helm/signing.asc | gpg --dearmor | sudo tee /usr/share
 echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/helm.gpg] https://baltocdn.com/helm/stable/debian/ all main" | sudo tee /etc/apt/sources.list.d/helm-stable-debian.list
 sudo apt-get update
 sudo apt-get install -y helm
+```
+
+---
+
+## Phase 0b: Optional Ansible Provisioning
+
+> [!NOTE]
+> The Ansible playbooks are the automated equivalent of Phases 1-3. If you use Ansible, skip straight to Phase 4.
+
+### Configure Inventory and Variables
+
+Update the node list and user in `ansible/inventory/hosts.yaml`, then confirm versions and paths in `ansible/group_vars/all.yaml`.
+
+### Run the Playbook
+
+```bash
+cd ansible
+ansible-playbook playbooks/site.yaml
 ```
 
 ---
@@ -85,7 +160,7 @@ sudo systemctl enable containerd
 ## Phase 3: Install Kubernetes
 
 ```bash
-K8S_VERSION="v1.34"
+K8S_VERSION="v1.34.3"
 
 sudo apt-get install -y apt-transport-https ca-certificates curl gpg
 sudo mkdir -p -m 755 /etc/apt/keyrings
@@ -112,6 +187,15 @@ sudo chown $(id -u):$(id -g) $HOME/.kube/config
 kubectl taint nodes --all node-role.kubernetes.io/control-plane-
 ```
 
+> [!NOTE]
+> During `kubeadm init`, kubeadm uploads the `ClusterConfiguration` to the `kubeadm-config` ConfigMap in `kube-system`. This repo captures that configuration in `clusters/home/kubeadm-clusterconfiguration.yaml`.
+
+### Regenerate kubeadm cluster configuration
+
+```bash
+kubectl -n kube-system get configmap kubeadm-config -o jsonpath='{.data.ClusterConfiguration}' > clusters/home/kubeadm-clusterconfiguration.yaml
+```
+
 ---
 
 ## Phase 5: Install Cilium
@@ -130,6 +214,9 @@ kubectl get nodes
 cilium status
 ```
 
+> [!NOTE]
+> Keep `CILIUM_VERSION` aligned with `ansible/group_vars/all.yaml`.
+
 ---
 
 ## Phase 6: Install ArgoCD
@@ -140,6 +227,9 @@ kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/st
 kubectl wait --for=condition=available --timeout=600s deployment/argocd-server -n argocd
 kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath='{.data.password}' | base64 -d; echo
 ```
+
+> [!NOTE]
+> ArgoCD is exposed via Tailscale Ingress in `infrastructure/argocd-ingress/ingress.yaml` (hostname: `argocd`).
 
 ---
 
@@ -164,7 +254,8 @@ kubectl create secret generic operator-oauth \
   --from-literal=client_secret=YOUR_CLIENT_SECRET
 ```
 
----
+> [!IMPORTANT]
+> Create the `operator-oauth` secret before Phase 10 so the Tailscale Operator deploys cleanly.
 
 ### Enable SSH for Remote Access
 
@@ -211,6 +302,9 @@ sudo systemctl enable --now iscsid
 mkdir -p /home/your-username/longhorn-storage
 ```
 
+> [!NOTE]
+> Update the matching path in `bootstrap/templates/longhorn.yaml` and `ansible/group_vars/all.yaml`.
+
 ### Add Node Label for Longhorn Disk
 
 > [!NOTE]
@@ -228,7 +322,10 @@ kubectl label node $(hostname) node.longhorn.io/create-default-disk=true --overw
 
 No host prerequisites needed - the Intel GPU Plugin DaemonSet handles everything.
 
+The Intel GPU plugin manifest lives in `infrastructure/gpu/intel-plugin.yaml`.
+
 Verify after deployment:
+
 ```bash
 kubectl describe node | grep gpu.intel.com/i915
 ```
@@ -259,9 +356,12 @@ sudo systemctl restart containerd
 ```
 
 Verify after deployment:
+
 ```bash
 kubectl describe node | grep nvidia.com/gpu
 ```
+
+The NVIDIA GPU plugin manifest lives in `infrastructure/gpu/nvidia-plugin.yaml`.
 
 ---
 
@@ -273,6 +373,8 @@ Edit these files and replace `YOUR_USERNAME` with your GitHub username:
 - `bootstrap/root.yaml`
 - `bootstrap/templates/infra-appset.yaml`
 - `bootstrap/templates/apps-appset.yaml`
+
+Confirm the Longhorn data path in `bootstrap/templates/longhorn.yaml` matches your host.
 
 ### Apply Bootstrap
 
@@ -295,9 +397,23 @@ kubectl apply -f bootstrap/longhorn.yaml
 kubectl get apps -n argocd
 ```
 
+---
+
+## Phase 11: Validate the Cluster
+
+```bash
+kubectl get nodes
+kubectl get pods -A
+```
+
+---
+
 ## Adding Nodes to the Cluster
 
 This section covers expanding the cluster with additional worker nodes or control plane nodes.
+
+> [!NOTE]
+> You can also add nodes by updating `ansible/inventory/hosts.yaml` and rerunning `ansible-playbook playbooks/site.yaml`.
 
 ### Prerequisites for New Nodes
 
@@ -330,7 +446,7 @@ sudo sed -i 's/SystemdCgroup = false/SystemdCgroup = true/g' /etc/containerd/con
 sudo systemctl restart containerd
 sudo systemctl enable containerd
 sudo systemctl enable --now iscsid
-K8S_VERSION="v1.34"
+K8S_VERSION="v1.34.3"
 sudo apt-get install -y apt-transport-https ca-certificates curl gpg
 sudo mkdir -p -m 755 /etc/apt/keyrings
 curl -fsSL https://pkgs.k8s.io/core:/stable:/$K8S_VERSION/deb/Release.key | sudo gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
@@ -400,479 +516,85 @@ sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
 sudo chown $(id -u):$(id -g) $HOME/.kube/config
 ```
 
-### Configure Longhorn Storage on New Nodes
+---
 
-Label the node to enable Longhorn storage:
+## Repo Details
 
-```bash
-kubectl label node <new-node-name> node.longhorn.io/create-default-disk=true
-```
+### Node Provisioning (Ansible)
 
-Create storage directory on the new node:
+- `ansible/playbooks/site.yaml`: entrypoint for CPU/Intel/NVIDIA nodes.
+- `ansible/roles/base/`: swap, sysctl, inotify, and base packages.
+- `ansible/roles/containerd/`: containerd install/config.
+- `ansible/roles/kubernetes/`: kubelet/kubeadm/kubectl install.
+- `ansible/roles/longhorn-prereqs/`: iSCSI/NFS packages + storage path.
+- `ansible/roles/nvidia-gpu/`: NVIDIA container toolkit setup.
+- `ansible/roles/tailscale/`: Tailscale client install.
 
-```bash
-mkdir -p /home/your-username/longhorn-storage
-```
+### Bootstrap
+
+- `bootstrap/root.yaml`: bootstraps the ApplicationSet templates.
+- `bootstrap/templates/infra-appset.yaml`: deploys everything under `infrastructure/*`.
+- `bootstrap/templates/apps-appset.yaml`: deploys everything under `apps/*`.
+- `bootstrap/templates/longhorn.yaml`: Helm-based Longhorn Application (separate from the infra ApplicationSet).
+
+### Infrastructure Components
+
+- `infrastructure/tailscale/tailscale-operator.yaml`: Tailscale Operator via Helm.
+- `infrastructure/argocd-ingress/ingress.yaml`: ArgoCD Tailscale Ingress (`argocd`).
+- `infrastructure/longhorn-ingress/ingress.yaml`: Longhorn Tailscale Ingress (`longhorn`).
+- `infrastructure/gpu/intel-plugin.yaml`: Intel GPU Device Plugin.
+- `infrastructure/gpu/nvidia-plugin.yaml`: NVIDIA GPU Device Plugin.
+
+### Applications
+
+- `apps/jellyfin/`: Jellyfin deployment + PVCs; uses Intel GPU resource requests.
+- `apps/filebrowser/`: Filebrowser deployment; mounts the `jellyfin-media` PVC.
+- `apps/hello-homelab/`: Demo app with Tailscale Ingress (`hello-homelab`).
 
 > [!NOTE]
-> Longhorn requires 3+ nodes for full replication (replica count of 3). With fewer nodes, reduce the default replica count in Longhorn settings.
-
-### Verify Node Joined
-
-```bash
-kubectl get nodes
-kubectl get pods -A -o wide | grep <new-node-name>
-```
-
-### Node Types Summary
-
-| Node Type | Join Command | Use Case |
-|-----------|--------------|----------|
-| **Worker** | `kubeadm join ... --token ... --discovery-token-ca-cert-hash ...` | Run workloads only |
-| **Control Plane** | `kubeadm join ... --control-plane --certificate-key ...` | Run control plane + etcd (HA) |
-
-### Longhorn Replication Best Practices
-
-| Nodes | Recommended Replica Count | Notes |
-|-------|--------------------------|-------|
-| 1 | 1 | Single node, no redundancy |
-| 2 | 2 | Can survive 1 node failure |
-| 3+ | 3 | Full HA, survives 2 node failures |
+> App images are pinned by digest for reproducibility. Update them by redeploying and capturing the new digest from the running pods.
 
 ---
 
-## Troubleshooting
+## Reproducibility Checklist
 
-### Problem: Kubelet fails to start after reboot
+This repo aims to model the full host and cluster state. The following must be represented here:
 
-**Symptom**: `kubectl get nodes` shows NotReady or connection refused.
+- Host OS packages, sysctl, kernel modules, and container runtime: `ansible/` roles.
+- Kubeadm cluster settings: `clusters/home/kubeadm-clusterconfiguration.yaml`.
+- CNI and kube-proxy replacement: Cilium install steps in this README.
+- Infrastructure components: `infrastructure/`.
+- Applications and PVCs: `apps/`.
+- Storage path and labels: `bootstrap/templates/longhorn.yaml` and Phase 8.
+- Tailscale OAuth secret: created in Phase 7 (not stored in Git).
 
-**Cause**: Swap was re-enabled on boot.
-
-**Solution**:
-```bash
-# Check if swap is on
-free -h
-
-# Disable swap
-sudo swapoff -a
-
-# Permanently disable (check fstab for uncommented swap lines)
-sudo sed -i '/\sswap\s/ s/^/#/' /etc/fstab
-
-# Restart kubelet
-sudo systemctl restart kubelet
-```
+Items intentionally not stored in Git:
+- Secrets and credentials.
+- Data backups (out of scope for now).
 
 ---
 
-### Problem: Longhorn volumes stuck in "faulted" state
+## Recreate From Scratch (Ubuntu 24.04)
 
-**Symptom**: PVCs show Pending, volumes show `faulted` in Longhorn.
+Use this section when rebuilding a node from bare metal or VM images:
 
-**Cause**: Node has no disk configured (`disks: {}` in Longhorn node spec).
+1. Install Ubuntu 24.04 LTS and log in as a user with sudo.
+2. Clone this repo and review `README.md` for versions and paths.
+3. Choose one path:
+   - Automated: run Phase 0b (Ansible provisioning), then continue at Phase 4.
+   - Manual: run Phases 0-11 in order.
+4. Apply GitOps bootstrap (Phase 10) and verify (Phase 11).
 
-**Solution**:
-```bash
-# 1. Ensure storage directory exists
-mkdir -p /home/your-username/longhorn-storage
-
-# 2. Add the label for automatic disk creation
-kubectl label node $(hostname) node.longhorn.io/create-default-disk=true
-
-# 3. Restart Longhorn manager to detect the disk
-kubectl rollout restart daemonset longhorn-manager -n longhorn-system
-```
+If you are rebuilding with existing data disks for Longhorn, ensure the storage path in Phase 8 points to the correct mount before applying `bootstrap/templates/longhorn.yaml`.
 
 ---
 
-### Problem: ArgoCD Helm chart stuck on pre-upgrade hook
+## Testing
 
-**Symptom**: Longhorn Application shows `waiting for completion of hook`, Job shows `ServiceAccount not found`.
-
-**Cause**: ArgoCD runs Helm pre-upgrade hooks before creating the ServiceAccount they depend on.
-
-**Solution**: Disable the pre-upgrade checker in Longhorn Helm values:
-
-```yaml
-helm:
-  values: |
-    preUpgradeChecker:
-      jobEnabled: false
-```
-
----
-
-### Problem: Namespace stuck in Terminating state
-
-**Symptom**: `kubectl delete ns` hangs forever.
-
-**Cause**: Resources with finalizers are blocking deletion.
-
-**Solution**:
-```bash
-# Remove finalizers from the namespace
-kubectl get ns longhorn-system -o json | \
-  jq '.spec.finalizers = []' | \
-  kubectl replace --raw "/api/v1/namespaces/longhorn-system/finalize" -f -
-
-# If a specific resource (like a Job) has a finalizer:
-kubectl patch job <job-name> -n <namespace> -p '{"metadata":{"finalizers":null}}' --type=merge
-```
-
----
-
-### Problem: NVIDIA device plugin shows "invalid device discovery strategy"
-
-**Symptom**: NVIDIA plugin pod crashes with error about incompatible strategy.
-
-**Cause**: Containerd not configured with NVIDIA as default runtime + CDI not enabled.
-
-**Solution**:
-```bash
-# Must use ALL THREE flags
-sudo nvidia-ctk runtime configure --runtime=containerd --set-as-default --cdi.enabled
-sudo nvidia-ctk cdi generate --output=/etc/cdi/nvidia.yaml
-sudo systemctl restart containerd
-
-# Then restart the plugin
-kubectl delete pod -n kube-system -l name=nvidia-device-plugin-ds
-```
-
----
-
-### Problem: Containers crash with "too many open files" / inotify error
-
-**Symptom**: Jellyfin or other apps crash with inotify limit errors.
-
-**Cause**: Default Linux inotify limits (128 instances) are too low.
-
-**Solution**:
-```bash
-# Apply immediately
-sudo sysctl -w fs.inotify.max_user_instances=512
-sudo sysctl -w fs.inotify.max_user_watches=524288
-
-# Persist
-echo "fs.inotify.max_user_instances=512" | sudo tee /etc/sysctl.d/99-inotify.conf
-echo "fs.inotify.max_user_watches=524288" | sudo tee -a /etc/sysctl.d/99-inotify.conf
-```
-
----
-
-## Quick Reference
+Before pushing changes:
 
 ```bash
-# Cluster health
+pre-commit run --all-files
 kubectl get nodes
 kubectl get pods -A
-cilium status
-
-# ArgoCD UI (port-forward)
-kubectl port-forward svc/argocd-server -n argocd 8080:443
-
-# ArgoCD password
-kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath='{.data.password}' | base64 -d; echo
-
-# Force ArgoCD sync
-kubectl -n argocd patch app bootstrap -p '{"metadata": {"annotations": {"argocd.argoproj.io/refresh": "hard"}}}' --type merge
-
-# Hubble UI
-cilium hubble ui
-
-# Check GPU availability
-kubectl describe node | grep -E 'gpu.intel.com|nvidia.com'
-
-# Check Longhorn volumes
-kubectl get volumes.longhorn.io -A
-
-# Check Longhorn node disks
-kubectl get nodes.longhorn.io -n longhorn-system -o yaml | grep -A 10 'disks:'
-```
-
----
-
-## Deployed Components
-
-After GitOps activation, ArgoCD automatically deploys:
-
-| Component | Version | Description |
-|-----------|---------|-------------|
-| **Longhorn** | v1.7.2 | Distributed block storage (310GB configured) |
-| **Intel GPU Plugin** | v0.34.0 | Exposes `gpu.intel.com/i915` for iGPU transcoding |
-| **NVIDIA Device Plugin** | v0.17.0 | Exposes `nvidia.com/gpu` for dGPU workloads |
-| **Jellyfin** | latest | Media server with Intel GPU + Longhorn storage |
-| **ArgoCD Ingress** | - | HTTPS access via Tailscale |
-
----
-
-## Transfer Media to Jellyfin
-
-Jellyfin stores media on a Longhorn PVC mounted at `/media` inside the pod. Use `tar` piped to `kubectl exec` for reliable large file transfers.
-
-### Get the Jellyfin Pod Name
-
-```bash
-JELLYFIN_POD=$(kubectl get pods -l app=jellyfin -o jsonpath='{.items[0].metadata.name}')
-echo $JELLYFIN_POD
-```
-
-### Create the Target Directory
-
-```bash
-kubectl exec $JELLYFIN_POD -- mkdir -p /media/Movies
-```
-
-### Transfer Files
-
-Transfer a movie folder from your local machine:
-
-```bash
-tar cf - -C "/path/to/local/movies" "Movie Name (Folder/Files)" | kubectl exec -i $JELLYFIN_POD -- tar xf - -C /media/Movies/
-```
-
-### Verify Transfer
-
-```bash
-kubectl exec $JELLYFIN_POD -- ls -la /media/Movies/
-```
-
-### Rescan Library
-
-Trigger a library scan from the Jellyfin web UI or wait for the scheduled scan.
-
-> [!NOTE]
-> For TV shows, use `/media/TV` instead of `/media/Movies`.
-
----
-
-## Expose Services via Tailscale (HTTPS)
-
-Use a Kubernetes Ingress with `ingressClassName: tailscale` for automatic HTTPS/TLS.
-
-### Example: Service + Ingress
-
-```yaml
-apiVersion: v1
-kind: Service
-metadata:
-  name: my-app
-spec:
-  type: ClusterIP
-  ports:
-    - port: 80
-      targetPort: 8080
-  selector:
-    app: my-app
-```
-
-```yaml
-apiVersion: networking.k8s.io/v1
-kind: Ingress
-metadata:
-  name: my-app
-  annotations:
-    tailscale.com/tags: tag:k8s
-    tailscale.com/https: "true"
-spec:
-  ingressClassName: tailscale
-  tls:
-    - hosts:
-        - my-app
-  rules:
-    - host: my-app
-      http:
-        paths:
-          - path: /
-            pathType: Prefix
-            backend:
-              service:
-                name: my-app
-                port:
-                  number: 80
-```
-
-> [!IMPORTANT]
-> The `tailscale.com/https: "true"` annotation ensures all traffic is served over HTTPS with automatic TLS certificates from Let's Encrypt.
-
-Access at: `https://my-app.<tailnet-name>.ts.net`
-
----
-
-## Remote Access via Tailscale
-
-To connect to the cluster from another machine (e.g., your laptop) using Tailscale:
-
-### Prerequisites
-- **Tailscale**: Installed and connected to the same tailnet as the cluster.
-- **kubectl**: Installed on your local machine.
-
-### Fetch Kubeconfig
-SSH into the control plane node (e.g., `<node-name>`) is likely disabled for password auth, so use SCP to fetch the config:
-
-```bash
-# Replace <node-name> with your control plane node's Tailscale name or IP
-scp your-username@<node-name>:~/.kube/config ./kubeconfig-remote
-```
-
-### Configure Local Access
-The fetched config uses the local cluster IP (e.g., 192.168.x.x) and includes CA data that won't match the Tailscale IP. We need to modify it.
-
-```bash
-# 1. Set the server to the Tailscale IP (Replace 100.x.y.z with your node's Tailscale IP)
-# You can find the IP with `tailscale status` or `ping <node-name>`
-export REMOTE_IP="<tailscale-ip>"
-kubectl config set-cluster kubernetes --kubeconfig=./kubeconfig-remote --server=https://${REMOTE_IP}:6443
-
-# 2. Disable TLS verification (required because the cert doesn't contain the Tailscale IP)
-kubectl config set-cluster kubernetes --kubeconfig=./kubeconfig-remote --insecure-skip-tls-verify=true
-kubectl config unset clusters.kubernetes.certificate-authority-data --kubeconfig=./kubeconfig-remote
-```
-
-### Merge and Activate
-Merge the new config into your local `~/.kube/config`:
-
-```bash
-# Back up existing config
-cp ~/.kube/config ~/.kube/config.bak || true
-
-# Merge
-KUBECONFIG=~/.kube/config:./kubeconfig-remote kubectl config view --flatten > ~/.kube/config.new
-mv ~/.kube/config.new ~/.kube/config
-
-# Rename context for clarity (optional but recommended)
-kubectl config rename-context kubernetes-admin@kubernetes <node-name>
-
-# Switch to the new context
-kubectl config use-context <node-name>
-```
-
-### Verify
-```bash
-kubectl get nodes
-```
-
----
-
-## Automated Node Provisioning with Ansible
-
-Instead of running manual commands, use Ansible to provision nodes automatically.
-
-### Prerequisites
-
-```bash
-sudo apt install ansible
-ssh-copy-id sudhanva@<node-tailscale-hostname>
-```
-
-### Quick Start
-
-```bash
-cd ansible
-
-ansible-playbook playbooks/provision-nvidia-gpu.yaml -l legion
-
-ansible-playbook playbooks/provision-intel-gpu.yaml -l <intel-node>
-
-ansible-playbook playbooks/provision-cpu.yaml -l <cpu-node>
-```
-
-### Adding a New Node
-
-1. Add the node to `ansible/inventory/hosts.yaml`:
-
-```yaml
-all:
-  children:
-    gpu_nvidia:
-      hosts:
-        new-node:
-          ansible_host: new-node-tailscale-name
-          ansible_user: your-username
-```
-
-2. Run the appropriate playbook:
-
-```bash
-ansible-playbook playbooks/provision-nvidia-gpu.yaml -l new-node
-```
-
-3. Generate join token on control plane and join the new node:
-
-```bash
-kubeadm token create --print-join-command
-sudo kubeadm join <control-plane>:6443 --token <token> --discovery-token-ca-cert-hash sha256:<hash>
-```
-
-4. Label node for Longhorn:
-
-```bash
-kubectl label node new-node node.longhorn.io/create-default-disk=true
-```
-
-### Playbook Variants
-
-| Playbook | Use Case |
-|----------|----------|
-| `provision-cpu.yaml` | CPU-only nodes (no GPU) |
-| `provision-intel-gpu.yaml` | Nodes with Intel iGPU (transcoding) |
-| `provision-nvidia-gpu.yaml` | Nodes with NVIDIA GPU (ML/transcoding) |
-| `site.yaml` | Provision all nodes by type |
-
-### Roles
-
-| Role | Description |
-|------|-------------|
-| `base` | Disable swap, kernel modules, sysctl, inotify limits |
-| `containerd` | Container runtime with SystemdCgroup |
-| `kubernetes` | kubeadm, kubelet, kubectl installation |
-| `nvidia-gpu` | NVIDIA container toolkit + CDI |
-| `longhorn-prereqs` | iSCSI, NFS, storage directory |
-| `tailscale` | Tailscale client installation |
-
----
-
-## Repository Structure
-
-```
-homelab/
-├── AGENTS.md               # AI assistant guidelines
-├── README.md               # This file
-├── ansible/                # Automated node provisioning
-│   ├── ansible.cfg
-│   ├── inventory/hosts.yaml
-│   ├── group_vars/all.yaml
-│   ├── playbooks/
-│   │   ├── site.yaml
-│   │   ├── provision-cpu.yaml
-│   │   ├── provision-intel-gpu.yaml
-│   │   └── provision-nvidia-gpu.yaml
-│   └── roles/
-│       ├── base/
-│       ├── containerd/
-│       ├── kubernetes/
-│       ├── nvidia-gpu/
-│       ├── longhorn-prereqs/
-│       └── tailscale/
-├── bootstrap/
-│   ├── root.yaml           # ArgoCD bootstrap Application
-│   ├── longhorn.yaml       # Longhorn ArgoCD Application (Helm)
-│   ├── vault.yaml          # HashiCorp Vault (Helm)
-│   └── templates/
-│       ├── infra-appset.yaml   # Infrastructure ApplicationSet
-│       └── apps-appset.yaml    # Apps ApplicationSet
-├── infrastructure/
-│   ├── tailscale/          # Tailscale Operator
-│   ├── vault/              # HashiCorp Vault (Helm)
-│   ├── gpu/
-│   │   ├── intel-plugin.yaml   # Intel GPU DaemonSet
-│   │   └── nvidia-plugin.yaml  # NVIDIA GPU DaemonSet
-│   └── argocd-ingress/     # ArgoCD Tailscale Ingress
-└── apps/
-    ├── hello-homelab/      # Test application
-    └── jellyfin/
-        ├── pvc.yaml        # Persistent Volume Claims
-        ├── deployment.yaml # Jellyfin Deployment
-        ├── service.yaml    # ClusterIP Service
-        └── ingress.yaml    # Tailscale Ingress
 ```
