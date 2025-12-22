@@ -763,7 +763,7 @@ Instead of running manual commands, use Ansible to provision nodes automatically
 ### Prerequisites
 
 ```bash
-brew install ansible
+sudo apt install ansible
 ssh-copy-id sudhanva@<node-tailscale-hostname>
 ```
 
@@ -858,8 +858,8 @@ homelab/
 │       └── tailscale/
 ├── bootstrap/
 │   ├── root.yaml           # ArgoCD bootstrap Application
-│   ├── argocd.yaml         # ArgoCD self-managed (Helm)
 │   ├── longhorn.yaml       # Longhorn ArgoCD Application (Helm)
+│   ├── vault.yaml          # HashiCorp Vault (Helm)
 │   └── templates/
 │       ├── infra-appset.yaml   # Infrastructure ApplicationSet
 │       └── apps-appset.yaml    # Apps ApplicationSet
