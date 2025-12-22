@@ -518,44 +518,6 @@ sudo chown $(id -u):$(id -g) $HOME/.kube/config
 
 ---
 
-## Repo Details
-
-### Node Provisioning (Ansible)
-
-- `ansible/playbooks/site.yaml`: entrypoint for CPU/Intel/NVIDIA nodes.
-- `ansible/roles/base/`: swap, sysctl, inotify, and base packages.
-- `ansible/roles/containerd/`: containerd install/config.
-- `ansible/roles/kubernetes/`: kubelet/kubeadm/kubectl install.
-- `ansible/roles/longhorn-prereqs/`: iSCSI/NFS packages + storage path.
-- `ansible/roles/nvidia-gpu/`: NVIDIA container toolkit setup.
-- `ansible/roles/tailscale/`: Tailscale client install.
-
-### Bootstrap
-
-- `bootstrap/root.yaml`: bootstraps the ApplicationSet templates.
-- `bootstrap/templates/infra-appset.yaml`: deploys everything under `infrastructure/*`.
-- `bootstrap/templates/apps-appset.yaml`: deploys everything under `apps/*`.
-- `bootstrap/templates/longhorn.yaml`: Helm-based Longhorn Application (separate from the infra ApplicationSet).
-
-### Infrastructure Components
-
-- `infrastructure/tailscale/tailscale-operator.yaml`: Tailscale Operator via Helm.
-- `infrastructure/argocd-ingress/ingress.yaml`: ArgoCD Tailscale Ingress (`argocd`).
-- `infrastructure/longhorn-ingress/ingress.yaml`: Longhorn Tailscale Ingress (`longhorn`).
-- `infrastructure/gpu/intel-plugin.yaml`: Intel GPU Device Plugin.
-- `infrastructure/gpu/nvidia-plugin.yaml`: NVIDIA GPU Device Plugin.
-
-### Applications
-
-- `apps/jellyfin/`: Jellyfin deployment + PVCs; uses Intel GPU resource requests.
-- `apps/filebrowser/`: Filebrowser deployment; mounts the `jellyfin-media` PVC.
-- `apps/hello-homelab/`: Demo app with Tailscale Ingress (`hello-homelab`).
-
-> [!NOTE]
-> App images are pinned by digest for reproducibility. Update them by redeploying and capturing the new digest from the running pods.
-
----
-
 ## Reproducibility Checklist
 
 This repo aims to model the full host and cluster state. The following must be represented here:
