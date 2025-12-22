@@ -7,7 +7,7 @@ Bare-metal Kubernetes cluster on Ubuntu 24.04, managed via GitOps with ArgoCD.
 ```bash
 sudo apt update
 sudo add-apt-repository ppa:quentiumyt/nvtop
-sudo apt install -y curl wget git pre-commit python3 python3-dev htop nvtop dmsetup
+sudo apt install -y curl wget git pre-commit python3 python3-dev htop nvtop dmsetup npm nodejs
 curl https://baltocdn.com/helm/signing.asc | gpg --dearmor | sudo tee /usr/share/keyrings/helm.gpg > /dev/null
 echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/helm.gpg] https://baltocdn.com/helm/stable/debian/ all main" | sudo tee /etc/apt/sources.list.d/helm-stable-debian.list
 sudo apt-get update
@@ -721,7 +721,7 @@ The fetched config uses the local cluster IP (e.g., 192.168.x.x) and includes CA
 ```bash
 # 1. Set the server to the Tailscale IP (Replace 100.x.y.z with your node's Tailscale IP)
 # You can find the IP with `tailscale status` or `ping <node-name>`
-export REMOTE_IP="<tailscale-ip>" 
+export REMOTE_IP="<tailscale-ip>"
 kubectl config set-cluster kubernetes --kubeconfig=./kubeconfig-remote --server=https://${REMOTE_IP}:6443
 
 # 2. Disable TLS verification (required because the cert doesn't contain the Tailscale IP)
