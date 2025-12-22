@@ -295,6 +295,25 @@ kubectl apply -f bootstrap/longhorn.yaml
 kubectl get apps -n argocd
 ```
 
+## Day 2 Operations
+
+### Vault Initialization (One-Time)
+Vault is deployed in production mode with persistent storage. You must initialize it securely.
+
+1. **Verify Pod is Running**:
+   ```bash
+   kubectl get pods -n vault
+   ```
+2. **Initialize** (Save output securely!):
+   ```bash
+   kubectl exec -ti vault-0 -n vault -- vault operator init
+   ```
+3. **Unseal** (Run 3 times with different keys):
+   ```bash
+   kubectl exec -ti vault-0 -n vault -- vault operator unseal <Unseal Key>
+   ```
+4. **Login**: Access `https://vault.ainu-herring.ts.net` with the **Root Token**.
+
 ---
 
 ## Adding Nodes to the Cluster
