@@ -1,4 +1,4 @@
-k8s_version: "v1.34.3"
+k8s_version: "v1.35"
 cilium_version: "1.18.5"
 longhorn_storage_path: "/home/{{ ansible_user }}/longhorn-storage"
 

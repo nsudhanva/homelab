@@ -1,4 +1,4 @@
-# Secrets - NEVER commit these
+# Secrets
 *secret*.yaml
 *-secret.yaml
 
@@ -13,3 +13,6 @@
 *.tmp
 *.swp
 *~
+
+# Ansible
+ansible/.ansible_cache
