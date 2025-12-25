@@ -15,6 +15,11 @@ Single-node bare-metal Kubernetes cluster on Ubuntu 24.04 LTS, managed via GitOp
 - Place user applications in `apps/{app-name}/`
 - Use Tailscale Ingress (`ingressClassName: tailscale`) for HTTPS exposure
 - Commit small, logical changes with descriptive messages. USe brief commit messages.
+- Use the [Divio documentation system](https://docs.divio.com/documentation-system/) for structuring docs:
+  - **Tutorials**: Learning-oriented (e.g., "Setting up the cluster").
+  - **How-To Guides**: Problem-oriented (e.g., "How to add a worker node").
+  - **Reference**: Information-oriented (e.g., "Version matrix").
+  - **Explanation**: Understanding-oriented (e.g., "GitOps Workflow explanation").
 
 ## Don'ts
 
