@@ -19,7 +19,7 @@ const config: Config = {
   baseUrl: '/',
 
   // GitHub pages deployment config.
-  organizationName: 'nsudhanva',
+  organizationName: 'YOUR_GITHUB_USERNAME',
   projectName: 'homelab',
 
   onBrokenLinks: 'warn', // Warn for now during migration
@@ -37,7 +37,7 @@ const config: Config = {
         docs: {
           sidebarPath: './sidebars.ts',
           editUrl:
-            'https://github.com/nsudhanva/homelab/tree/main/docs/',
+            'https://github.com/YOUR_GITHUB_USERNAME/homelab/tree/main/docs/',
         },
         blog: false, // Disable blog
         theme: {
@@ -64,7 +64,7 @@ const config: Config = {
           label: 'Documentation',
         },
         {
-          href: 'https://github.com/nsudhanva/homelab',
+          href: 'https://github.com/YOUR_GITHUB_USERNAME/homelab',
           label: 'GitHub',
           position: 'right',
         },
@@ -87,7 +87,7 @@ const config: Config = {
           items: [
             {
               label: 'GitHub',
-              href: 'https://github.com/nsudhanva/homelab',
+              href: 'https://github.com/YOUR_GITHUB_USERNAME/homelab',
             },
           ],
         },

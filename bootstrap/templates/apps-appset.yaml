@@ -6,7 +6,7 @@ metadata:
 spec:
   generators:
   - git:
-      repoURL: https://github.com/nsudhanva/homelab.git
+      repoURL: https://github.com/YOUR_GITHUB_USERNAME/homelab.git
       revision: HEAD
       directories:
       - path: apps/*
@@ -16,7 +16,7 @@ spec:
     spec:
       project: default
       source:
-        repoURL: https://github.com/nsudhanva/homelab.git
+        repoURL: https://github.com/YOUR_GITHUB_USERNAME/homelab.git
         targetRevision: HEAD
         path: '{{path}}'
       destination:

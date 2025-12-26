@@ -6,7 +6,7 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: https://github.com/nsudhanva/homelab.git
+    repoURL: https://github.com/YOUR_GITHUB_USERNAME/homelab.git
     targetRevision: HEAD
     path: bootstrap/templates
   destination:

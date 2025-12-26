@@ -30,6 +30,12 @@ Update these files and replace `YOUR_USERNAME` with your GitHub username:
 
 Confirm the Longhorn data path in `bootstrap/templates/longhorn.yaml` matches your host.
 
+:::note
+
+If you deploy the docs app, also update the image in `apps/docs/deployment.yaml` and the repository links in `docs/docusaurus.config.ts`.
+
+:::
+
 ## Step: Apply the bootstrap
 
 ```bash
