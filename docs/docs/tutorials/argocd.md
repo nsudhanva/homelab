@@ -1,10 +1,11 @@
 ---
-sidebar_position: 7
+sidebar_position: 6
+title: ArgoCD and GitOps
 ---
 
-# ArgoCD & GitOps
+# ArgoCD and GitOps
 
-## Phase 6: Install ArgoCD
+## Step: Install ArgoCD
 
 ```bash
 kubectl create namespace argocd
@@ -13,37 +14,41 @@ kubectl wait --for=condition=available --timeout=600s deployment/argocd-server -
 kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath='{.data.password}' | base64 -d; echo
 ```
 
-> [!NOTE]
-> ArgoCD is exposed via Tailscale Ingress in `infrastructure/argocd-ingress/ingress.yaml` (hostname: `argocd`).
+:::note
 
-## Phase 10: GitOps Activation
+ArgoCD is exposed via Tailscale Ingress in `infrastructure/argocd-ingress/ingress.yaml` (hostname: `argocd`).
 
-### Update Repository URLs
+:::
 
-Edit these files and replace `YOUR_USERNAME` with your GitHub username:
+## Step: Prepare GitOps bootstrap
+
+Update these files and replace `YOUR_USERNAME` with your GitHub username:
+
 - `bootstrap/root.yaml`
 - `bootstrap/templates/infra-appset.yaml`
 - `bootstrap/templates/apps-appset.yaml`
 
 Confirm the Longhorn data path in `bootstrap/templates/longhorn.yaml` matches your host.
 
-### Apply Bootstrap
+## Step: Apply the bootstrap
 
 ```bash
 kubectl apply -f bootstrap/root.yaml
 ```
 
-### Apply Longhorn (special handling)
-
-> [!NOTE]
-> Longhorn is deployed as a separate ArgoCD Application because it uses Helm and needs to be in the `argocd` namespace.
-
-```bash
-kubectl apply -f bootstrap/longhorn.yaml
-```
-
-### Verify Deployment
+## Step: Verify ArgoCD applications
 
 ```bash
 kubectl get apps -n argocd
 ```
+
+For adding workloads, see [Deploy Apps With GitOps](../how-to/deploy-apps.md).
+
+## How ApplicationSets work
+
+ApplicationSets watch the `apps/` and `infrastructure/` folders and create applications automatically:
+
+- `apps/*` becomes `app-<folder>`
+- `infrastructure/*` becomes `infra-<folder>`
+
+Auto-sync is enabled in the ApplicationSets, so Git is the source of truth.

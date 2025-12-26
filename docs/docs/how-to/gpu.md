@@ -1,10 +1,11 @@
 ---
-sidebar_position: 10
+sidebar_position: 5
+title: GPU Support
 ---
 
 # GPU Support
 
-## Phase 9: GPU Support
+## Step: Enable GPU support
 
 ### Intel GPU (iGPU for transcoding)
 
@@ -34,8 +35,11 @@ sudo apt-get install -y nvidia-container-toolkit
 
 #### Configure Containerd for NVIDIA
 
-> [!IMPORTANT]
-> These three commands are ALL required for NVIDIA to work in Kubernetes:
+:::warning
+
+These three commands are required for NVIDIA to work in Kubernetes.
+
+:::
 
 ```bash
 sudo nvidia-ctk runtime configure --runtime=containerd --set-as-default --cdi.enabled

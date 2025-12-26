@@ -1,13 +1,14 @@
 ---
-sidebar_position: 6
+sidebar_position: 5
+title: Cilium CNI
 ---
 
 # Cilium CNI
 
-## Phase 5: Install Cilium
+## Step: Install Cilium
 
 ```bash
-CILIUM_VERSION="1.18.5"
+CILIUM_VERSION=$(grep -E "cilium_version:" ansible/group_vars/all.yaml | head -n 1 | awk -F'\"' '{print $2}')
 CILIUM_CLI_VERSION=$(curl -s https://raw.githubusercontent.com/cilium/cilium-cli/main/stable.txt)
 curl -L --fail --remote-name-all \
   https://github.com/cilium/cilium-cli/releases/download/${CILIUM_CLI_VERSION}/cilium-linux-amd64.tar.gz{,.sha256sum}
@@ -19,6 +20,3 @@ cilium hubble enable --ui
 kubectl get nodes
 cilium status
 ```
-
-> [!NOTE]
-> Keep `CILIUM_VERSION` aligned with `ansible/group_vars/all.yaml`.

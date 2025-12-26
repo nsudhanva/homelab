@@ -1,10 +1,15 @@
 ---
-sidebar_position: 4
+sidebar_position: 3
+title: Install Containerd
 ---
 
 # Install Containerd
 
-## Phase 2: Install Containerd
+:::note
+
+This step is handled by the Ansible provisioning playbooks. Use this only if you are doing a manual setup.
+
+:::
 
 ```bash
 sudo apt-get update

@@ -1,7 +1,8 @@
 ---
 - name: Add NVIDIA container toolkit GPG key
   ansible.builtin.shell: |
-    curl -fsSL https://nvidia.github.io/libnvidia-container/gpgkey | gpg --dearmor -o /usr/share/keyrings/nvidia-container-toolkit-keyring.gpg --yes
+    curl -fsSL https://nvidia.github.io/libnvidia-container/gpgkey | \
+      gpg --dearmor -o /usr/share/keyrings/nvidia-container-toolkit-keyring.gpg --yes
   args:
     creates: /usr/share/keyrings/nvidia-container-toolkit-keyring.gpg
 
@@ -20,7 +21,9 @@
     update_cache: true
 
 - name: Configure NVIDIA runtime for containerd
-  ansible.builtin.command: nvidia-ctk runtime configure --runtime=containerd --set-as-default --cdi.enabled
+  ansible.builtin.command:
+    cmd: >-
+      nvidia-ctk runtime configure --runtime=containerd --set-as-default --cdi.enabled
   changed_when: false
 
 - name: Create CDI directory

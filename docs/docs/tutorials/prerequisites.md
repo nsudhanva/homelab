@@ -1,10 +1,13 @@
 ---
-sidebar_position: 2
+sidebar_position: 1
+title: Prerequisites
 ---
 
 # Prerequisites
 
-## Phase 0: Prerequisites
+Use this guide before the bare metal tutorials. If you are following the local VM path, use [Local Multipass Cluster](./local-multipass-cluster.md) instead.
+
+## Step: Install workstation tooling
 
 ```bash
 sudo apt update
@@ -16,18 +19,18 @@ sudo apt-get update
 sudo apt-get install -y helm
 ```
 
-## Phase 0b: Optional Ansible Provisioning
-
-> [!NOTE]
-> The Ansible playbooks are the automated equivalent of Phases 1-3. If you use Ansible, skip straight to Phase 4.
-
-### Configure Inventory and Variables
+## Step: Prepare Ansible inventory
 
 Update the node list and user in `ansible/inventory/hosts.yaml`, then confirm versions and paths in `ansible/group_vars/all.yaml`.
 
-### Run the Playbook
+## Step: Run Ansible provisioning
+
+Run this from the repository root so the relative paths resolve correctly.
 
 ```bash
-cd ansible
-ansible-playbook playbooks/site.yaml
+ansible-playbook -i ansible/inventory/hosts.yaml \
+  ansible/playbooks/provision-cpu.yaml \
+  -e @ansible/group_vars/all.yaml
 ```
+
+If you need GPU support, use `ansible/playbooks/provision-intel-gpu.yaml` or `ansible/playbooks/provision-nvidia-gpu.yaml`.

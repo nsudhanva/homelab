@@ -1,27 +1,55 @@
 ---
 sidebar_position: 1
+title: Home
 ---
 
-# Introduction
+# Homelab Docs
 
-Single-node bare-metal Kubernetes cluster on Ubuntu 24.04 LTS, managed via GitOps with ArgoCD.
+Single-node bare-metal Kubernetes cluster on Ubuntu 24.04 LTS, managed via GitOps with ArgoCD. These docs are organized to help you move from a local, VM-based rehearsal to a real machine while keeping the same Ansible and GitOps flow.
 
-This repo is the source of truth for:
-- Host provisioning (Ansible roles).
-- Cluster bootstrap (kubeadm + Cilium + ArgoCD).
-- Infrastructure and application manifests (ArgoCD ApplicationSets).
+## Start Here
 
-## Quick Map
+Pick the path that matches your environment, then follow the tutorials in order.
 
-- \`ansible/\`: host provisioning roles and playbooks.
-- \`bootstrap/\`: ArgoCD bootstrap + ApplicationSets.
-- \`infrastructure/\`: cluster-wide components.
-- \`apps/\`: user workloads.
-- \`clusters/home/\`: cluster-specific kubeadm config.
+### Local rehearsal with Multipass
+
+Use this when you want a close-to-real rehearsal on your workstation.
+
+- Follow the local VM walkthrough in [Local Multipass Cluster](./tutorials/local-multipass-cluster.md)
+- Read the differences in [Local Simulation vs Bare Metal](./explanation/local-vs-baremetal.md)
+
+### Bare metal deployment
+
+Use this when you are ready to install on a real Ubuntu host.
+
+- Prepare the host in [Prerequisites](./tutorials/prerequisites.md) and [System Preparation](./tutorials/system-prep.md)
+- Install containerd in [Install Containerd](./tutorials/containerd.md)
+- Install Kubernetes and initialize the cluster in [Kubernetes](./tutorials/kubernetes.md)
+- Install the CNI in [Cilium CNI](./tutorials/cilium.md)
+- Install GitOps in [ArgoCD and GitOps](./tutorials/argocd.md)
+
+## How This Repo Is Used
+
+- Ansible provisions hosts in `ansible/`
+- GitOps bootstrap lives in `bootstrap/`
+- Infrastructure components are in `infrastructure/`
+- Applications live in `apps/`
+
+For day-to-day usage, see [Deploy Apps With GitOps](./how-to/deploy-apps.md), [Validation](./how-to/validation.md), and [Maintenance](./how-to/maintenance.md).
+
+Pinned versions live in [Version Matrix](./reference/versions.md).
+
+## Day-2 Operations
+
+If you plan to deploy once and leave it running, follow the Routine checks and Upgrade sections in [Maintenance](./how-to/maintenance.md).
+
+## Automation First
+
+The automation model is described in [Automation Model](./explanation/automation-model.md). Cluster changes go through ArgoCD, and host changes go through Ansible.
 
 ## Architecture
 
-\`\`\`mermaid
+```mermaid
 graph TD
   Host[Ubuntu 24.04 Node] --> Kubeadm[Kubeadm Control Plane]
   Kubeadm --> Cilium[Cilium CNI]
@@ -34,9 +62,9 @@ graph TD
   Apps --> Jellyfin[Jellyfin]
   Apps --> Filebrowser[Filebrowser]
   Apps --> Hello[hello-homelab]
-\`\`\`
+```
 
-\`\`\`mermaid
+```mermaid
 sequenceDiagram
   participant Git as Git Repo
   participant Argo as ArgoCD
@@ -44,13 +72,4 @@ sequenceDiagram
   Git->>Argo: Detect changes
   Argo->>K8s: Apply manifests
   K8s-->>Argo: Sync status
-\`\`\`
-
-## Versions (Pinned)
-
-- Kubernetes: \`v1.34.3\` in \`ansible/group_vars/all.yaml\` and \`clusters/home/kubeadm-clusterconfiguration.yaml\`.
-- Cilium: \`1.18.5\` in this README and \`ansible/group_vars/all.yaml\`.
-- Longhorn: \`1.7.2\` in \`bootstrap/templates/longhorn.yaml\`.
-- Tailscale Operator: \`1.78.3\` in \`infrastructure/tailscale/tailscale-operator.yaml\`.
-- Intel GPU plugin: \`0.34.0\` in \`infrastructure/gpu/intel-plugin.yaml\`.
-- NVIDIA GPU plugin: \`0.17.0\` in \`infrastructure/gpu/nvidia-plugin.yaml\`.
+```

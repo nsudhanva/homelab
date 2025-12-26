@@ -23,8 +23,16 @@
     replace: 'SystemdCgroup = true'
   notify: Restart containerd
 
+- name: Configure containerd snapshotter
+  ansible.builtin.replace:
+    path: /etc/containerd/config.toml
+    regexp: 'snapshotter = "overlayfs"'
+    replace: 'snapshotter = "{{ containerd_snapshotter }}"'
+  notify: Restart containerd
+
 - name: Enable and start containerd
   ansible.builtin.systemd:
     name: containerd
     enabled: true
     state: started
+  when: containerd_manage_service | default(true)

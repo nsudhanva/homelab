@@ -1,13 +1,14 @@
 ---
-sidebar_position: 5
+sidebar_position: 4
+title: Kubernetes
 ---
 
 # Kubernetes
 
-## Phase 3: Install Kubernetes
+## Step: Install Kubernetes packages
 
 ```bash
-K8S_VERSION="v1.34.3"
+K8S_VERSION=$(grep -E "k8s_version:" ansible/group_vars/all.yaml | head -n 1 | awk -F'\"' '{print $2}')
 
 sudo apt-get install -y apt-transport-https ca-certificates curl gpg
 sudo mkdir -p -m 755 /etc/apt/keyrings
@@ -22,20 +23,29 @@ sudo apt-get install -y kubelet kubeadm kubectl
 sudo apt-mark hold kubelet kubeadm kubectl
 ```
 
-## Phase 4: Initialize Cluster
+:::note
+
+Ansible installs and pins these packages for you when using the provisioning playbook.
+
+:::
+
+## Step: Initialize the control plane
 
 ```bash
-sudo kubeadm init --skip-phases=addon/kube-proxy
+sudo kubeadm init --pod-network-cidr=10.244.0.0/16 --skip-phases=addon/kube-proxy
 mkdir -p $HOME/.kube
 sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
 sudo chown $(id -u):$(id -g) $HOME/.kube/config
 kubectl taint nodes --all node-role.kubernetes.io/control-plane-
 ```
 
-> [!NOTE]
-> During `kubeadm init`, kubeadm uploads the `ClusterConfiguration` to the `kubeadm-config` ConfigMap in `kube-system`. This repo captures that configuration in `clusters/home/kubeadm-clusterconfiguration.yaml`.
+:::note
 
-### Regenerate kubeadm cluster configuration
+If you maintain a kubeadm config in `clusters/home/kubeadm-clusterconfiguration.yaml`, you can replace the command with `sudo kubeadm init --config clusters/home/kubeadm-clusterconfiguration.yaml --skip-phases=addon/kube-proxy`.
+
+:::
+
+## Step: Save kubeadm configuration
 
 ```bash
 kubectl -n kube-system get configmap kubeadm-config -o jsonpath='{.data.ClusterConfiguration}' > clusters/home/kubeadm-clusterconfiguration.yaml

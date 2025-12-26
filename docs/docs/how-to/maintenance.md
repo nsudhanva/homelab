@@ -1,15 +1,25 @@
 ---
-sidebar_position: 12
+sidebar_position: 6
+title: Maintenance
 ---
 
 # Maintenance
+
+:::note
+
+These steps target bare metal clusters. For local VM testing, use [Local Multipass Cluster](../tutorials/local-multipass-cluster.md).
+
+:::
 
 ## Adding Nodes to the Cluster
 
 This section covers expanding the cluster with additional worker nodes or control plane nodes.
 
-> [!NOTE]
-> You can also add nodes by updating `ansible/inventory/hosts.yaml` and rerunning `ansible-playbook playbooks/site.yaml`.
+:::note
+
+You can also add nodes by updating `ansible/inventory/hosts.yaml` and rerunning `ansible-playbook ansible/playbooks/provision-cpu.yaml`.
+
+:::
 
 ### Prerequisites for New Nodes
 
@@ -42,7 +52,7 @@ sudo sed -i 's/SystemdCgroup = false/SystemdCgroup = true/g' /etc/containerd/con
 sudo systemctl restart containerd
 sudo systemctl enable containerd
 sudo systemctl enable --now iscsid
-K8S_VERSION="v1.34.3"
+K8S_VERSION=$(grep -E "k8s_version:" ansible/group_vars/all.yaml | head -n 1 | awk -F'\"' '{print $2}')
 sudo apt-get install -y apt-transport-https ca-certificates curl gpg
 sudo mkdir -p -m 755 /etc/apt/keyrings
 curl -fsSL https://pkgs.k8s.io/core:/stable:/$K8S_VERSION/deb/Release.key | sudo gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
@@ -85,8 +95,11 @@ sudo kubeadm join <control-plane-ip>:6443 --token <token> --discovery-token-ca-c
 
 ### Add a Control Plane Node (HA Setup)
 
-> [!IMPORTANT]
-> For HA control planes, you need a load balancer in front of all control planes and must initialize the first control plane with `--control-plane-endpoint=<load-balancer-ip>:6443`.
+:::warning
+
+For HA control planes, you need a load balancer in front of all control planes and must initialize the first control plane with `--control-plane-endpoint=<load-balancer-ip>:6443`.
+
+:::
 
 Generate a certificate key on an existing control plane:
 
@@ -112,15 +125,118 @@ sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
 sudo chown $(id -u):$(id -g) $HOME/.kube/config
 ```
 
+## Routine checks
+
+Use these checks if the cluster runs unattended for long periods.
+
+```bash
+kubectl get nodes
+kubectl get pods -A
+kubectl get apps -n argocd
+```
+
+## Node maintenance window
+
+Use this flow to patch or reboot a node safely.
+
+### Step 1: Drain the node
+
+```bash
+kubectl drain <node-name> --ignore-daemonsets --delete-emptydir-data
+```
+
+### Step 2: Apply OS updates or reboot
+
+Perform the host maintenance, then confirm the node is back online.
+
+### Step 3: Uncordon the node
+
+```bash
+kubectl uncordon <node-name>
+```
+
+## Upgrade Kubernetes (Bare Metal)
+
+Upgrade control plane nodes first, then upgrade workers.
+
+:::note
+
+Check the latest stable Kubernetes release before setting `k8s_version` and `TARGET_VERSION`.
+
+:::
+
+### Step 1: Update versions and packages
+
+Update `k8s_version` in `ansible/group_vars/all.yaml`, then run the provisioning playbook against all nodes.
+
+### Step 2: Upgrade the control plane
+
+Run these on each control plane node, one at a time:
+
+```bash
+sudo kubeadm upgrade plan
+TARGET_VERSION="v1.35.x"
+sudo kubeadm upgrade apply ${TARGET_VERSION}
+sudo apt-get install -y kubelet kubeadm kubectl
+sudo systemctl restart kubelet
+```
+
+Replace `v1.35.x` with the target patch version after checking the latest stable release.
+
+### Step 3: Upgrade each worker node
+
+Drain, upgrade, then uncordon each worker:
+
+```bash
+kubectl drain <worker-name> --ignore-daemonsets --delete-emptydir-data
+sudo kubeadm upgrade node
+sudo apt-get install -y kubelet kubeadm kubectl
+sudo systemctl restart kubelet
+kubectl uncordon <worker-name>
+```
+
+### Step 4: Verify the upgrade
+
+```bash
+kubectl get nodes
+kubectl get pods -A
+```
+
+## Upgrade Cilium
+
+Update `cilium_version` in `ansible/group_vars/all.yaml`, then run:
+
+```bash
+CILIUM_VERSION=$(grep -E "cilium_version:" ansible/group_vars/all.yaml | head -n 1 | awk -F'\"' '{print $2}')
+cilium upgrade --version ${CILIUM_VERSION}
+cilium status --wait
+```
+
+## Upgrade ArgoCD
+
+```bash
+kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+kubectl wait --for=condition=available --timeout=600s deployment/argocd-server -n argocd
+```
+
+## Upgrade Longhorn
+
+Update `targetRevision` in `bootstrap/templates/longhorn.yaml`, then let ArgoCD sync the application.
+
 ## Recreate From Scratch (Ubuntu 24.04)
 
 Use this section when rebuilding a node from bare metal or VM images:
 
-1. Install Ubuntu 24.04 LTS and log in as a user with sudo.
-2. Clone this repo and review documentation for versions and paths.
-3. Choose one path:
-   - Automated: run Phase 0b (Ansible provisioning), then continue at Phase 4.
-   - Manual: run Phases 0-11 in order.
-4. Apply GitOps bootstrap (Phase 10) and verify (Phase 11).
+### Base setup
 
-If you are rebuilding with existing data disks for Longhorn, ensure the storage path in Phase 8 points to the correct mount before applying `bootstrap/templates/longhorn.yaml`.
+Install Ubuntu 24.04 LTS and log in as a user with sudo. Clone this repo and review the pinned versions and paths in `ansible/group_vars/all.yaml`.
+
+### Automated setup
+
+Run the Ansible provisioning playbook, then continue at [Kubernetes](../tutorials/kubernetes.md).
+
+### Manual setup
+
+Follow the bare metal tutorial path in order, starting with [Prerequisites](../tutorials/prerequisites.md).
+
+If you are rebuilding with existing data disks for Longhorn, ensure the storage path in `bootstrap/templates/longhorn.yaml` points to the correct mount before applying `bootstrap/root.yaml`.

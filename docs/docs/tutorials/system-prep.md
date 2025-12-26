@@ -1,15 +1,23 @@
 ---
-sidebar_position: 3
+sidebar_position: 2
+title: System Preparation
 ---
 
 # System Preparation
 
-## Phase 1: System Preparation
+:::note
+
+These steps are handled by the Ansible provisioning playbooks. Use this only if you are doing a manual setup.
+
+:::
 
 ### Disable Swap (Permanently)
 
-> [!IMPORTANT]
-> Kubernetes requires swap to be disabled. If swap re-enables after reboot, kubelet will fail to start.
+:::warning
+
+Kubernetes requires swap to be disabled. If swap re-enables after reboot, kubelet will fail to start.
+
+:::
 
 ```bash
 sudo swapoff -a
@@ -44,8 +52,11 @@ sudo sysctl --system
 
 ### Increase Inotify Limits
 
-> [!NOTE]
-> Many containers (Jellyfin, Longhorn, etc.) require higher inotify limits. Without this, containers crash with "too many open files" errors.
+:::note
+
+Many containers (Jellyfin, Longhorn, etc.) require higher inotify limits. Without this, containers crash with "too many open files" errors.
+
+:::
 
 ```bash
 sudo sysctl -w fs.inotify.max_user_instances=512

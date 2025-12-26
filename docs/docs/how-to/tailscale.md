@@ -1,10 +1,11 @@
 ---
-sidebar_position: 8
+sidebar_position: 4
+title: Tailscale
 ---
 
 # Tailscale
 
-## Phase 7: Tailscale Setup
+## Step: Set up Tailscale
 
 ### Install Tailscale Client
 
@@ -25,8 +26,11 @@ kubectl create secret generic operator-oauth \
   --from-literal=client_secret=YOUR_CLIENT_SECRET
 ```
 
-> [!IMPORTANT]
-> Create the `operator-oauth` secret before Phase 10 so the Tailscale Operator deploys cleanly.
+:::warning
+
+Create the `operator-oauth` secret before applying `bootstrap/root.yaml` so the Tailscale Operator deploys cleanly.
+
+:::
 
 ### Enable SSH for Remote Access
 

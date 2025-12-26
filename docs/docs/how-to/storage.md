@@ -1,10 +1,11 @@
 ---
-sidebar_position: 9
+sidebar_position: 3
+title: Storage
 ---
 
 # Storage (Longhorn)
 
-## Phase 8: Storage Prerequisites (Longhorn)
+## Step: Storage prerequisites for Longhorn
 
 ### Install Required Packages
 
@@ -16,20 +17,35 @@ sudo systemctl enable --now iscsid
 
 ### Create Storage Directory
 
-> [!IMPORTANT]
-> Longhorn needs a storage directory to exist. Create it on your preferred disk.
+:::warning
+
+Longhorn needs a storage directory to exist. Create it on your preferred disk.
+
+:::
 
 ```bash
-mkdir -p /home/your-username/longhorn-storage
+sudo mkdir -p /var/lib/longhorn
 ```
 
-> [!NOTE]
-> Update the matching path in `bootstrap/templates/longhorn.yaml` and `ansible/group_vars/all.yaml`.
+:::note
+
+Update the matching path in `bootstrap/templates/longhorn.yaml` and `ansible/group_vars/all.yaml`.
+
+:::
+
+:::note
+
+The default path is `/var/lib/longhorn` to avoid user-specific home directories.
+
+:::
 
 ### Add Node Label for Longhorn Disk
 
-> [!NOTE]
-> With `createDefaultDiskLabeledNodes: true`, Longhorn only creates disks on nodes with this label.
+:::note
+
+With `createDefaultDiskLabeledNodes: true`, Longhorn only creates disks on nodes with this label.
+
+:::
 
 ```bash
 kubectl label node $(hostname) node.longhorn.io/create-default-disk=true --overwrite

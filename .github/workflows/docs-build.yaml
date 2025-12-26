@@ -2,7 +2,7 @@ name: Build and Push Docs
 
 on:
   push:
-    branches: [ "master" ]
+    branches: ["master"]
     paths:
       - 'docs/**'
       - '.github/workflows/docs-build.yaml'

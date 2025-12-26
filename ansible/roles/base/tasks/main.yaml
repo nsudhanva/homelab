@@ -2,18 +2,21 @@
 - name: Disable swap
   ansible.builtin.command: swapoff -a
   changed_when: false
+  when: base_manage_swap | default(true)
 
 - name: Remove swap from fstab
   ansible.builtin.replace:
     path: /etc/fstab
     regexp: '^([^#].*\sswap\s.*)$'
     replace: '# \1'
+  when: base_manage_swap | default(true)
 
 - name: Load kernel modules
   community.general.modprobe:
     name: "{{ item }}"
     state: present
   loop: "{{ kernel_modules }}"
+  when: base_manage_kernel_modules | default(true)
 
 - name: Persist kernel modules
   ansible.builtin.copy:
@@ -22,6 +25,7 @@
       overlay
       br_netfilter
     mode: '0644'
+  when: base_manage_kernel_modules | default(true)
 
 - name: Apply sysctl settings
   ansible.posix.sysctl:

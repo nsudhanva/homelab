@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
         - name: filebrowser
-          image: docker.io/filebrowser/filebrowser@sha256:363c1eae79e7c08bbb994c3511875cbcb65e70df9ac850221d60400c362f4ff9
+          image: docker.io/filebrowser/filebrowser
           args:
             - --noauth
             - --root=/srv

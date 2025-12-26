@@ -1,6 +1,7 @@
 k8s_version: "v1.35"
 cilium_version: "1.18.5"
-longhorn_storage_path: "/home/{{ ansible_user }}/longhorn-storage"
+longhorn_storage_path: "/var/lib/longhorn"
+containerd_snapshotter: "overlayfs"
 
 inotify_max_user_instances: 512
 inotify_max_user_watches: 524288

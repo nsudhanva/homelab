@@ -14,7 +14,8 @@ Single-node bare-metal Kubernetes cluster on Ubuntu 24.04 LTS, managed via GitOp
 - Place infrastructure components in `infrastructure/{component-name}/`
 - Place user applications in `apps/{app-name}/`
 - Use Tailscale Ingress (`ingressClassName: tailscale`) for HTTPS exposure
-- Commit small, logical changes with descriptive messages. USe brief commit messages.
+- Commit small, logical changes with descriptive messages. Use brief commit messages.
+- Add any required documentation under `docs/`
 - Use the [Divio documentation system](https://docs.divio.com/documentation-system/) for structuring docs:
   - **Tutorials**: Learning-oriented (e.g., "Setting up the cluster").
   - **How-To Guides**: Problem-oriented (e.g., "How to add a worker node").
@@ -23,9 +24,8 @@ Single-node bare-metal Kubernetes cluster on Ubuntu 24.04 LTS, managed via GitOp
 
 ## Don'ts
 
-- Do not create new shell scripts; add steps directly to README.md
 - Do not add inline comments to YAML files
-- Do not create extra markdown files; use README.md as single source of truth
+- Do not use numeric bullet points in any documentation .md files. Use headers or docusaurus provided syntax features
 - Do not use `helm install` manually; let ArgoCD handle Helm charts
 - Do not hardcode versions without researching the latest stable release
 - Do not modify `/etc/fstab` or system files without explicit user approval

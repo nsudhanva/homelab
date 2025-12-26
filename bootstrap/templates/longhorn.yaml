@@ -14,7 +14,7 @@ spec:
         preUpgradeChecker:
           jobEnabled: false
         defaultSettings:
-          defaultDataPath: /home/sudhanva/longhorn-storage
+          defaultDataPath: /var/lib/longhorn
           createDefaultDiskLabeledNodes: true
         persistence:
           defaultClass: true

@@ -1,0 +1,27 @@
+all:
+  children:
+    k8s_control_plane:
+      hosts:
+        homelab-cp:
+          ansible_host: 192.168.2.2
+          ansible_user: ubuntu
+
+    k8s_workers:
+      hosts:
+        homelab-w1:
+          ansible_host: 192.168.2.3
+          ansible_user: ubuntu
+        homelab-w2:
+          ansible_host: 192.168.2.4
+          ansible_user: ubuntu
+
+    k8s_nodes:
+      children:
+        k8s_control_plane:
+        k8s_workers:
+
+    cpu_only:
+      hosts:
+        homelab-cp:
+        homelab-w1:
+        homelab-w2:

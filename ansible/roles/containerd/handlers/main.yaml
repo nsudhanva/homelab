@@ -3,3 +3,4 @@
   ansible.builtin.systemd:
     name: containerd
     state: restarted
+  when: containerd_manage_service | default(true)
