@@ -15,6 +15,7 @@ Check the latest stable release before changing any pinned version.
 
 - Kubernetes: `v1.35` in `ansible/group_vars/all.yaml`
 - Cilium: `1.18.5` in `ansible/group_vars/all.yaml`
+- containerd: `2.2.1` in `ansible/group_vars/all.yaml`
 - Longhorn: `1.7.2` in `bootstrap/templates/longhorn.yaml`
 - Tailscale Operator: `1.78.3` in `infrastructure/tailscale/tailscale-operator.yaml`
 - Intel GPU plugin: `0.34.0` in `infrastructure/gpu/intel-plugin.yaml`

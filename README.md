@@ -57,8 +57,7 @@ sudo apt-mark hold kubelet kubeadm kubectl
 
 ```bash
 sudo kubeadm init \
-  --pod-network-cidr=10.244.0.0/16 \
-  --skip-phases=addon/kube-proxy
+  --pod-network-cidr=10.244.0.0/16
 
 mkdir -p $HOME/.kube
 sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
@@ -66,7 +65,7 @@ sudo chown $(id -u):$(id -g) $HOME/.kube/config
 kubectl taint nodes --all node-role.kubernetes.io/control-plane-
 ```
 
-If you maintain a kubeadm config at `clusters/home/kubeadm-clusterconfiguration.yaml`, replace the command with `sudo kubeadm init --config clusters/home/kubeadm-clusterconfiguration.yaml --skip-phases=addon/kube-proxy`.
+If you maintain a kubeadm config at `clusters/home/kubeadm-clusterconfiguration.yaml`, replace the command with `sudo kubeadm init --config clusters/home/kubeadm-clusterconfiguration.yaml`.
 
 ### Step: Install Cilium
 
@@ -81,6 +80,7 @@ sudo tar xzvfC cilium-linux-amd64.tar.gz /usr/local/bin
 rm cilium-linux-amd64.tar.gz{,.sha256sum}
 
 cilium install --version ${CILIUM_VERSION} --set kubeProxyReplacement=true
+kubectl -n kube-system delete daemonset kube-proxy
 cilium hubble enable --ui
 cilium status
 ```

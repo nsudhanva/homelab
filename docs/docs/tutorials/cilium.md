@@ -16,6 +16,7 @@ sha256sum --check cilium-linux-amd64.tar.gz.sha256sum
 sudo tar xzvfC cilium-linux-amd64.tar.gz /usr/local/bin
 rm cilium-linux-amd64.tar.gz{,.sha256sum}
 cilium install --version $CILIUM_VERSION --set kubeProxyReplacement=true
+kubectl -n kube-system delete daemonset kube-proxy
 cilium hubble enable --ui
 kubectl get nodes
 cilium status

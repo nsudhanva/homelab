@@ -12,13 +12,14 @@ This tutorial runs a multi-node Kubernetes cluster on local VMs using Multipass.
 - Multipass installed on your workstation
 - Ansible installed on your workstation
 - kubectl installed on your workstation
-- A dedicated SSH key for this project
+- A dedicated SSH key stored in the repository
 - At least 12GB of free RAM
 
 ## Step: Create a dedicated SSH key
 
 ```bash
-ssh-keygen -t ed25519 -f ~/.ssh/homelab-multipass -N ""
+mkdir -p ansible/.keys
+ssh-keygen -t ed25519 -f ansible/.keys/multipass -N ""
 ```
 
 This key is only used for the local Multipass VMs and keeps your personal SSH identities out of the workflow.
@@ -35,7 +36,7 @@ multipass launch --name homelab-w2 --cpus 2 --memory 4G --disk 20G 24.04
 
 ```bash
 for node in homelab-cp homelab-w1 homelab-w2; do
-  multipass exec "$node" -- bash -c "mkdir -p /home/ubuntu/.ssh && cat >> /home/ubuntu/.ssh/authorized_keys" < ~/.ssh/homelab-multipass.pub
+  multipass exec "$node" -- bash -c "mkdir -p /home/ubuntu/.ssh && cat >> /home/ubuntu/.ssh/authorized_keys" < ansible/.keys/multipass.pub
 done
 ```
 
@@ -51,7 +52,7 @@ Edit `ansible/inventory/multipass.yaml` to match the VM IPs from the output.
 
 ```bash
 ANSIBLE_HOST_KEY_CHECKING=False ANSIBLE_ROLES_PATH=ansible/roles \
-ANSIBLE_PRIVATE_KEY_FILE=~/.ssh/homelab-multipass \
+ANSIBLE_PRIVATE_KEY_FILE=ansible/.keys/multipass \
 ansible-playbook -i ansible/inventory/multipass.yaml \
   ansible/playbooks/provision-cpu.yaml \
   -e @ansible/group_vars/all.yaml
@@ -60,15 +61,15 @@ ansible-playbook -i ansible/inventory/multipass.yaml \
 ## Step: Initialize the control plane
 
 ```bash
-multipass exec homelab-cp -- sudo kubeadm init --pod-network-cidr=10.244.0.0/16 --skip-phases=addon/kube-proxy
+multipass exec homelab-cp -- sudo kubeadm init --pod-network-cidr=10.244.0.0/16
 ```
 
 ## Step: Join the workers
 
 ```bash
 JOIN_CMD=$(multipass exec homelab-cp -- sudo kubeadm token create --print-join-command)
-multipass exec homelab-w1 -- sudo $JOIN_CMD
-multipass exec homelab-w2 -- sudo $JOIN_CMD
+multipass exec homelab-w1 -- bash -lc "sudo ${JOIN_CMD}"
+multipass exec homelab-w2 -- bash -lc "sudo ${JOIN_CMD}"
 ```
 
 ## Step: Copy kubeconfig to your workstation
@@ -103,6 +104,7 @@ Then install Cilium from the VM:
 
 ```bash
 multipass exec homelab-cp -- sudo cilium install --kubeconfig /etc/kubernetes/admin.conf --version ${CILIUM_VERSION} --set kubeProxyReplacement=true
+multipass exec homelab-cp -- sudo kubectl --kubeconfig /etc/kubernetes/admin.conf -n kube-system delete daemonset kube-proxy
 multipass exec homelab-cp -- sudo cilium status --kubeconfig /etc/kubernetes/admin.conf --wait
 ```
 

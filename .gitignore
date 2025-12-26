@@ -16,3 +16,4 @@
 
 # Ansible
 ansible/.ansible_cache
+ansible/.keys/

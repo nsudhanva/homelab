@@ -11,12 +11,13 @@ This guide runs the Ansible provisioning playbook against a Multipass VM to vali
 
 - Multipass installed on your workstation
 - Ansible installed on your workstation
-- A dedicated SSH key at `~/.ssh/homelab-multipass.pub`
+- A dedicated SSH key stored at `ansible/.keys/multipass.pub`
 
 ## Step: Create a dedicated SSH key
 
 ```bash
-ssh-keygen -t ed25519 -f ~/.ssh/homelab-multipass -N ""
+mkdir -p ansible/.keys
+ssh-keygen -t ed25519 -f ansible/.keys/multipass -N ""
 ```
 
 ## Step: Launch a test VM
@@ -28,7 +29,7 @@ multipass launch --name ansible-test --cpus 2 --memory 4G --disk 20G 24.04
 ## Step: Add your SSH key
 
 ```bash
-multipass exec ansible-test -- bash -c "mkdir -p /home/ubuntu/.ssh && cat >> /home/ubuntu/.ssh/authorized_keys" < ~/.ssh/homelab-multipass.pub
+multipass exec ansible-test -- bash -c "mkdir -p /home/ubuntu/.ssh && cat >> /home/ubuntu/.ssh/authorized_keys" < ansible/.keys/multipass.pub
 ```
 
 ## Step: Create a temporary inventory
@@ -51,7 +52,7 @@ Replace the IP address with the one shown in `multipass list`.
 
 ```bash
 ANSIBLE_HOST_KEY_CHECKING=False ANSIBLE_ROLES_PATH=ansible/roles \
-ANSIBLE_PRIVATE_KEY_FILE=~/.ssh/homelab-multipass \
+ANSIBLE_PRIVATE_KEY_FILE=ansible/.keys/multipass \
 ansible-playbook -i /tmp/ansible-multipass-test.yaml \
   ansible/playbooks/provision-cpu.yaml \
   -e @ansible/group_vars/all.yaml
