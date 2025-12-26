@@ -1,9 +1,78 @@
 ---
-- name: Install containerd
+- name: Set containerd binary path
+  ansible.builtin.set_fact:
+    containerd_bin_path: "{{ '/usr/local/bin/containerd' if containerd_install_method == 'upstream' else '/usr/bin/containerd' }}"
+
+- name: Install runc for upstream containerd
+  ansible.builtin.apt:
+    name: runc
+    state: present
+    update_cache: true
+  when: containerd_install_method == "upstream"
+
+- name: Remove distro containerd when using upstream
+  ansible.builtin.apt:
+    name: containerd
+    state: absent
+  when: containerd_install_method == "upstream"
+
+- name: Install containerd from apt
   ansible.builtin.apt:
     name: containerd
     state: present
     update_cache: true
+  when: containerd_install_method == "apt"
+
+- name: Map containerd architecture
+  ansible.builtin.set_fact:
+    containerd_arch: "{{ 'arm64' if ansible_facts['architecture'] in ['aarch64', 'arm64'] else 'amd64' }}"
+  when: containerd_install_method == "upstream"
+
+- name: Download containerd release
+  ansible.builtin.get_url:
+    url: "{{ containerd_download_base }}/v{{ containerd_version }}/containerd-{{ containerd_version }}-linux-{{ containerd_arch }}.tar.gz"
+    dest: "/tmp/containerd-{{ containerd_version }}-linux-{{ containerd_arch }}.tar.gz"
+    mode: '0644'
+  when: containerd_install_method == "upstream"
+
+- name: Extract containerd release
+  ansible.builtin.unarchive:
+    src: "/tmp/containerd-{{ containerd_version }}-linux-{{ containerd_arch }}.tar.gz"
+    dest: /usr/local
+    remote_src: true
+  when: containerd_install_method == "upstream"
+
+- name: Install containerd systemd service
+  ansible.builtin.copy:
+    dest: /etc/systemd/system/containerd.service
+    mode: '0644'
+    content: |
+      [Unit]
+      Description=containerd container runtime
+      Documentation=https://containerd.io
+      After=network.target local-fs.target
+
+      [Service]
+      ExecStart={{ containerd_bin_path }}
+      Type=notify
+      Delegate=yes
+      KillMode=process
+      Restart=always
+      RestartSec=5
+      LimitNOFILE=1048576
+      LimitNPROC=infinity
+      LimitCORE=infinity
+      TasksMax=infinity
+      OOMScoreAdjust=-999
+
+      [Install]
+      WantedBy=multi-user.target
+  when: containerd_install_method == "upstream"
+
+- name: Reload systemd for containerd
+  ansible.builtin.systemd:
+    daemon_reload: true
+  when: containerd_install_method == "upstream"
 
 - name: Create containerd config directory
   ansible.builtin.file:
@@ -12,7 +81,7 @@
     mode: '0755'
 
 - name: Generate default containerd config
-  ansible.builtin.shell: containerd config default > /etc/containerd/config.toml
+  ansible.builtin.shell: "{{ containerd_bin_path }} config default > /etc/containerd/config.toml"
   args:
     creates: /etc/containerd/config.toml
 
@@ -28,6 +97,13 @@
     path: /etc/containerd/config.toml
     regexp: 'snapshotter = "overlayfs"'
     replace: 'snapshotter = "{{ containerd_snapshotter }}"'
+  notify: Restart containerd
+
+- name: Configure containerd sandbox image
+  ansible.builtin.replace:
+    path: /etc/containerd/config.toml
+    regexp: 'sandbox_image = "registry.k8s.io/pause:3.8"'
+    replace: 'sandbox_image = "{{ containerd_sandbox_image }}"'
   notify: Restart containerd
 
 - name: Enable and start containerd

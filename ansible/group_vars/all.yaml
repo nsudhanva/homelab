@@ -2,6 +2,10 @@ k8s_version: "v1.35"
 cilium_version: "1.18.5"
 longhorn_storage_path: "/var/lib/longhorn"
 containerd_snapshotter: "overlayfs"
+containerd_sandbox_image: "registry.k8s.io/pause:3.10.1"
+ansible_python_interpreter: /usr/bin/python3
+containerd_install_method: "upstream"
+containerd_version: "2.2.1"
 
 inotify_max_user_instances: 512
 inotify_max_user_watches: 524288

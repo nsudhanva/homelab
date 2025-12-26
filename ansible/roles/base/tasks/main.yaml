@@ -27,23 +27,26 @@
     mode: '0644'
   when: base_manage_kernel_modules | default(true)
 
-- name: Apply sysctl settings
-  ansible.posix.sysctl:
-    name: "{{ item.key }}"
-    value: "{{ item.value }}"
-    sysctl_file: /etc/sysctl.d/k8s.conf
-    reload: true
-  loop: "{{ sysctl_settings | dict2items }}"
+- name: Write sysctl settings
+  ansible.builtin.copy:
+    dest: /etc/sysctl.d/k8s.conf
+    mode: '0644'
+    content: |
+      {% for item in sysctl_settings | dict2items %}
+      {{ item.key }} = {{ item.value }}
+      {% endfor %}
 
-- name: Set inotify limits
-  ansible.posix.sysctl:
-    name: "{{ item.name }}"
-    value: "{{ item.value }}"
-    sysctl_file: /etc/sysctl.d/99-inotify.conf
-    reload: true
-  loop:
-    - {name: "fs.inotify.max_user_instances", value: "{{ inotify_max_user_instances }}"}
-    - {name: "fs.inotify.max_user_watches", value: "{{ inotify_max_user_watches }}"}
+- name: Write inotify limits
+  ansible.builtin.copy:
+    dest: /etc/sysctl.d/99-inotify.conf
+    mode: '0644'
+    content: |
+      fs.inotify.max_user_instances = {{ inotify_max_user_instances }}
+      fs.inotify.max_user_watches = {{ inotify_max_user_watches }}
+
+- name: Apply sysctl settings
+  ansible.builtin.command: sysctl --system
+  changed_when: false
 
 - name: Install base packages
   ansible.builtin.apt:
