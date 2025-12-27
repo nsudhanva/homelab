@@ -104,7 +104,7 @@ kubectl create secret generic cloudflare-api-token \
 
 Step 2: Update the ACME email
 
-Set your email in `infrastructure/cert-manager/cluster-issuer.yaml`.
+Set your email in `infrastructure/cert-manager-issuer/cluster-issuer.yaml`.
 
 Step 3: Update the Tailscale Gateway target
 
