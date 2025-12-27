@@ -17,7 +17,7 @@ Check the latest stable release before changing any pinned version.
 - Cilium: `1.18.5` in `ansible/group_vars/all.yaml`
 - containerd: `2.2.1` in `ansible/group_vars/all.yaml`
 - Longhorn: `1.7.2` in `bootstrap/templates/longhorn.yaml`
-- Tailscale Operator: `1.78.3` in `infrastructure/tailscale/tailscale-operator.yaml`
+- Tailscale Operator: `1.92.4` in `infrastructure/tailscale/tailscale-operator.yaml`
 - Envoy Gateway: `v1.6.1` image tag in `infrastructure/envoy-gateway/envoy-gateway.yaml` (chart `v0.0.0-latest`)
 - Gateway API CRDs: `v1.4.1` in `infrastructure/gateway-api-crds/`
 - Envoy Gateway CRDs: `v1.6.1` in `infrastructure/envoy-gateway-crds/`
