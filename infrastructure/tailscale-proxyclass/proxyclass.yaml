@@ -1,0 +1,11 @@
+apiVersion: tailscale.com/v1alpha1
+kind: ProxyClass
+metadata:
+  name: tailnet-gateway
+spec:
+  statefulSet:
+    pod:
+      tailscaleContainer:
+        env:
+        - name: TS_SERVE_CONFIG
+          value: '{"TCP":{"443":{"TCPForward":"10.110.179.2:443"}}}'
