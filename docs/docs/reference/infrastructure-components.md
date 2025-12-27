@@ -25,10 +25,11 @@ ApplicationSets watch `apps/` and `infrastructure/` and create ArgoCD Applicatio
 | cert-manager | `infrastructure/cert-manager/cert-manager.yaml` | TLS certificate management | Used with DNS-01 |
 | ClusterIssuer | `infrastructure/cert-manager-issuer/cluster-issuer.yaml` | ACME issuer for wildcard certs | Update email and Cloudflare token |
 | ExternalDNS | `infrastructure/external-dns/external-dns.yaml` | Creates DNS records for HTTPRoutes | Watches `external-dns.alpha.kubernetes.io/expose=true` |
-| External Secrets Operator | `infrastructure/external-secrets/external-secrets.yaml` | Syncs secrets from Vault | ClusterSecretStore lives in `infrastructure/external-secrets/` |
+| External Secrets Operator | `infrastructure/external-secrets/external-secrets.yaml` | Syncs secrets from Vault | ClusterSecretStore and ExternalSecret manifests live in `infrastructure/external-secrets/` |
 | Gateway | `infrastructure/gateway/` | GatewayClass, Gateway, EnvoyProxy, cert | Uses Tailscale `gatewayClassName` |
 | Longhorn | `bootstrap/templates/longhorn.yaml` | Storage via Longhorn | Helm chart in ArgoCD |
 | Vault | `infrastructure/vault/vault.yaml` | Central secrets storage | PVC on Longhorn |
+| Hubble UI | `infrastructure/hubble-ui/httproute.yaml` | Exposes Hubble UI over Tailscale | HTTPRoute to `hubble-ui` service in `kube-system` |
 | GPU plugins | `infrastructure/gpu/` | Intel and NVIDIA device plugins | Optional, based on node hardware |
 
 ## Gateway and route definitions
@@ -42,5 +43,6 @@ Gateway resources are split by purpose:
 - `infrastructure/gateway/argocd-httproute.yaml`
 - `infrastructure/gateway/longhorn-httproute.yaml`
 - `infrastructure/gateway/vault-httproute.yaml`
+- `infrastructure/hubble-ui/httproute.yaml`
 
 HTTPRoutes for apps live alongside each app under `apps/*/httproute.yaml`.

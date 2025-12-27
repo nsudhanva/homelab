@@ -74,6 +74,39 @@ cert-manager obtains wildcard TLS certificates from Let's Encrypt using DNS-01 c
 - A single `Certificate` resource covers `*.sudhanva.me`
 - The certificate is stored in a Secret and referenced by the Gateway
 
+## Required wiring for Tailnet ingress
+
+These resources have to align or HTTPS routing through Tailscale will break:
+
+- Cilium runs with `kubeProxyReplacement=true` and `socketLB.hostNamespaceOnly=true` so the Tailscale proxy DNAT works.
+- EnvoyProxy exposes a `LoadBalancer` service with `loadBalancerClass: tailscale` and a stable Tailscale hostname.
+- Gateway uses `gatewayClassName: tailscale` and points to the wildcard certificate.
+- ExternalDNS targets the Tailscale hostname via the Gateway annotation.
+- cert-manager creates the wildcard certificate in the `tailscale` namespace.
+- HTTPRoutes live in app namespaces and include the ExternalDNS expose annotation.
+- Cloudflare API tokens and Tailscale OAuth credentials are synced from Vault through External Secrets Operator.
+
+## Quick validation commands
+
+Run these from any kubectl context that can reach the cluster:
+
+```bash
+kubectl get gatewayclass
+kubectl get gateways -n tailscale
+kubectl get envoyproxy -n tailscale
+kubectl get svc -n tailscale
+kubectl get certificates -n tailscale
+kubectl get pods -n tailscale
+kubectl get pods -n envoy-gateway
+kubectl get httproute -A
+```
+
+For the Cilium requirement:
+
+```bash
+cilium config view | grep -E "bpf-lb-sock|kubeProxyReplacement"
+```
+
 ## Traffic Flow
 
 When you visit `https://docs.sudhanva.me` from your Mac:
@@ -113,3 +146,17 @@ When Cilium runs in kube-proxy replacement mode, its socket-level LoadBalancer i
 Envoy requires Server Name Indication (SNI) to select the correct TLS certificate. If clients connect by IP without a hostname, Envoy logs `filter_chain_not_found`.
 
 **Fix:** Always connect using the FQDN, not the Tailscale IP directly.
+
+### Gateway shows not programmed
+
+If `kubectl get gateways -n tailscale` reports `PROGRAMMED=False`, confirm:
+
+- The GatewayClass points at `tailscale-proxy`.
+- The EnvoyProxy service is `LoadBalancer` with `loadBalancerClass: tailscale`.
+- The Tailscale Operator pod is running and can tag devices.
+
+Reconcile by checking the Envoy Gateway controller logs:
+
+```bash
+kubectl logs -n envoy-gateway -l app.kubernetes.io/name=envoy-gateway --tail=200
+```

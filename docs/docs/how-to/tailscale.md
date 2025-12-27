@@ -29,6 +29,16 @@ Ensure the Tailscale ACL allows the operator to tag devices. Set a real owner fo
 
 ### Create OAuth Secret
 
+If Vault and External Secrets are configured, store the OAuth credentials in Vault and let External Secrets Operator populate the `operator-oauth` secret.
+
+```bash
+kubectl -n vault exec -it vault-0 -- vault kv put kv/tailscale/operator-oauth client_id=YOUR_CLIENT_ID client_secret=YOUR_CLIENT_SECRET
+```
+
+External Secrets Operator will sync the secret using `infrastructure/external-secrets/external-secret-tailscale-operator.yaml`. Follow the Vault setup guide if you have not initialized Vault yet.
+
+If you have not set up Vault yet, create the secret manually for bootstrap:
+
 Get OAuth credentials from https://login.tailscale.com/admin/settings/oauth (create with `devices:write` scope and tag `tag:k8s`).
 
 ```bash
@@ -80,6 +90,15 @@ ExternalDNS creates only the subdomain records you annotate. Those records point
 :::
 
 ### Create Cloudflare API token secrets
+
+If Vault is configured, write the Cloudflare token to Vault and let External Secrets Operator create the Kubernetes secrets:
+
+```bash
+kubectl -n vault exec -it vault-0 -- vault kv put kv/external-dns/cloudflare api-token=YOUR_CLOUDFLARE_API_TOKEN
+kubectl -n vault exec -it vault-0 -- vault kv put kv/cert-manager/cloudflare api-token=YOUR_CLOUDFLARE_API_TOKEN
+```
+
+External Secrets Operator will sync these using the manifests in `infrastructure/external-secrets/`. If Vault is not ready yet, create the secrets manually:
 
 Create a token in Cloudflare with DNS edit permissions for the `sudhanva.me` zone and store it in both namespaces:
 

@@ -79,7 +79,42 @@ Store the token in Kubernetes:
 kubectl -n external-secrets create secret generic vault-eso-token --from-literal=token="REPLACE_ME"
 ```
 
-## Step 6: Validate ExternalSecret sync
+## Step 6: Add new secrets and ExternalSecret resources
+
+When you add a new secret, write it to Vault first, then create an ExternalSecret manifest in the same folder as the consuming workload.
+
+Example Vault write:
+
+```bash
+kubectl -n vault exec -it vault-0 -- vault kv put kv/my-app/api token="REPLACE_ME"
+```
+
+Example ExternalSecret (save as a standalone YAML file like `apps/my-app/externalsecret.yaml` or `infrastructure/<component>/external-secret.yaml`):
+
+```yaml
+apiVersion: external-secrets.io/v1beta1
+kind: ExternalSecret
+metadata:
+  name: my-app-api
+  namespace: my-app
+spec:
+  refreshInterval: 1h
+  secretStoreRef:
+    name: vault
+    kind: ClusterSecretStore
+  target:
+    name: my-app-api
+    creationPolicy: Owner
+  data:
+  - secretKey: token
+    remoteRef:
+      key: kv/my-app/api
+      property: token
+```
+
+Commit the new manifest and let ArgoCD sync it.
+
+## Step 7: Validate ExternalSecret sync
 
 Check that External Secrets Operator created or updated the target secrets:
 
@@ -91,6 +126,6 @@ kubectl -n tailscale get secret operator-oauth
 
 Once the secrets match Vault, remove any manually created secrets so External Secrets Operator owns them.
 
-## Step 7: Access the Vault UI
+## Step 8: Access the Vault UI
 
 Vault is exposed at `https://vault.sudhanva.me` via the Tailscale Gateway.
