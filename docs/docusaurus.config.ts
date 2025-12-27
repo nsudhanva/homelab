@@ -6,7 +6,7 @@ import type * as Preset from '@docusaurus/preset-classic';
 
 const config: Config = {
   title: 'Homelab',
-  tagline: 'Single-node bare-metal Kubernetes cluster',
+  tagline: 'Multi-node bare-metal Kubernetes cluster',
   favicon: 'img/favicon.ico',
 
   // Future flags, see https://docusaurus.io/docs/api/docusaurus-config#future
@@ -19,7 +19,7 @@ const config: Config = {
   baseUrl: '/',
 
   // GitHub pages deployment config.
-  organizationName: 'YOUR_GITHUB_USERNAME',
+  organizationName: 'nsudhanva',
   projectName: 'homelab',
 
   onBrokenLinks: 'warn', // Warn for now during migration
@@ -37,7 +37,7 @@ const config: Config = {
         docs: {
           sidebarPath: './sidebars.ts',
           editUrl:
-            'https://github.com/YOUR_GITHUB_USERNAME/homelab/tree/main/docs/',
+            'https://github.com/nsudhanva/homelab/tree/main/docs/',
         },
         blog: false, // Disable blog
         theme: {
@@ -64,11 +64,16 @@ const config: Config = {
           label: 'Documentation',
         },
         {
-          href: 'https://github.com/YOUR_GITHUB_USERNAME/homelab',
+          href: 'https://github.com/nsudhanva/homelab',
           label: 'GitHub',
           position: 'right',
         },
       ],
+    },
+    colorMode: {
+      defaultMode: 'dark',
+      disableSwitch: false,
+      respectPrefersColorScheme: true,
     },
     footer: {
       style: 'dark',
@@ -87,12 +92,12 @@ const config: Config = {
           items: [
             {
               label: 'GitHub',
-              href: 'https://github.com/YOUR_GITHUB_USERNAME/homelab',
+              href: 'https://github.com/nsudhanva/homelab',
             },
           ],
         },
       ],
-      copyright: `Copyright © ${new Date().getFullYear()} Sudhanva. Built with Docusaurus.`,
+      copyright: `Copyright © ${new Date().getFullYear()} Sudhanva Narayana and Maanasa Narayan.`,
     },
     prism: {
       theme: prismThemes.github,

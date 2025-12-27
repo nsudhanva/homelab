@@ -3,21 +3,220 @@
  * and scoped locally.
  */
 
-.heroBanner {
-  padding: 4rem 0;
-  text-align: center;
+.hero {
   position: relative;
   overflow: hidden;
+  padding: 5rem 2rem 3rem;
+}
+
+.heroBackdrop {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 15% 25%, rgba(255, 206, 145, 0.4), transparent 55%),
+    radial-gradient(circle at 85% 15%, rgba(93, 156, 129, 0.35), transparent 50%),
+    linear-gradient(120deg, #0f2d28 0%, #173c33 55%, #0f2d28 100%);
+  opacity: 0.98;
+  z-index: 0;
+}
+
+.heroContent {
+  position: relative;
+  z-index: 1;
+  max-width: 1200px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 2.5rem;
+  align-items: center;
+  color: #f6f1e6;
+}
+
+.heroTitle {
+  font-size: clamp(2.8rem, 4vw, 4.4rem);
+  margin-bottom: 0.8rem;
+}
+
+.heroSubtitle {
+  font-size: 1.2rem;
+  max-width: 32rem;
+  color: rgba(246, 241, 230, 0.8);
+}
+
+.heroActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-top: 2rem;
+}
+
+.primaryButton {
+  background: #f2a65a;
+  color: #0f2d28;
+  padding: 0.85rem 1.6rem;
+  border-radius: 999px;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.secondaryButton {
+  border: 1px solid rgba(246, 241, 230, 0.5);
+  color: #f6f1e6;
+  padding: 0.85rem 1.6rem;
+  border-radius: 999px;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.heroRight {
+  display: grid;
+  gap: 1.5rem;
+}
+
+.card {
+  background: rgba(20, 46, 39, 0.92);
+  border: 1px solid rgba(242, 166, 90, 0.35);
+  border-radius: 18px;
+  padding: 1.6rem;
+  box-shadow: 0 18px 60px rgba(0, 0, 0, 0.35);
+}
+
+.cardTitle {
+  font-size: 1.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.cardText {
+  color: rgba(246, 241, 230, 0.7);
+  margin-bottom: 1rem;
+}
+
+.cardFooter {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1.2rem;
+}
+
+.cardLink {
+  color: #f2a65a;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.checklist {
+  display: grid;
+  gap: 0.8rem;
+  background: rgba(15, 26, 23, 0.7);
+  border-radius: 16px;
+  padding: 1.2rem;
+  border: 1px solid rgba(246, 241, 230, 0.2);
+}
+
+.checklistItem {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.7rem;
+  align-items: center;
+}
+
+.checklistTitle {
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: #f2a65a;
+}
+
+.checklistText {
+  color: rgba(246, 241, 230, 0.78);
+}
+
+.main {
+  background: #f7f3ec;
+}
+
+.pathways,
+.quickLinks {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 3.5rem 2rem;
+}
+
+.sectionHeader {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin-bottom: 2rem;
+}
+
+.sectionTitle {
+  font-size: clamp(2rem, 2.6vw, 2.8rem);
+  color: #142f28;
+}
+
+.sectionSubtitle {
+  color: #4a5a54;
+  max-width: 32rem;
+}
+
+.pathwayGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 1.5rem;
+}
+
+.pathwayCard {
+  background: #ffffff;
+  border-radius: 16px;
+  padding: 1.6rem;
+  border: 1px solid rgba(20, 47, 40, 0.1);
+  box-shadow: 0 18px 40px rgba(20, 47, 40, 0.08);
+}
+
+.pathwayTitle {
+  font-size: 1.25rem;
+  margin-bottom: 0.5rem;
+  color: #142f28;
+}
+
+.pathwayText {
+  color: #4f5d57;
+  margin-bottom: 1rem;
+}
+
+.pathwayLink {
+  color: #c46a1b;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.quickLinks {
+  padding-top: 0;
+}
+
+.linkGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1rem;
+}
+
+.linkCard {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem 1.2rem;
+  border-radius: 14px;
+  background: #142f28;
+  color: #f6f1e6;
+  text-decoration: none;
+  font-weight: 600;
 }
 
 @media screen and (max-width: 996px) {
-  .heroBanner {
-    padding: 2rem;
+  .heroContent {
+    grid-template-columns: 1fr;
   }
-}
 
-.buttons {
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  .hero {
+    padding: 3.5rem 1.5rem 2.5rem;
+  }
 }

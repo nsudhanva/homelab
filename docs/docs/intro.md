@@ -5,7 +5,7 @@ title: Home
 
 # Homelab Docs
 
-Single-node bare-metal Kubernetes cluster on Ubuntu 24.04 LTS, managed via GitOps with ArgoCD. These docs are organized to help you move from a local, VM-based rehearsal to a real machine while keeping the same Ansible and GitOps flow.
+Multi-node bare-metal Kubernetes cluster on Ubuntu 24.04 LTS, managed via GitOps with ArgoCD. These docs are organized to help you move from a local, VM-based rehearsal to a real machine while keeping the same Ansible and GitOps flow.
 
 ## Start Here
 

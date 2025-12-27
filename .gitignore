@@ -13,7 +13,16 @@
 *.tmp
 *.swp
 *~
+.DS_Store
+*.log
 
 # Ansible
 ansible/.ansible_cache
 ansible/.keys/
+
+# Node / Docusaurus
+node_modules/
+docs/node_modules/
+docs/build/
+docs/.docusaurus/
+docs/.cache/

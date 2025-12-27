@@ -22,7 +22,7 @@ ArgoCD is exposed via Tailscale Ingress in `infrastructure/argocd-ingress/ingres
 
 ## Step: Prepare GitOps bootstrap
 
-Update these files and replace `YOUR_USERNAME` with your GitHub username:
+Update these files if you fork the repo. The default references point to `nsudhanva/homelab`:
 
 - `bootstrap/root.yaml`
 - `bootstrap/templates/infra-appset.yaml`

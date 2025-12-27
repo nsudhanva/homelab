@@ -15,6 +15,24 @@ This tutorial runs a multi-node Kubernetes cluster on local VMs using Multipass.
 - A dedicated SSH key stored in the repository
 - At least 12GB of free RAM
 
+## Step: Install host tools
+
+macOS (Homebrew):
+
+```bash
+brew install --cask multipass
+brew install ansible kubectl
+```
+
+Ubuntu 24.04 (Snap + APT):
+
+```bash
+sudo snap install multipass
+sudo apt-get update
+sudo apt-get install -y ansible
+sudo snap install kubectl --classic
+```
+
 ## Step: Create a dedicated SSH key
 
 ```bash
@@ -24,12 +42,58 @@ ssh-keygen -t ed25519 -f ansible/.keys/multipass -N ""
 
 This key is only used for the local Multipass VMs and keeps your personal SSH identities out of the workflow.
 
-## Step: Launch the VMs
+## Step: Launch the VMs with static IPs
+
+Use cloud-init to assign fixed IPs so the Ansible inventory does not change between runs. Update the gateway and subnet to match your host network.
 
 ```bash
-multipass launch --name homelab-cp --cpus 2 --memory 4G --disk 20G 24.04
-multipass launch --name homelab-w1 --cpus 2 --memory 4G --disk 20G 24.04
-multipass launch --name homelab-w2 --cpus 2 --memory 4G --disk 20G 24.04
+cat <<'EOF' > /tmp/homelab-cp-cloudinit.yaml
+network:
+  version: 2
+  ethernets:
+    primary:
+      match:
+        name: "en*"
+      set-name: eth0
+      addresses: [192.168.2.2/24]
+      gateway4: 192.168.2.1
+      nameservers:
+        addresses: [1.1.1.1, 8.8.8.8]
+EOF
+
+cat <<'EOF' > /tmp/homelab-w1-cloudinit.yaml
+network:
+  version: 2
+  ethernets:
+    primary:
+      match:
+        name: "en*"
+      set-name: eth0
+      addresses: [192.168.2.3/24]
+      gateway4: 192.168.2.1
+      nameservers:
+        addresses: [1.1.1.1, 8.8.8.8]
+EOF
+
+cat <<'EOF' > /tmp/homelab-w2-cloudinit.yaml
+network:
+  version: 2
+  ethernets:
+    primary:
+      match:
+        name: "en*"
+      set-name: eth0
+      addresses: [192.168.2.4/24]
+      gateway4: 192.168.2.1
+      nameservers:
+        addresses: [1.1.1.1, 8.8.8.8]
+EOF
+```
+
+```bash
+multipass launch --name homelab-cp --cpus 2 --memory 4G --disk 20G --cloud-init /tmp/homelab-cp-cloudinit.yaml 24.04
+multipass launch --name homelab-w1 --cpus 2 --memory 4G --disk 20G --cloud-init /tmp/homelab-w1-cloudinit.yaml 24.04
+multipass launch --name homelab-w2 --cpus 2 --memory 4G --disk 20G --cloud-init /tmp/homelab-w2-cloudinit.yaml 24.04
 ```
 
 ## Step: Add the project SSH key to each VM
@@ -40,13 +104,13 @@ for node in homelab-cp homelab-w1 homelab-w2; do
 done
 ```
 
-## Step: Update the Multipass inventory
+## Step: Confirm VM IPs
 
 ```bash
 multipass list
 ```
 
-Edit `ansible/inventory/multipass.yaml` to match the VM IPs from the output.
+If you did not use static IPs, update `ansible/inventory/multipass.yaml` to match the VM IPs from the output.
 
 ## Step: Run Ansible provisioning
 

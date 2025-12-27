@@ -202,6 +202,35 @@ kubectl get nodes
 kubectl get pods -A
 ```
 
+## Version Management (Ansible + ArgoCD)
+
+Use this flow to keep every node consistent while maintaining HA.
+
+### Step 1: Update the pinned versions
+
+Host-level versions are pinned in `ansible/group_vars/all.yaml`:
+
+- `k8s_version` for kubeadm/kubelet/kubectl
+- `containerd_version` for the container runtime
+- `cilium_version` for the CNI
+
+Cluster-level components (Longhorn, Tailscale, ArgoCD) are pinned in their ArgoCD templates or manifests:
+
+- `bootstrap/templates/longhorn.yaml`
+- `infrastructure/tailscale/tailscale-operator.yaml`
+- `bootstrap/templates/*-appset.yaml` for repo references
+
+### Step 2: Apply the change consistently
+
+- **Host packages** (Kubernetes, containerd): rerun the provisioning playbook on all nodes so every host converges to the same version.
+- **Cluster add-ons** (Cilium, Longhorn, ArgoCD): update the version in Git and let ArgoCD sync. For Cilium, use `cilium upgrade` after updating `cilium_version`.
+
+### Step 3: Keep HA during updates
+
+- Upgrade control planes one at a time, then workers.
+- Drain nodes before upgrades and uncordon after, as described in the Kubernetes upgrade steps above.
+- Verify health between nodes: `kubectl get nodes` and `kubectl get pods -A`.
+
 ## Upgrade Cilium
 
 Update `cilium_version` in `ansible/group_vars/all.yaml`, then run:

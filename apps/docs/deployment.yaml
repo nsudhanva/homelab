@@ -17,7 +17,7 @@ spec:
     spec:
       containers:
       - name: docs
-        image: ghcr.io/YOUR_GITHUB_USERNAME/homelab-docs:latest
+        image: ghcr.io/nsudhanva/homelab-docs:latest
         imagePullPolicy: Always
         ports:
         - containerPort: 80

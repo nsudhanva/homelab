@@ -4,7 +4,7 @@ Instructions for AI coding assistants working on this repository.
 
 ## Project Overview
 
-Single-node bare-metal Kubernetes cluster on Ubuntu 24.04 LTS, managed via GitOps with ArgoCD.
+Multi-node bare-metal Kubernetes cluster on Ubuntu 24.04 LTS, managed via GitOps with ArgoCD.
 
 ## Dos
 

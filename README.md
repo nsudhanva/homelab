@@ -1,64 +1,55 @@
 # Homelab
 
-Single-node bare-metal Kubernetes cluster on Ubuntu 24.04 LTS, managed via GitOps with ArgoCD.
+Bare-metal Kubernetes on Ubuntu 24.04 LTS with Ansible for node provisioning and ArgoCD for GitOps. The same repo supports local Multipass rehearsal and real hardware deployments.
 
 ## Documentation
 
-All documentation lives under `docs/`. Use the Docusaurus site for tutorials, how-to guides, reference material, and explanations.
+Docs live in `docs/` and are built with Docusaurus.
+
+```bash
+cd docs
+npm ci
+npm run build
+```
+
+## Maintainers
+
+- Sudhanva Narayana: https://sudhanva.me
+- Maanasa Narayan: https://maanasarayana.github.io
+
+## Automation model
+
+- **Ansible** provisions nodes (OS prep, containerd, kubeadm/kubelet/kubectl, storage prereqs).
+- **ArgoCD** applies cluster state (infrastructure and apps) from Git.
 
 ## Structure
 
 - `ansible/`: Host provisioning roles and playbooks.
 - `ansible/inventory/hosts.yaml`: Bare-metal inventory.
 - `ansible/inventory/multipass.yaml`: Local VM inventory for Multipass clusters.
-- `ansible/tests/local-cluster/test-nginx/deployment.yaml`: Local smoke test deployment.
-- `ansible/tests/local-cluster/test-nginx/service.yaml`: Local smoke test service.
-- `bootstrap/`: ArgoCD bootstrap + ApplicationSets.
+- `ansible/tests/local-cluster/`: Smoke tests for a local cluster.
+- `bootstrap/`: ArgoCD bootstrap and ApplicationSets.
 - `clusters/`: Cluster-specific kubeadm config.
 - `infrastructure/`: Cluster-wide components.
 - `apps/`: User workloads.
 
 ## Quick Start (Bare Metal)
 
-### Step: Provision the host
+### Step 1: Prepare the inventory
 
-```bash
-sudo apt-get update
-sudo apt-get install -y openssh-server
-```
+Edit `ansible/inventory/hosts.yaml` with your control plane and worker IPs.
 
-### Step: Run Ansible provisioning
+### Step 2: Run Ansible provisioning
 
 ```bash
 ansible-playbook -i ansible/inventory/hosts.yaml \
-  ansible/playbooks/provision-cpu.yaml \
-  -e "target_hosts=k8s_nodes"
+  ansible/playbooks/provision-cpu.yaml
 ```
 
-### Step: Install Kubernetes packages
+### Step 3: Initialize the control plane
 
 ```bash
-K8S_VERSION="v1.35"
-
-sudo apt-get install -y apt-transport-https ca-certificates curl gpg
-sudo mkdir -p -m 755 /etc/apt/keyrings
-curl -fsSL https://pkgs.k8s.io/core:/stable:/${K8S_VERSION}/deb/Release.key | \
-  sudo gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
-
-echo "deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/${K8S_VERSION}/deb/ /" | \
-  sudo tee /etc/apt/sources.list.d/kubernetes.list
-
-sudo apt-get update
-sudo apt-get install -y kubelet kubeadm kubectl
-sudo apt-mark hold kubelet kubeadm kubectl
-```
-
-### Step: Initialize the cluster
-
-```bash
-sudo kubeadm init \
-  --pod-network-cidr=10.244.0.0/16
-
+sudo kubeadm init --pod-network-cidr=10.244.0.0/16
 mkdir -p $HOME/.kube
 sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
 sudo chown $(id -u):$(id -g) $HOME/.kube/config
@@ -67,10 +58,10 @@ kubectl taint nodes --all node-role.kubernetes.io/control-plane-
 
 If you maintain a kubeadm config at `clusters/home/kubeadm-clusterconfiguration.yaml`, replace the command with `sudo kubeadm init --config clusters/home/kubeadm-clusterconfiguration.yaml`.
 
-### Step: Install Cilium
+### Step 4: Install Cilium
 
 ```bash
-CILIUM_VERSION="1.18.5"
+CILIUM_VERSION=$(grep -E "cilium_version:" ansible/group_vars/all.yaml | head -n 1 | awk -F'\"' '{print $2}')
 CILIUM_CLI_VERSION=$(curl -s https://raw.githubusercontent.com/cilium/cilium-cli/main/stable.txt)
 
 curl -L --fail --remote-name-all \
@@ -81,25 +72,18 @@ rm cilium-linux-amd64.tar.gz{,.sha256sum}
 
 cilium install --version ${CILIUM_VERSION} --set kubeProxyReplacement=true
 kubectl -n kube-system delete daemonset kube-proxy
-cilium hubble enable --ui
 cilium status
 ```
 
-### Step: Install ArgoCD
+### Step 5: Install ArgoCD and bootstrap GitOps
 
 ```bash
 kubectl create namespace argocd
 kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
 kubectl wait --for=condition=available --timeout=600s deployment/argocd-server -n argocd
-kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath='{.data.password}' | base64 -d; echo
-```
-
-### Step: Bootstrap GitOps
-
-```bash
 kubectl apply -f bootstrap/root.yaml
 ```
 
 ## Local Multipass Cluster
 
-See `docs/docs/tutorials/local-multipass-cluster.md` for the full Multipass-based walkthrough.
+Use the Multipass walkthrough in `docs/docs/tutorials/local-multipass-cluster.md` to validate changes locally before moving to bare metal.
