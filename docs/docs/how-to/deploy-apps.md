@@ -31,7 +31,17 @@ ArgoCD will create an application named `app-my-app` from this folder and sync i
 
 ## Step 2: Use Tailscale ingress for HTTPS
 
-When exposing HTTPS, use `ingressClassName: tailscale` and the Tailscale annotations used elsewhere in `infrastructure/`.
+When exposing HTTPS, use `ingressClassName: tailscale` and include the HTTPS + redirect annotations:
+
+```yaml
+metadata:
+  annotations:
+    tailscale.com/tags: tag:k8s
+    tailscale.com/https: "true"
+    tailscale.com/http-redirect: "true"
+spec:
+  ingressClassName: tailscale
+```
 
 ## Step 3: Commit and push
 
