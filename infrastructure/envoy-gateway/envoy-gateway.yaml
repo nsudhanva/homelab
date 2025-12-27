@@ -6,9 +6,9 @@ metadata:
 spec:
   project: default
   source:
-    repoURL: https://github.com/envoyproxy/gateway.git
-    targetRevision: v1.6.1
-    path: charts/gateway-helm
+    chart: gateway-helm
+    repoURL: oci://docker.io/envoyproxy/gateway-helm
+    targetRevision: v0.0.0-latest
     helm:
       values: |
         config:
@@ -23,6 +23,9 @@ spec:
                 default: info
         deployment:
           envoyGateway:
+            image:
+              repository: docker.io/envoyproxy/envoy-gateway
+              tag: v1.6.1
             resources:
               requests:
                 cpu: 100m

@@ -18,7 +18,7 @@ Check the latest stable release before changing any pinned version.
 - containerd: `2.2.1` in `ansible/group_vars/all.yaml`
 - Longhorn: `1.7.2` in `bootstrap/templates/longhorn.yaml`
 - Tailscale Operator: `1.78.3` in `infrastructure/tailscale/tailscale-operator.yaml`
-- Envoy Gateway: `v1.6.1` in `infrastructure/envoy-gateway/envoy-gateway.yaml`
+- Envoy Gateway: `v1.6.1` image tag in `infrastructure/envoy-gateway/envoy-gateway.yaml` (chart `v0.0.0-latest`)
 - Gateway API CRDs: `v1.4.1` via Envoy Gateway chart (`infrastructure/envoy-gateway/envoy-gateway.yaml`)
 - cert-manager: `v1.19.2` in `infrastructure/cert-manager/cert-manager.yaml`
 - ExternalDNS chart: `1.19.0` in `infrastructure/external-dns/external-dns.yaml`
