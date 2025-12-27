@@ -208,6 +208,8 @@ Cluster-level components (Longhorn, Tailscale, Envoy Gateway, cert-manager, Exte
 - `bootstrap/templates/longhorn.yaml`
 - `infrastructure/tailscale/tailscale-operator.yaml`
 - `infrastructure/envoy-gateway/envoy-gateway.yaml`
+- `infrastructure/gateway-api-crds/`
+- `infrastructure/envoy-gateway-crds/`
 - `infrastructure/cert-manager/cert-manager.yaml`
 - `infrastructure/external-dns/external-dns.yaml`
 - `bootstrap/templates/*-appset.yaml` for repo references

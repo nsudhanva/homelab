@@ -88,6 +88,8 @@ kubectl apply -f bootstrap/root.yaml
 
 This repo uses Envoy Gateway with Tailscale as the LoadBalancer provider and ExternalDNS to manage subdomain records. Your apex `sudhanva.me` stays where it is; only subdomains that you annotate are managed here.
 
+The Gateway API and Envoy Gateway CRDs are applied from `infrastructure/gateway-api-crds/` and `infrastructure/envoy-gateway-crds/` via ArgoCD.
+
 Step 1: Create Cloudflare API token secrets
 
 ```bash

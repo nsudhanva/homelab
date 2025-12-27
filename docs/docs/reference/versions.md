@@ -19,7 +19,8 @@ Check the latest stable release before changing any pinned version.
 - Longhorn: `1.7.2` in `bootstrap/templates/longhorn.yaml`
 - Tailscale Operator: `1.78.3` in `infrastructure/tailscale/tailscale-operator.yaml`
 - Envoy Gateway: `v1.6.1` image tag in `infrastructure/envoy-gateway/envoy-gateway.yaml` (chart `v0.0.0-latest`)
-- Gateway API CRDs: `v1.4.1` via Envoy Gateway chart (`infrastructure/envoy-gateway/envoy-gateway.yaml`)
+- Gateway API CRDs: `v1.4.1` in `infrastructure/gateway-api-crds/`
+- Envoy Gateway CRDs: `v1.6.1` in `infrastructure/envoy-gateway-crds/`
 - cert-manager: `v1.19.2` in `infrastructure/cert-manager/cert-manager.yaml`
 - ExternalDNS chart: `1.19.0` in `infrastructure/external-dns/external-dns.yaml`
 - Intel GPU plugin: `0.34.0` in `infrastructure/gpu/intel-plugin.yaml`

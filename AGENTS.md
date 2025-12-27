@@ -13,7 +13,7 @@ Multi-node bare-metal Kubernetes cluster on Ubuntu 24.04 LTS, managed via GitOps
 - Use ArgoCD ApplicationSets for deploying infrastructure and apps
 - Place infrastructure components in `infrastructure/{component-name}/`
 - Place user applications in `apps/{app-name}/`
-- Use Tailscale Ingress (`ingressClassName: tailscale`) for HTTPS exposure
+- Use Tailscale Gateway API (`gatewayClassName: tailscale`) for HTTPS exposure
 - Commit small, logical changes with descriptive messages. Use brief commit messages.
 - Add any required documentation under `docs/`
 - Use the [Divio documentation system](https://docs.divio.com/documentation-system/) for structuring docs:
