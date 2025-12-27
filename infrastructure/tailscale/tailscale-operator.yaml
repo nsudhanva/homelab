@@ -14,6 +14,8 @@ spec:
         operatorConfig:
           defaultTags:
             - "tag:k8s"
+        proxyConfig:
+          firewallMode: iptables
         oauth:
           clientIdSecretName: operator-oauth
           clientSecretSecretName: operator-oauth
