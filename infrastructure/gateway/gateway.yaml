@@ -13,10 +13,10 @@ spec:
     protocol: HTTPS
     port: 443
     hostname: "*.sudhanva.me"
+    allowedRoutes:
+      namespaces:
+        from: All
     tls:
       mode: Terminate
       certificateRefs:
       - name: wildcard-sudhanva-me-tls
-  allowedRoutes:
-    namespaces:
-      from: All
