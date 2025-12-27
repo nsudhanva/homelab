@@ -15,7 +15,7 @@ npm run build
 ## Maintainers
 
 - Sudhanva Narayana: https://sudhanva.me
-- Maanasa Narayan: https://maanasarayana.github.io
+- Maanasa Narayan: https://maanasanarayan.github.io
 
 ## Automation model
 
