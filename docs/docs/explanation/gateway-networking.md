@@ -86,6 +86,16 @@ These resources have to align or HTTPS routing through Tailscale will break:
 - HTTPRoutes live in app namespaces and include the ExternalDNS expose annotation.
 - Cloudflare API tokens and Tailscale OAuth credentials are synced from Vault through External Secrets Operator.
 
+## Split-horizon DNS for public hostnames
+
+Some hostnames need different targets on and off the tailnet. For example, `docs.sudhanva.me` should resolve to the cluster on tailnet clients and to Cloudflare Pages for public clients.
+
+To make this work:
+
+- Keep the public Cloudflare DNS record pointing at Pages.
+- Add a Tailscale DNS override for the same hostname pointing at `gateway-envoy.<tailnet>.ts.net`.
+- Do not annotate the HTTPRoute with `external-dns.alpha.kubernetes.io/expose: "true"` so ExternalDNS does not overwrite the public record.
+
 ## Quick validation commands
 
 Run these from any kubectl context that can reach the cluster:

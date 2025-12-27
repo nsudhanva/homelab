@@ -122,6 +122,31 @@ Set your email in `infrastructure/cert-manager-issuer/cluster-issuer.yaml` befor
 
 Update the `external-dns.alpha.kubernetes.io/target` value in `infrastructure/gateway/gateway.yaml` to the Tailscale hostname created by the Envoy Gateway service (for example, `gateway-envoy.<tailnet>.ts.net`). The repo default uses `gateway-envoy.ainu-herring.ts.net`.
 
+## Split-horizon DNS for docs.sudhanva.me
+
+The docs hostname serves two backends:
+
+- Tailnet clients should hit the cluster through the Tailscale Gateway.
+- Public clients should hit the Cloudflare Pages site.
+
+Keep the public Cloudflare record pointed at Pages, and add a Tailscale DNS override for the same hostname.
+
+### Configure Cloudflare (public)
+
+Set `docs.sudhanva.me` to the Cloudflare Pages hostname in the `sudhanva.me` zone.
+
+### Configure Tailscale DNS (tailnet)
+
+In the Tailscale admin console, add a DNS override:
+
+- Name: `docs.sudhanva.me`
+- Type: CNAME
+- Value: `gateway-envoy.<tailnet>.ts.net`
+
+### Keep ExternalDNS from overriding public DNS
+
+The docs HTTPRoute intentionally omits the ExternalDNS expose annotation so ExternalDNS does not overwrite the public record.
+
 ## Troubleshooting
 
 ### Connections to subdomains time out

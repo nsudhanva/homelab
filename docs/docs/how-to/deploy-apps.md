@@ -39,6 +39,12 @@ Hostnames must fit the wildcard certificate in `infrastructure/gateway/certifica
 
 :::
 
+:::note
+
+ExternalDNS only manages hostnames annotated with `external-dns.alpha.kubernetes.io/expose: "true"`. For split-horizon hostnames (public on Cloudflare Pages, private on tailnet), omit the annotation and manage public DNS and Tailscale DNS overrides manually.
+
+:::
+
 ```yaml
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute

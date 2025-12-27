@@ -42,4 +42,4 @@ The `media` namespace is shared by Jellyfin and Filebrowser so they can use the 
 | App config | `apps/docs/app.yaml` | ArgoCD app definition |
 | Deployment | `apps/docs/deployment.yaml` | Uses `ghcr.io/nsudhanva/homelab-docs:latest` |
 | Service | `apps/docs/service.yaml` | ClusterIP on port 80 |
-| HTTPRoute | `apps/docs/httproute.yaml` | `docs.sudhanva.me` |
+| HTTPRoute | `apps/docs/httproute.yaml` | `docs.sudhanva.me` split-horizon (public Pages + tailnet Gateway) |
