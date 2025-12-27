@@ -26,3 +26,21 @@ Each document should include:
 - How-to guides go in `docs/docs/how-to/`
 - Reference pages go in `docs/docs/reference/`
 - Explanations go in `docs/docs/explanation/`
+
+## Docusaurus extensions
+
+Mermaid diagrams are enabled. Use fenced code blocks with the `mermaid` language:
+
+```mermaid
+flowchart LR
+  Git[Git] --> ArgoCD[ArgoCD]
+  ArgoCD --> K8s[Kubernetes API]
+```
+
+Live code blocks are enabled for MDX. Use `jsx live` to render React snippets:
+
+```jsx live
+function Callout() {
+  return <div style={{padding: '0.75rem', border: '1px solid #4f89f3'}}>GitOps ready</div>;
+}
+```

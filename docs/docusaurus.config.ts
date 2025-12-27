@@ -47,6 +47,12 @@ const config: Config = {
     ],
   ],
 
+  themes: ['@docusaurus/theme-mermaid', '@docusaurus/theme-live-codeblock'],
+
+  markdown: {
+    mermaid: true,
+  },
+
   themeConfig: {
     // Replace with your project's social card
     image: 'img/docusaurus-social-card.jpg',
