@@ -11,6 +11,16 @@ spec:
     path: charts/gateway-helm
     helm:
       values: |
+        config:
+          envoyGateway:
+            provider:
+              type: Kubernetes
+              kubernetes: {}
+            gateway:
+              controllerName: gateway.envoyproxy.io/gatewayclass-controller
+            logging:
+              level:
+                default: info
         deployment:
           envoyGateway:
             resources:
