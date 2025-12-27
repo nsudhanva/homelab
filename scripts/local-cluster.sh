@@ -20,8 +20,8 @@ WORKER_NAMES=("homelab-w1" "homelab-w2")
 ALL_VMS=("$CP_NAME" "${WORKER_NAMES[@]}")
 
 # Resource settings
-VM_CPUS=2
-VM_MEMORY="4G"
+VM_CPUS=1
+VM_MEMORY="2G"
 VM_DISK="20G"
 
 # Colors for output
@@ -234,18 +234,30 @@ wait_for_nodes() {
     log_info "Waiting for all nodes to be Ready..."
     local max_attempts=60
     local attempt=0
+    local expected_nodes=${#ALL_VMS[@]}
 
     while [[ $attempt -lt $max_attempts ]]; do
-        local not_ready
-        not_ready=$(kubectl --kubeconfig "$KUBECONFIG_PATH" get nodes --no-headers 2>/dev/null | grep -v " Ready" | wc -l || echo "3")
+        local total_nodes
+        local ready_nodes
+        
+        # Capture output safely, ignoring errors during capture to prevent script exit
+        local node_output
+        if node_output=$(kubectl --kubeconfig "$KUBECONFIG_PATH" get nodes --no-headers 2>/dev/null); then
+            total_nodes=$(echo "$node_output" | wc -l | tr -d ' ')
+            ready_nodes=$(echo "$node_output" | grep " Ready" | wc -l | tr -d ' ')
+        else
+            total_nodes=0
+            ready_nodes=0
+        fi
 
-        if [[ "$not_ready" -eq 0 ]]; then
-            log_success "All nodes are Ready"
+        if [[ "$total_nodes" -ge "$expected_nodes" && "$ready_nodes" -eq "$total_nodes" ]]; then
+            log_success "All $total_nodes nodes are Ready"
             return 0
         fi
 
+        log_info "Nodes: $ready_nodes/$expected_nodes Ready. Waiting..."
         attempt=$((attempt + 1))
-        sleep 5
+        sleep 10
     done
 
     log_error "Timed out waiting for nodes to be Ready"
