@@ -1,7 +1,3 @@
-# Secrets
-*secret*.yaml
-*-secret.yaml
-
 # Kubernetes config
 *.kubeconfig
 
