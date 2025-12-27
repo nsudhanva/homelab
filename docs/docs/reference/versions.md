@@ -23,5 +23,7 @@ Check the latest stable release before changing any pinned version.
 - Envoy Gateway CRDs: `v1.6.1` in `infrastructure/envoy-gateway-crds/`
 - cert-manager: `v1.19.2` in `infrastructure/cert-manager/cert-manager.yaml`
 - ExternalDNS chart: `1.19.0` in `infrastructure/external-dns/external-dns.yaml`
+- External Secrets chart: `1.2.0` in `infrastructure/external-secrets/external-secrets.yaml`
+- Vault chart: `0.31.0` in `infrastructure/vault/vault.yaml`
 - Intel GPU plugin: `0.34.0` in `infrastructure/gpu/intel-plugin.yaml`
 - NVIDIA GPU plugin: `0.17.0` in `infrastructure/gpu/nvidia-plugin.yaml`

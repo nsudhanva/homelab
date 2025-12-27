@@ -1,0 +1,20 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: vault
+  namespace: vault
+  annotations:
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+    external-dns.alpha.kubernetes.io/expose: "true"
+    external-dns.alpha.kubernetes.io/cloudflare-proxied: "false"
+spec:
+  parentRefs:
+  - name: tailscale-gateway
+    namespace: tailscale
+    sectionName: https
+  hostnames:
+  - vault.sudhanva.me
+  rules:
+  - backendRefs:
+    - name: vault
+      port: 8200
