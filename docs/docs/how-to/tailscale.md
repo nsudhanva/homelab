@@ -102,3 +102,63 @@ Set your email in `infrastructure/cert-manager-issuer/cluster-issuer.yaml` befor
 ### Set the Tailscale Gateway target
 
 Update the `external-dns.alpha.kubernetes.io/target` value in `infrastructure/gateway/gateway.yaml` to the Tailscale hostname created by the Envoy Gateway service (for example, `gateway-envoy.<tailnet>.ts.net`). The repo default uses `gateway-envoy.ainu-herring.ts.net`.
+
+## Troubleshooting
+
+### Connections to subdomains time out
+
+If `tailscale ping <gateway-ip>` works but `curl https://subdomain.sudhanva.me` times out, the issue is likely Cilium's socket-level LoadBalancer interfering with the Tailscale proxy's iptables DNAT rules.
+
+**Solution:** Enable `socketLB.hostNamespaceOnly=true` in Cilium:
+
+```bash
+cilium upgrade --version $(cilium version | grep 'cilium image (running)' | awk '{print $4}') \
+  --set socketLB.hostNamespaceOnly=true
+kubectl rollout restart daemonset/cilium -n kube-system
+```
+
+Then restart the Tailscale proxy pod:
+
+```bash
+kubectl delete pod -n tailscale -l tailscale.com/parent-resource-type=svc
+```
+
+See [Cilium CNI](../tutorials/cilium.md) for details.
+
+:::warning
+
+This is a **required** configuration when using Cilium in kube-proxy replacement mode with Tailscale Kubernetes Operator LoadBalancer services.
+
+:::
+
+### Envoy returns "filter_chain_not_found"
+
+This error in Envoy logs means the TLS connection is missing Server Name Indication (SNI). Ensure:
+
+- Clients connect using the hostname (e.g., `docs.sudhanva.me`), not an IP address
+- The hostname matches a configured HTTPRoute
+- The certificate covers the requested hostname (check with `kubectl get certificate -n tailscale`)
+
+### DNS not resolving
+
+If subdomains don't resolve, check:
+
+- ExternalDNS logs: `kubectl logs -n external-dns -l app.kubernetes.io/instance=external-dns`
+- Cloudflare API token has DNS edit permissions
+- The HTTPRoute has `external-dns.alpha.kubernetes.io/expose: "true"` annotation
+
+### Verify the traffic flow
+
+```bash
+# Check Gateway is programmed
+kubectl get gateways -n tailscale
+
+# Check HTTPRoutes are accepted
+kubectl describe httproute <name> -n <namespace>
+
+# Check certificate is ready
+kubectl get certificates -n tailscale
+
+# Check Envoy logs for incoming requests
+kubectl logs -n envoy-gateway -l gateway.envoyproxy.io/owning-gateway-name=tailscale-gateway -c envoy --tail=20
+```

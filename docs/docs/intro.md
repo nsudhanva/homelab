@@ -3,77 +3,123 @@ sidebar_position: 1
 title: Home
 ---
 
-# Homelab Docs
+# Homelab
 
-Multi-node bare-metal Kubernetes cluster on Ubuntu 24.04 LTS, managed via GitOps with ArgoCD. These docs are organized to help you move from a local, VM-based rehearsal to a real machine while keeping the same Ansible and GitOps flow.
+Multi-node bare-metal Kubernetes cluster on Ubuntu 24.04 LTS, managed via GitOps with ArgoCD.
 
-## Start Here
+## Quick Start
 
-Pick the path that matches your environment, then follow the tutorials in order.
+Choose your path based on where you want to run Kubernetes:
 
-### Local rehearsal with Multipass
+### Option A: Local Rehearsal (Recommended First)
 
-Use this when you want a close-to-real rehearsal on your workstation.
+Run a full multi-node cluster on your workstation using Multipass VMs. This mirrors the bare-metal setup without needing real hardware.
 
-- Follow the local VM walkthrough in [Local Multipass Cluster](./tutorials/local-multipass-cluster.md)
-- Read the differences in [Local Simulation vs Bare Metal](./explanation/local-vs-baremetal.md)
+**One command:**
 
-### Bare metal deployment
+```bash
+./scripts/local-cluster.sh up
+```
 
-Use this when you are ready to install on a real Ubuntu host.
+This script:
 
-- Prepare the host in [Prerequisites](./tutorials/prerequisites.md) and [System Preparation](./tutorials/system-prep.md)
-- Install containerd in [Install Containerd](./tutorials/containerd.md)
-- Install Kubernetes and initialize the cluster in [Kubernetes](./tutorials/kubernetes.md)
-- Install the CNI in [Cilium CNI](./tutorials/cilium.md)
-- Install GitOps in [ArgoCD and GitOps](./tutorials/argocd.md)
+- Creates 3 VMs (1 control plane, 2 workers)
+- Runs Ansible provisioning
+- Initializes Kubernetes with kubeadm
+- Installs Cilium CNI
+- Runs a smoke test
 
-## How This Repo Is Used
+**Time:** ~10 minutes
 
-- Ansible provisions hosts in `ansible/`
-- GitOps bootstrap lives in `bootstrap/`
-- Infrastructure components are in `infrastructure/`
-- Applications live in `apps/` and are synced into namespaces defined per app
+**Prerequisites:** Multipass, Ansible, kubectl ([Install guide](./tutorials/local-multipass-cluster.md#step-1-install-host-tools))
 
-For day-to-day usage, see [Deploy Apps With GitOps](./how-to/deploy-apps.md), [Validation](./how-to/validation.md), and [Maintenance](./how-to/maintenance.md).
+When done, destroy with:
 
-Pinned versions live in [Version Matrix](./reference/versions.md).
+```bash
+./scripts/local-cluster.sh down
+```
+
+---
+
+### Option B: Bare Metal Deployment
+
+Deploy to real Ubuntu 24.04 hardware with SSH access.
+
+**Three commands:**
+
+```bash
+# 1. Edit inventory with your IPs
+nano ansible/inventory/hosts.yaml
+
+# 2. Provision all nodes
+ansible-playbook -i ansible/inventory/hosts.yaml ansible/playbooks/provision-cpu.yaml
+
+# 3. Initialize control plane and install CNI (run on control plane node)
+sudo kubeadm init --pod-network-cidr=10.244.0.0/16
+cilium install --set kubeProxyReplacement=true --set socketLB.hostNamespaceOnly=true
+```
+
+Then bootstrap GitOps:
+
+```bash
+kubectl apply -f bootstrap/root.yaml
+```
+
+ArgoCD will sync all infrastructure and apps from Git automatically.
+
+**Detailed guide:** [Prerequisites](./tutorials/prerequisites.md) → [System Prep](./tutorials/system-prep.md) → [Kubernetes](./tutorials/kubernetes.md)
+
+---
+
+## What Gets Deployed
+
+Once ArgoCD syncs, you get:
+
+| Component | Purpose |
+|-----------|---------|
+| **Cilium** | CNI with kube-proxy replacement |
+| **ArgoCD** | GitOps continuous deployment |
+| **Longhorn** | Distributed block storage |
+| **Envoy Gateway** | Gateway API ingress controller |
+| **Tailscale Operator** | VPN-based LoadBalancer |
+| **cert-manager** | Automatic TLS certificates |
+| **ExternalDNS** | Automatic DNS record management |
+
+## Repository Structure
+
+```
+homelab/
+├── ansible/              # Node provisioning (Ansible)
+│   ├── inventory/        # Host definitions
+│   ├── playbooks/        # Playbook entrypoints
+│   └── roles/            # Reusable roles
+├── bootstrap/            # ArgoCD bootstrap
+├── infrastructure/       # Cluster components (ArgoCD manages)
+├── apps/                 # User workloads (ArgoCD manages)
+├── scripts/              # Automation scripts
+└── docs/                 # This documentation
+```
+
+## Automation Model
+
+Everything flows through two systems:
+
+- **Ansible** provisions nodes (OS, container runtime, kubelet)
+- **ArgoCD** applies cluster state from Git (helm charts, manifests)
+
+Manual `kubectl apply` is discouraged. Push to Git and let ArgoCD reconcile.
+
+Read more: [Automation Model](./explanation/automation-model.md)
 
 ## Day-2 Operations
 
-If you plan to deploy once and leave it running, follow the Routine checks and Upgrade sections in [Maintenance](./how-to/maintenance.md).
+After initial setup:
 
-## Automation First
+- [Deploy Apps With GitOps](./how-to/deploy-apps.md) - Add your own workloads
+- [Tailscale Custom Domains](./how-to/tailscale.md) - Expose apps via HTTPS
+- [Maintenance](./how-to/maintenance.md) - Upgrades and routine checks
 
-The automation model is described in [Automation Model](./explanation/automation-model.md). Cluster changes go through ArgoCD, and host changes go through Ansible.
+## Deep Dives
 
-## Architecture
-
-```mermaid
-graph TD
-  Host[Ubuntu 24.04 Node] --> Kubeadm[Kubeadm Control Plane]
-  Kubeadm --> Cilium[Cilium CNI]
-  Kubeadm --> ArgoCD[ArgoCD]
-  ArgoCD --> AppSets[ApplicationSets]
-  AppSets --> Infra[infrastructure/*]
-  AppSets --> Apps[apps/*/app.yaml]
-  Infra --> Tailscale[Tailscale Operator]
-  Infra --> Envoy[Envoy Gateway]
-  Infra --> CertManager[cert-manager]
-  Infra --> ExternalDNS[ExternalDNS]
-  Infra --> Gateway[Gateway API]
-  Infra --> Longhorn[Longhorn]
-  Apps --> Jellyfin[Jellyfin]
-  Apps --> Filebrowser[Filebrowser]
-  Apps --> Docs[docs]
-```
-
-```mermaid
-sequenceDiagram
-  participant Git as Git Repo
-  participant Argo as ArgoCD
-  participant K8s as Kubernetes API
-  Git->>Argo: Detect changes
-  Argo->>K8s: Apply manifests
-  K8s-->>Argo: Sync status
-```
+- [Gateway API and Networking](./explanation/gateway-networking.md) - How traffic flows through Tailscale → Envoy → Apps
+- [Local vs Bare Metal](./explanation/local-vs-baremetal.md) - Differences between Multipass and real hardware

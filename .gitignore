@@ -19,6 +19,7 @@
 # Ansible
 ansible/.ansible_cache
 ansible/.keys/
+ansible/inventory/local-cluster.yaml
 
 # Node / Docusaurus
 node_modules/
