@@ -41,12 +41,17 @@ kubectl taint nodes --all node-role.kubernetes.io/control-plane-
 
 :::note
 
-If you maintain a kubeadm config in `clusters/home/kubeadm-clusterconfiguration.yaml`, you can replace the command with `sudo kubeadm init --config clusters/home/kubeadm-clusterconfiguration.yaml`.
+If you maintain a kubeadm config, create `clusters/home/` and replace the command with `sudo kubeadm init --config clusters/home/kubeadm-clusterconfiguration.yaml`.
 
 :::
 
-## Step 3: Save kubeadm configuration
+## Step 3: Join worker nodes
+
+Follow [Join Worker Nodes](./join-workers.md) after the control plane is ready.
+
+## Step 4: Save kubeadm configuration
 
 ```bash
+mkdir -p clusters/home
 kubectl -n kube-system get configmap kubeadm-config -o jsonpath='{.data.ClusterConfiguration}' > clusters/home/kubeadm-clusterconfiguration.yaml
 ```

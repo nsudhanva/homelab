@@ -69,6 +69,8 @@ ArgoCD will sync all infrastructure and apps from Git automatically.
 
 **Detailed guide:** [Prerequisites](./tutorials/prerequisites.md) → [System Prep](./tutorials/system-prep.md) → [Kubernetes](./tutorials/kubernetes.md)
 
+**Worker join steps:** [Join workers](./tutorials/join-workers.md)
+
 ---
 
 ## What Gets Deployed
@@ -81,6 +83,8 @@ Once ArgoCD syncs, you get:
 | **ArgoCD** | GitOps continuous deployment |
 | **Longhorn** | Distributed block storage |
 | **Envoy Gateway** | Gateway API ingress controller |
+| **Gateway API CRDs** | Required API types for Gateway API |
+| **Envoy Gateway CRDs** | Required API types for Envoy Gateway |
 | **Tailscale Operator** | VPN-based LoadBalancer |
 | **cert-manager** | Automatic TLS certificates |
 | **ExternalDNS** | Automatic DNS record management |
@@ -99,6 +103,11 @@ homelab/
 ├── scripts/              # Automation scripts
 └── docs/                 # This documentation
 ```
+
+## Reference Index
+
+- [Infrastructure components](./reference/infrastructure-components.md)
+- [Applications catalog](./reference/applications.md)
 
 ## Automation Model
 

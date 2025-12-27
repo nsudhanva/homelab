@@ -1,0 +1,45 @@
+---
+sidebar_position: 5
+title: Applications Catalog
+---
+
+# Applications Catalog
+
+This page lists the applications already defined in `apps/`.
+
+## Media namespace
+
+The `media` namespace is shared by Jellyfin and Filebrowser so they can use the same PVCs.
+
+- Namespace definition: `apps/media/namespace.yaml`
+- ArgoCD app: `apps/media/app.yaml`
+
+## Jellyfin
+
+| Item | Path | Notes |
+| --- | --- | --- |
+| Namespace | `apps/media/namespace.yaml` | Shared `media` namespace |
+| App config | `apps/jellyfin/app.yaml` | ArgoCD app definition |
+| Deployment | `apps/jellyfin/deployment.yaml` | Uses Intel iGPU by default |
+| Service | `apps/jellyfin/service.yaml` | ClusterIP on port 80 |
+| HTTPRoute | `apps/jellyfin/httproute.yaml` | `jellyfin.sudhanva.me` |
+| PVCs | `apps/jellyfin/pvc-config.yaml` and `apps/jellyfin/pvc-media.yaml` | Longhorn storage |
+
+## Filebrowser
+
+| Item | Path | Notes |
+| --- | --- | --- |
+| App config | `apps/filebrowser/app.yaml` | ArgoCD app definition |
+| Deployment | `apps/filebrowser/deployment.yaml` | No auth, mounts Jellyfin media |
+| Service | `apps/filebrowser/service.yaml` | ClusterIP on port 80 |
+| HTTPRoute | `apps/filebrowser/httproute.yaml` | `filebrowser.sudhanva.me` |
+
+## Docs site
+
+| Item | Path | Notes |
+| --- | --- | --- |
+| Namespace | `apps/docs/namespace.yaml` | Dedicated `docs` namespace |
+| App config | `apps/docs/app.yaml` | ArgoCD app definition |
+| Deployment | `apps/docs/deployment.yaml` | Uses `ghcr.io/nsudhanva/homelab-docs:latest` |
+| Service | `apps/docs/service.yaml` | ClusterIP on port 80 |
+| HTTPRoute | `apps/docs/httproute.yaml` | `docs.sudhanva.me` |

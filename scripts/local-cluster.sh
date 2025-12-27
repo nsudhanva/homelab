@@ -20,8 +20,8 @@ WORKER_NAMES=("homelab-w1" "homelab-w2")
 ALL_VMS=("$CP_NAME" "${WORKER_NAMES[@]}")
 
 # Resource settings
-VM_CPUS=1
-VM_MEMORY="2G"
+VM_CPUS=2
+VM_MEMORY="4G"
 VM_DISK="20G"
 
 # Colors for output
