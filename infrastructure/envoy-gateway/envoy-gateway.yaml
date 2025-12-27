@@ -24,7 +24,7 @@ spec:
         deployment:
           envoyGateway:
             image:
-              repository: docker.io/envoyproxy/envoy-gateway
+              repository: docker.io/envoyproxy/gateway
               tag: v1.6.1
             resources:
               requests:
