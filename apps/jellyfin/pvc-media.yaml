@@ -2,7 +2,7 @@ apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
   name: jellyfin-media
-  namespace: jellyfin
+  namespace: media
 spec:
   accessModes:
     - ReadWriteOnce

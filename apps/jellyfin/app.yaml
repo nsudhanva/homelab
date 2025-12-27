@@ -1,0 +1,3 @@
+name: jellyfin
+path: apps/jellyfin
+namespace: media

@@ -2,7 +2,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: filebrowser
-  namespace: filebrowser
+  namespace: media
 spec:
   replicas: 1
   selector:
@@ -36,4 +36,4 @@ spec:
       volumes:
         - name: media
           persistentVolumeClaim:
-            claimName: filebrowser-media
+            claimName: jellyfin-media

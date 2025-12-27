@@ -9,16 +9,25 @@ This guide shows how to use this repo to deploy new workloads through ArgoCD App
 
 ## Step 1: Add a new app directory
 
-Create a folder under `apps/` and include separate YAML files for each resource.
+Create a folder under `apps/` and include an `app.yaml` file to define the ArgoCD application settings, plus separate YAML files for each resource.
 
 Example layout:
 
 - `apps/my-app/namespace.yaml`
+- `apps/my-app/app.yaml`
 - `apps/my-app/deployment.yaml`
 - `apps/my-app/service.yaml`
 - `apps/my-app/ingress.yaml`
 
-ArgoCD will create an application named `app-my-app` from this folder and sync it to the `my-app` namespace.
+`app.yaml` defines the app name, path, and namespace. Example:
+
+```yaml
+name: my-app
+path: apps/my-app
+namespace: my-app
+```
+
+ArgoCD will create an application named `app-my-app` from this folder and sync it to the namespace defined in `app.yaml`.
 
 ## Step 2: Use Tailscale ingress for HTTPS
 
@@ -30,7 +39,7 @@ ArgoCD watches the repo and applies changes via ApplicationSets. Once your chang
 
 :::note
 
-If your app needs to share data with another app, place them in the same namespace or use an RWX volume that is intentionally shared. Avoid cross-namespace PVC references.
+If your app needs to share data with another app, place them in the same namespace (by pointing both `app.yaml` files at the same namespace) or use an RWX volume that is intentionally shared. Avoid cross-namespace PVC references.
 
 :::
 

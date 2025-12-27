@@ -141,7 +141,7 @@ Use this flow to move existing apps out of the `default` namespace.
 
 ### Step 1: Add a namespace and update manifests
 
-Create `apps/<app-name>/namespace.yaml` and update every manifest in the app folder to use `namespace: <app-name>`.
+Create `apps/<app-name>/namespace.yaml` and `apps/<app-name>/app.yaml`, then update every manifest in the app folder to use `namespace: <app-name>`.
 
 ### Step 2: Let ArgoCD sync
 
