@@ -56,7 +56,7 @@ graph TD
   Kubeadm --> ArgoCD[ArgoCD]
   ArgoCD --> AppSets[ApplicationSets]
   AppSets --> Infra[infrastructure/*]
-  AppSets --> Apps[apps/*]
+  AppSets --> Apps[apps/*/app.yaml]
   Infra --> Tailscale[Tailscale Operator]
   Infra --> Longhorn[Longhorn]
   Apps --> Jellyfin[Jellyfin]

@@ -7,7 +7,7 @@ title: Prerequisites
 
 Use this guide before the bare metal tutorials. If you are following the local VM path, use [Local Multipass Cluster](./local-multipass-cluster.md) instead.
 
-## Step: Install workstation tooling
+## Step 1: Install workstation tooling
 
 ```bash
 sudo apt update
@@ -19,11 +19,11 @@ sudo apt-get update
 sudo apt-get install -y helm
 ```
 
-## Step: Prepare Ansible inventory
+## Step 2: Prepare Ansible inventory
 
 Update the node list and user in `ansible/inventory/hosts.yaml`, then confirm versions and paths in `ansible/group_vars/all.yaml`.
 
-## Step: Run Ansible provisioning
+## Step 3: Run Ansible provisioning
 
 Run this from the repository root so the relative paths resolve correctly.
 

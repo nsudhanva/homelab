@@ -5,7 +5,7 @@ title: GPU Support
 
 # GPU Support
 
-## Step: Enable GPU support
+## Step 1: Enable GPU support
 
 ### Intel GPU (iGPU for transcoding)
 

@@ -81,6 +81,12 @@ const config: Config = {
       disableSwitch: false,
       respectPrefersColorScheme: true,
     },
+    mermaid: {
+      theme: {
+        light: 'neutral',
+        dark: 'dark',
+      },
+    },
     footer: {
       style: 'dark',
       links: [

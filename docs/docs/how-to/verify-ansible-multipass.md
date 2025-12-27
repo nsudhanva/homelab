@@ -13,26 +13,26 @@ This guide runs the Ansible provisioning playbook against a Multipass VM to vali
 - Ansible installed on your workstation
 - A dedicated SSH key stored at `ansible/.keys/multipass.pub`
 
-## Step: Create a dedicated SSH key
+## Step 1: Create a dedicated SSH key
 
 ```bash
 mkdir -p ansible/.keys
 ssh-keygen -t ed25519 -f ansible/.keys/multipass -N ""
 ```
 
-## Step: Launch a test VM
+## Step 2: Launch a test VM
 
 ```bash
 multipass launch --name ansible-test --cpus 2 --memory 4G --disk 20G 24.04
 ```
 
-## Step: Add your SSH key
+## Step 3: Add your SSH key
 
 ```bash
 multipass exec ansible-test -- bash -c "mkdir -p /home/ubuntu/.ssh && cat >> /home/ubuntu/.ssh/authorized_keys" < ansible/.keys/multipass.pub
 ```
 
-## Step: Create a temporary inventory
+## Step 4: Create a temporary inventory
 
 ```bash
 cat <<'EOF' > /tmp/ansible-multipass-test.yaml
@@ -48,7 +48,7 @@ EOF
 
 Replace the IP address with the one shown in `multipass list`.
 
-## Step: Run the playbook
+## Step 5: Run the playbook
 
 ```bash
 ANSIBLE_HOST_KEY_CHECKING=False ANSIBLE_ROLES_PATH=ansible/roles \
@@ -58,7 +58,7 @@ ansible-playbook -i /tmp/ansible-multipass-test.yaml \
   -e @ansible/group_vars/all.yaml
 ```
 
-## Step: Clean up the VM
+## Step 6: Clean up the VM
 
 ```bash
 multipass delete ansible-test

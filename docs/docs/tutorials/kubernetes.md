@@ -5,7 +5,7 @@ title: Kubernetes
 
 # Kubernetes
 
-## Step: Install Kubernetes packages
+## Step 1: Install Kubernetes packages
 
 ```bash
 K8S_VERSION=$(grep -E "k8s_version:" ansible/group_vars/all.yaml | head -n 1 | awk -F'\"' '{print $2}')
@@ -29,7 +29,7 @@ Ansible installs and pins these packages for you when using the provisioning pla
 
 :::
 
-## Step: Initialize the control plane
+## Step 2: Initialize the control plane
 
 ```bash
 sudo kubeadm init --pod-network-cidr=10.244.0.0/16
@@ -45,7 +45,7 @@ If you maintain a kubeadm config in `clusters/home/kubeadm-clusterconfiguration.
 
 :::
 
-## Step: Save kubeadm configuration
+## Step 3: Save kubeadm configuration
 
 ```bash
 kubectl -n kube-system get configmap kubeadm-config -o jsonpath='{.data.ClusterConfiguration}' > clusters/home/kubeadm-clusterconfiguration.yaml

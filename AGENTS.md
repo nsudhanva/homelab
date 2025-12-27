@@ -30,6 +30,7 @@ Multi-node bare-metal Kubernetes cluster on Ubuntu 24.04 LTS, managed via GitOps
 - Do not use `helm install` manually; let ArgoCD handle Helm charts
 - Do not hardcode versions without researching the latest stable release
 - Do not modify `/etc/fstab` or system files without explicit user approval
+- Do not delete PVCs or any data volumes without explicit user approval
 - Do not combine multiple resources in one YAML file; use separate files (deployment.yaml, service.yaml, ingress.yaml, pvc.yaml)
 
 ## Repository Structure

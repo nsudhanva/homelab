@@ -5,7 +5,7 @@ title: Tailscale
 
 # Tailscale
 
-## Step: Set up Tailscale
+## Step 1: Set up Tailscale
 
 ### Install Tailscale Client
 

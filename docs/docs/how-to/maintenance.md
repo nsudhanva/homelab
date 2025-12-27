@@ -23,58 +23,25 @@ You can also add nodes by updating `ansible/inventory/hosts.yaml` and rerunning 
 
 ### Prerequisites for New Nodes
 
-Run these on each new node before joining:
+Use Ansible to prepare new nodes so the baseline is consistent across the cluster.
 
 ```bash
-sudo swapoff -a
-sudo sed -i '/\sswap\s/ s/^/#/' /etc/fstab
-cat <<EOF | sudo tee /etc/modules-load.d/k8s.conf
-overlay
-br_netfilter
-EOF
-sudo modprobe overlay
-sudo modprobe br_netfilter
-cat <<EOF | sudo tee /etc/sysctl.d/k8s.conf
-net.bridge.bridge-nf-call-iptables  = 1
-net.bridge.bridge-nf-call-ip6tables = 1
-net.ipv4.ip_forward                 = 1
-EOF
-sudo sysctl --system
-sudo sysctl -w fs.inotify.max_user_instances=512
-sudo sysctl -w fs.inotify.max_user_watches=524288
-echo "fs.inotify.max_user_instances=512" | sudo tee /etc/sysctl.d/99-inotify.conf
-echo "fs.inotify.max_user_watches=524288" | sudo tee -a /etc/sysctl.d/99-inotify.conf
-sudo apt-get update
-sudo apt-get install -y containerd open-iscsi nfs-common cryptsetup
-sudo mkdir -p /etc/containerd
-containerd config default | sudo tee /etc/containerd/config.toml > /dev/null
-sudo sed -i 's/SystemdCgroup = false/SystemdCgroup = true/g' /etc/containerd/config.toml
-sudo systemctl restart containerd
-sudo systemctl enable containerd
-sudo systemctl enable --now iscsid
-K8S_VERSION=$(grep -E "k8s_version:" ansible/group_vars/all.yaml | head -n 1 | awk -F'\"' '{print $2}')
-sudo apt-get install -y apt-transport-https ca-certificates curl gpg
-sudo mkdir -p -m 755 /etc/apt/keyrings
-curl -fsSL https://pkgs.k8s.io/core:/stable:/$K8S_VERSION/deb/Release.key | sudo gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
-echo "deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/$K8S_VERSION/deb/ /" | sudo tee /etc/apt/sources.list.d/kubernetes.list
-sudo apt-get update
-sudo apt-get install -y kubelet kubeadm kubectl
-sudo apt-mark hold kubelet kubeadm kubectl
+ansible-playbook -i ansible/inventory/hosts.yaml \
+  ansible/playbooks/provision-cpu.yaml
 ```
 
-### For Nodes with NVIDIA GPU
+### For Nodes with GPUs
+
+Use the GPU-specific playbooks to enable the runtime and device plugins:
 
 ```bash
-curl -fsSL https://nvidia.github.io/libnvidia-container/gpgkey | \
-  sudo gpg --dearmor -o /usr/share/keyrings/nvidia-container-toolkit-keyring.gpg --yes
-curl -s -L https://nvidia.github.io/libnvidia-container/stable/deb/nvidia-container-toolkit.list | \
-  sed 's#deb https://#deb [signed-by=/usr/share/keyrings/nvidia-container-toolkit-keyring.gpg] https://#g' | \
-  sudo tee /etc/apt/sources.list.d/nvidia-container-toolkit.list
-sudo apt-get update
-sudo apt-get install -y nvidia-container-toolkit
-sudo nvidia-ctk runtime configure --runtime=containerd --set-as-default --cdi.enabled
-sudo nvidia-ctk cdi generate --output=/etc/cdi/nvidia.yaml
-sudo systemctl restart containerd
+ansible-playbook -i ansible/inventory/hosts.yaml \
+  ansible/playbooks/provision-nvidia-gpu.yaml
+```
+
+```bash
+ansible-playbook -i ansible/inventory/hosts.yaml \
+  ansible/playbooks/provision-intel-gpu.yaml
 ```
 
 ### Generate Join Token (On Existing Control Plane)
@@ -141,7 +108,7 @@ Use this flow to move existing apps out of the `default` namespace.
 
 ### Step 1: Add a namespace and update manifests
 
-Create `apps/<app-name>/namespace.yaml` and `apps/<app-name>/app.yaml`, then update every manifest in the app folder to use `namespace: <app-name>`.
+Create `apps/<app-name>/namespace.yaml` and `apps/<app-name>/app.yaml`, then update every manifest in the app folder to use `namespace: <app-name>`. If two apps must share storage, point both `app.yaml` files at the same namespace.
 
 ### Step 2: Let ArgoCD sync
 

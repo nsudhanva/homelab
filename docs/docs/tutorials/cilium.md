@@ -5,7 +5,7 @@ title: Cilium CNI
 
 # Cilium CNI
 
-## Step: Install Cilium
+## Step 1: Install Cilium
 
 ```bash
 CILIUM_VERSION=$(grep -E "cilium_version:" ansible/group_vars/all.yaml | head -n 1 | awk -F'\"' '{print $2}')

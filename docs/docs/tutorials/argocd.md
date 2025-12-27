@@ -5,7 +5,7 @@ title: ArgoCD and GitOps
 
 # ArgoCD and GitOps
 
-## Step: Install ArgoCD
+## Step 1: Install ArgoCD
 
 ```bash
 kubectl create namespace argocd
@@ -20,7 +20,7 @@ ArgoCD is exposed via Tailscale Ingress in `infrastructure/argocd-ingress/ingres
 
 :::
 
-## Step: Prepare GitOps bootstrap
+## Step 2: Prepare GitOps bootstrap
 
 Update these files if you fork the repo. The default references point to `nsudhanva/homelab`:
 
@@ -36,13 +36,13 @@ If you deploy the docs app, also update the image in `apps/docs/deployment.yaml`
 
 :::
 
-## Step: Apply the bootstrap
+## Step 3: Apply the bootstrap
 
 ```bash
 kubectl apply -f bootstrap/root.yaml
 ```
 
-## Step: Verify ArgoCD applications
+## Step 4: Verify ArgoCD applications
 
 ```bash
 kubectl get apps -n argocd
@@ -54,7 +54,7 @@ For adding workloads, see [Deploy Apps With GitOps](../how-to/deploy-apps.md).
 
 ApplicationSets watch the `apps/` and `infrastructure/` folders and create applications automatically:
 
-- `apps/*` becomes `app-<folder>`
+- `apps/*/app.yaml` defines `app-<name>` and its namespace
 - `infrastructure/*` becomes `infra-<folder>`
 
 Auto-sync is enabled in the ApplicationSets, so Git is the source of truth.

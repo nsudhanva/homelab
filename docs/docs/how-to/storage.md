@@ -5,7 +5,7 @@ title: Storage
 
 # Storage (Longhorn)
 
-## Step: Storage prerequisites for Longhorn
+## Step 1: Storage prerequisites for Longhorn
 
 ### Install Required Packages
 
@@ -47,11 +47,17 @@ With `createDefaultDiskLabeledNodes: true`, Longhorn only creates disks on nodes
 
 :::
 
+:::note
+
+For single-node clusters, set `defaultReplicaCount: 1` in `bootstrap/templates/longhorn.yaml` to avoid degraded volumes.
+
+:::
+
 ```bash
 kubectl label node $(hostname) node.longhorn.io/create-default-disk=true --overwrite
 ```
 
-## Step: Resize PVCs safely
+## Step 2: Resize PVCs safely
 
 Longhorn supports volume expansion, but Kubernetes does not allow shrinking PVCs in place.
 
@@ -63,11 +69,11 @@ Update the PVC size in Git and let ArgoCD sync. Longhorn will expand the volume 
 
 To reduce a volume size without data loss, create a new PVC at the smaller size and copy data across.
 
-1. Create a new PVC with the target size (for example `jellyfin-media-200`).
-2. Create a temporary Pod that mounts both the old and new PVCs.
-3. Copy data across and verify checksums.
-4. Update the Deployment to use the new PVC.
-5. Remove the old PVC once validated.
+- Create a new PVC with the target size (for example `jellyfin-media-200`).
+- Create a temporary Pod that mounts both the old and new PVCs.
+- Copy data across and verify checksums.
+- Update the Deployment to use the new PVC.
+- Remove the old PVC once validated.
 
 Example copy pod (replace names and namespaces):
 
@@ -76,7 +82,7 @@ apiVersion: v1
 kind: Pod
 metadata:
   name: pvc-migration
-  namespace: jellyfin
+  namespace: media
 spec:
   restartPolicy: Never
   containers:
@@ -98,3 +104,31 @@ spec:
       persistentVolumeClaim:
         claimName: jellyfin-media-200
 ```
+
+## Step 3: Import media data into Longhorn
+
+For large datasets, use `rsync` to copy from your workstation to the node, then move the data into the PVC mount. This avoids `kubectl cp` timeouts and supports resume.
+
+### Step 1: Sync data to the node (resumable)
+
+```bash
+rsync -av --partial --inplace --progress /path/to/Videos/ user@node:/home/user/media-import/
+```
+
+Re-run the same command until it finishes; `rsync` will resume incomplete files.
+
+### Step 2: Find the PVC mount path
+
+```bash
+POD_UID=$(kubectl -n media get pod -l app=jellyfin -o jsonpath='{.items[0].metadata.uid}')
+PVC_ID=$(kubectl -n media get pvc jellyfin-media -o jsonpath='{.spec.volumeName}')
+echo "/var/lib/kubelet/pods/${POD_UID}/volumes/kubernetes.io~csi/${PVC_ID}/mount"
+```
+
+### Step 3: Copy into the PVC
+
+```bash
+sudo rsync -av --delete /home/user/media-import/ /var/lib/kubelet/pods/<pod-uid>/volumes/kubernetes.io~csi/<pvc-id>/mount/Videos/
+```
+
+After the copy, Jellyfin should see the media under `/media/Videos`.
