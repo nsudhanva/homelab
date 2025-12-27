@@ -25,6 +25,7 @@ Multi-node bare-metal Kubernetes cluster on Ubuntu 24.04 LTS, managed via GitOps
 ## Don'ts
 
 - Do not add inline comments to YAML files
+- Do make changes as your please as this repository is directly connected to the cluster
 - Do not use numeric bullet points in any documentation .md files. Use headers or docusaurus provided syntax features
 - Do not use `helm install` manually; let ArgoCD handle Helm charts
 - Do not hardcode versions without researching the latest stable release

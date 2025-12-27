@@ -33,7 +33,7 @@ Use this when you are ready to install on a real Ubuntu host.
 - Ansible provisions hosts in `ansible/`
 - GitOps bootstrap lives in `bootstrap/`
 - Infrastructure components are in `infrastructure/`
-- Applications live in `apps/`
+- Applications live in `apps/` and are synced into per-app namespaces
 
 For day-to-day usage, see [Deploy Apps With GitOps](./how-to/deploy-apps.md), [Validation](./how-to/validation.md), and [Maintenance](./how-to/maintenance.md).
 
@@ -61,7 +61,7 @@ graph TD
   Infra --> Longhorn[Longhorn]
   Apps --> Jellyfin[Jellyfin]
   Apps --> Filebrowser[Filebrowser]
-  Apps --> Hello[hello-homelab]
+  Apps --> Docs[docs]
 ```
 
 ```mermaid

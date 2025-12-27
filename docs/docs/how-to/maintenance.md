@@ -135,6 +135,28 @@ kubectl get pods -A
 kubectl get apps -n argocd
 ```
 
+## Namespace migration
+
+Use this flow to move existing apps out of the `default` namespace.
+
+### Step 1: Add a namespace and update manifests
+
+Create `apps/<app-name>/namespace.yaml` and update every manifest in the app folder to use `namespace: <app-name>`.
+
+### Step 2: Let ArgoCD sync
+
+Once the changes are pushed, ArgoCD will reconcile the app into the new namespace.
+
+### Step 3: Remove old resources
+
+After the new namespace is healthy, delete the old resources in `default` to avoid conflicts.
+
+```bash
+kubectl delete deployment,service,ingress -n default -l app=<app-name>
+```
+
+If the app owns PVCs, plan a data migration before deleting the old claims.
+
 ## Node maintenance window
 
 Use this flow to patch or reboot a node safely.
