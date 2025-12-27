@@ -15,5 +15,3 @@ spec:
         annotations:
           tailscale.com/hostname: gateway-envoy
           tailscale.com/tags: tag:k8s
-        labels:
-          tailscale.com/proxy-class: tailnet-gateway

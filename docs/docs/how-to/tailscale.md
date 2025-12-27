@@ -14,6 +14,19 @@ curl -fsSL https://tailscale.com/install.sh | sh
 sudo tailscale up
 ```
 
+### Update ACL tag owners
+
+Ensure the Tailscale ACL allows the operator to tag devices. Set a real owner for `tag:k8s-operator`, then allow it to own `tag:k8s`:
+
+```
+{
+  "tagOwners": {
+    "tag:k8s-operator": ["autogroup:admin"],
+    "tag:k8s": ["tag:k8s-operator"]
+  }
+}
+```
+
 ### Create OAuth Secret
 
 Get OAuth credentials from https://login.tailscale.com/admin/settings/oauth (create with `devices:write` scope and tag `tag:k8s`).

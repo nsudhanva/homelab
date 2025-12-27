@@ -90,7 +90,20 @@ This repo uses Envoy Gateway with Tailscale as the LoadBalancer provider and Ext
 
 The Gateway API and Envoy Gateway CRDs are applied from `infrastructure/gateway-api-crds/` and `infrastructure/envoy-gateway-crds/` via ArgoCD.
 
-Step 1: Create Cloudflare API token secrets
+Step 1: Update Tailscale ACL tag owners
+
+Ensure the operator can tag devices before you deploy it:
+
+```
+{
+  "tagOwners": {
+    "tag:k8s-operator": ["autogroup:admin"],
+    "tag:k8s": ["tag:k8s-operator"]
+  }
+}
+```
+
+Step 2: Create Cloudflare API token secrets
 
 ```bash
 kubectl create namespace external-dns
@@ -104,11 +117,11 @@ kubectl create secret generic cloudflare-api-token \
   --from-literal=api-token=YOUR_CLOUDFLARE_API_TOKEN
 ```
 
-Step 2: Update the ACME email
+Step 3: Update the ACME email
 
 Set your email in `infrastructure/cert-manager-issuer/cluster-issuer.yaml`.
 
-Step 3: Update the Tailscale Gateway target
+Step 4: Update the Tailscale Gateway target
 
 Set `external-dns.alpha.kubernetes.io/target` in `infrastructure/gateway/gateway.yaml` to the Tailscale hostname created by Envoy Gateway (for example, `gateway-envoy.<tailnet>.ts.net`).
 
