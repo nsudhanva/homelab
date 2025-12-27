@@ -1,0 +1,40 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: envoy-gateway
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/envoyproxy/gateway.git
+    targetRevision: v1.6.1
+    path: charts/gateway-helm
+    helm:
+      values: |
+        deployment:
+          envoyGateway:
+            resources:
+              requests:
+                cpu: 100m
+                memory: 256Mi
+              limits:
+                cpu: 500m
+                memory: 1Gi
+        certgen:
+          job:
+            resources:
+              requests:
+                cpu: 50m
+                memory: 64Mi
+              limits:
+                cpu: 200m
+                memory: 256Mi
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: envoy-gateway
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+    - CreateNamespace=true

@@ -17,7 +17,7 @@ Example layout:
 - `apps/my-app/app.yaml`
 - `apps/my-app/deployment.yaml`
 - `apps/my-app/service.yaml`
-- `apps/my-app/ingress.yaml`
+- `apps/my-app/httproute.yaml`
 
 `app.yaml` defines the app name, path, and namespace. Example:
 
@@ -29,18 +29,36 @@ namespace: my-app
 
 ArgoCD will create an application named `app-my-app` from this folder and sync it to the namespace defined in `app.yaml`.
 
-## Step 2: Use Tailscale ingress for HTTPS
+## Step 2: Use Gateway API for HTTPS
 
-When exposing HTTPS, use `ingressClassName: tailscale` and include the HTTPS + redirect annotations:
+Expose services through the Tailscale Gateway using an `HTTPRoute` in the same namespace.
+
+:::note
+
+Hostnames must fit the wildcard certificate in `infrastructure/gateway/certificate.yaml` (by default `*.sudhanva.me`).
+
+:::
 
 ```yaml
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
 metadata:
+  name: my-app
+  namespace: my-app
   annotations:
-    tailscale.com/tags: tag:k8s
-    tailscale.com/https: "true"
-    tailscale.com/http-redirect: "true"
+    external-dns.alpha.kubernetes.io/expose: "true"
+    external-dns.alpha.kubernetes.io/cloudflare-proxied: "false"
 spec:
-  ingressClassName: tailscale
+  parentRefs:
+  - name: tailscale-gateway
+    namespace: tailscale
+    sectionName: https
+  hostnames:
+  - my-app.sudhanva.me
+  rules:
+  - backendRefs:
+    - name: my-app
+      port: 80
 ```
 
 ## Step 3: Commit and push

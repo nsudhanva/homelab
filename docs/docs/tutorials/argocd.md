@@ -16,7 +16,7 @@ kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath='{.data.pas
 
 :::note
 
-ArgoCD is exposed via Tailscale Ingress in `infrastructure/argocd-ingress/ingress.yaml` (hostname: `argocd`).
+ArgoCD is exposed via Gateway API in `infrastructure/gateway/argocd-httproute.yaml` (hostname: `argocd.sudhanva.me`).
 
 :::
 

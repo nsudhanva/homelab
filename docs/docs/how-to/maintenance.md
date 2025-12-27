@@ -119,7 +119,7 @@ Once the changes are pushed, ArgoCD will reconcile the app into the new namespac
 After the new namespace is healthy, delete the old resources in `default` to avoid conflicts.
 
 ```bash
-kubectl delete deployment,service,ingress -n default -l app=<app-name>
+kubectl delete deployment,service,httproute -n default -l app=<app-name>
 ```
 
 If the app owns PVCs, plan a data migration before deleting the old claims.
@@ -203,10 +203,13 @@ Host-level versions are pinned in `ansible/group_vars/all.yaml`:
 - `containerd_version` for the container runtime
 - `cilium_version` for the CNI
 
-Cluster-level components (Longhorn, Tailscale, ArgoCD) are pinned in their ArgoCD templates or manifests:
+Cluster-level components (Longhorn, Tailscale, Envoy Gateway, cert-manager, ExternalDNS, ArgoCD) are pinned in their ArgoCD templates or manifests:
 
 - `bootstrap/templates/longhorn.yaml`
 - `infrastructure/tailscale/tailscale-operator.yaml`
+- `infrastructure/envoy-gateway/envoy-gateway.yaml`
+- `infrastructure/cert-manager/cert-manager.yaml`
+- `infrastructure/external-dns/external-dns.yaml`
 - `bootstrap/templates/*-appset.yaml` for repo references
 
 ### Step 2: Apply the change consistently

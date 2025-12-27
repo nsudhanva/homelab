@@ -55,3 +55,37 @@ scp user@<tailscale-hostname>:~/.kube/config ~/.kube/config
 sed -i 's|server: https://.*:6443|server: https://<tailscale-hostname>:6443|' ~/.kube/config
 kubectl get pods -A
 ```
+
+## Step 2: Enable custom domains with Gateway API
+
+This repo uses Envoy Gateway, ExternalDNS, and cert-manager with the Tailscale Gateway API setup. Subdomains such as `docs.sudhanva.me` resolve to the Tailscale Gateway while your apex `sudhanva.me` remains managed elsewhere.
+
+:::note
+
+ExternalDNS creates only the subdomain records you annotate. Those records point at the Tailscale hostname, so they are reachable only from tailnet clients.
+
+:::
+
+### Create Cloudflare API token secrets
+
+Create a token in Cloudflare with DNS edit permissions for the `sudhanva.me` zone and store it in both namespaces:
+
+```bash
+kubectl create namespace external-dns
+kubectl create secret generic cloudflare-api-token \
+  --namespace external-dns \
+  --from-literal=api-token=YOUR_CLOUDFLARE_API_TOKEN
+
+kubectl create namespace cert-manager
+kubectl create secret generic cloudflare-api-token \
+  --namespace cert-manager \
+  --from-literal=api-token=YOUR_CLOUDFLARE_API_TOKEN
+```
+
+### Update the ACME email
+
+Set your email in `infrastructure/cert-manager/cluster-issuer.yaml` before syncing.
+
+### Set the Tailscale Gateway target
+
+Update the `external-dns.alpha.kubernetes.io/target` value in `infrastructure/gateway/gateway.yaml` to the Tailscale hostname created by the Envoy Gateway service (for example, `gateway-envoy.<tailnet>.ts.net`). The repo default uses `gateway-envoy.ainu-herring.ts.net`.

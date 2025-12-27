@@ -84,6 +84,32 @@ kubectl wait --for=condition=available --timeout=600s deployment/argocd-server -
 kubectl apply -f bootstrap/root.yaml
 ```
 
+### Step 6: Configure Gateway API custom domains (Tailscale + Cloudflare)
+
+This repo uses Envoy Gateway with Tailscale as the LoadBalancer provider and ExternalDNS to manage subdomain records. Your apex `sudhanva.me` stays where it is; only subdomains that you annotate are managed here.
+
+Step 1: Create Cloudflare API token secrets
+
+```bash
+kubectl create namespace external-dns
+kubectl create secret generic cloudflare-api-token \
+  --namespace external-dns \
+  --from-literal=api-token=YOUR_CLOUDFLARE_API_TOKEN
+
+kubectl create namespace cert-manager
+kubectl create secret generic cloudflare-api-token \
+  --namespace cert-manager \
+  --from-literal=api-token=YOUR_CLOUDFLARE_API_TOKEN
+```
+
+Step 2: Update the ACME email
+
+Set your email in `infrastructure/cert-manager/cluster-issuer.yaml`.
+
+Step 3: Update the Tailscale Gateway target
+
+Set `external-dns.alpha.kubernetes.io/target` in `infrastructure/gateway/gateway.yaml` to the Tailscale hostname created by Envoy Gateway (for example, `gateway-envoy.<tailnet>.ts.net`).
+
 ## Local Multipass Cluster
 
 Use the Multipass walkthrough in `docs/docs/tutorials/local-multipass-cluster.md` to validate changes locally before moving to bare metal.

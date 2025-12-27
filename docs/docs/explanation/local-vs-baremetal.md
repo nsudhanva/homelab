@@ -15,7 +15,7 @@ This document explains how the Multipass-based local cluster differs from a bare
 | Init system | Native systemd (PID 1) | Native systemd (PID 1) |
 | File system | Virtual disk image | Native filesystem |
 | Networking | Virtual NICs, NAT or bridge | Physical NICs |
-| Ingress | Tailscale in VM | Tailscale on host |
+| Gateway API | Tailscale in VM | Tailscale on host |
 
 ## Kernel and modules
 
