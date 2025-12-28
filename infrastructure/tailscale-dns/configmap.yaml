@@ -5,14 +5,14 @@ metadata:
   namespace: tailscale-dns
 data:
   Corefile: |
-    .:53 {
+    sudhanva.me:53 {
         errors
         health
         ready
         template IN CNAME {
-            match "^docs\\.sudhanva\\.me\\.$"
+            match "^(.*)\\.sudhanva\\.me\\.$"
             answer "{{ .Name }} 60 IN CNAME gateway-envoy.ainu-herring.ts.net."
         }
-        forward . 100.100.100.100
+        forward . 1.1.1.1 1.0.0.1
         cache 30
     }

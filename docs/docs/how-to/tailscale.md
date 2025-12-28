@@ -133,7 +133,7 @@ Keep the public Cloudflare record pointed at Pages, and add a Tailscale DNS over
 
 ### Deploy the split-DNS resolver
 
-This repo includes a CoreDNS deployment that serves `docs.sudhanva.me` as a CNAME to the Tailscale Gateway hostname and forwards everything else to Tailscale DNS.
+This repo includes a CoreDNS deployment that serves any `*.sudhanva.me` hostname as a CNAME to the Tailscale Gateway hostname and forwards everything else to public DNS.
 
 Sync the `infrastructure/tailscale-dns/` component, then capture the Tailscale IP for the resolver:
 
