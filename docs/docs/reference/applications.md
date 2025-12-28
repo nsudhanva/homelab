@@ -54,3 +54,15 @@ The `media` namespace is shared by Jellyfin and Filebrowser so they can use the 
 | Deployment | `apps/homer/deployment.yaml` | Uses `b4bz/homer:v25.11.1` |
 | Service | `apps/homer/service.yaml` | ClusterIP on port 80 |
 | HTTPRoute | `apps/homer/httproute.yaml` | `home.sudhanva.me` |
+
+## Tdarr
+
+| Item | Path | Notes |
+| --- | --- | --- |
+| App config | `apps/tdarr/app.yaml` | ArgoCD app definition |
+| Server deployment | `apps/tdarr/deployment-server.yaml` | Web UI and server |
+| Node deployment | `apps/tdarr/deployment-node.yaml` | NVIDIA GPU worker |
+| Intel node deployment | `apps/tdarr/deployment-node-intel.yaml` | Intel QSV worker |
+| PVCs | `apps/tdarr/pvc-server.yaml`, `apps/tdarr/pvc-configs.yaml`, `apps/tdarr/pvc-logs.yaml` | Longhorn storage |
+| Service | `apps/tdarr/service.yaml` | ClusterIP on port 80 |
+| HTTPRoute | `apps/tdarr/httproute.yaml` | `tdarr.sudhanva.me` |

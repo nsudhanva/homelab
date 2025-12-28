@@ -1,24 +1,24 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: tdarr-node
+  name: tdarr-node-intel
   namespace: media
 spec:
   replicas: 1
   selector:
     matchLabels:
       app: tdarr
-      component: node
+      component: node-intel
   strategy:
     type: Recreate
   template:
     metadata:
       labels:
         app: tdarr
-        component: node
+        component: node-intel
     spec:
       containers:
-        - name: tdarr-node
+        - name: tdarr-node-intel
           image: ghcr.io/haveagitgat/tdarr_node:2.58.02
           env:
             - name: TZ
@@ -30,7 +30,7 @@ spec:
             - name: UMASK_SET
               value: "002"
             - name: nodeName
-              value: "TdarrNvidia"
+              value: "TdarrIntel"
             - name: serverIP
               value: "tdarr"
             - name: serverPort
@@ -50,26 +50,22 @@ spec:
             - name: startPaused
               value: "false"
             - name: transcodegpuWorkers
-              value: "3"
+              value: "1"
             - name: transcodecpuWorkers
               value: "0"
             - name: healthcheckgpuWorkers
-              value: "3"
+              value: "1"
             - name: healthcheckcpuWorkers
               value: "0"
-            - name: NVIDIA_DRIVER_CAPABILITIES
-              value: "all"
-            - name: NVIDIA_VISIBLE_DEVICES
-              value: "all"
             - name: cronPluginUpdate
               value: ""
           resources:
             requests:
-              nvidia.com/gpu: 1
+              gpu.intel.com/i915: 1
               memory: 2Gi
               cpu: 1000m
             limits:
-              nvidia.com/gpu: 1
+              gpu.intel.com/i915: 1
               memory: 4Gi
               cpu: 2000m
           volumeMounts:
