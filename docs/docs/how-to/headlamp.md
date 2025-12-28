@@ -134,6 +134,29 @@ Apply the change using your kubeadm workflow and restart the API server. This is
 
 If you edit the static manifest directly, keep the `oidc:` prefixes quoted to avoid YAML parsing errors.
 
+### Step 3a: Ensure cluster DNS resolves Vault
+
+The API server validates OIDC against `https://vault.sudhanva.me`. If CoreDNS cannot resolve that hostname, authentication will fail with a `no such host` error.
+
+This repo includes a CoreDNS override that forwards `sudhanva.me` lookups to the `tailscale-dns` service:
+
+```yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: coredns
+  namespace: kube-system
+data:
+  Corefile: |
+    sudhanva.me:53 {
+        errors
+        cache 30
+        forward . tailscale-dns.tailscale-dns.svc.cluster.local
+    }
+```
+
+The manifest lives in `infrastructure/coredns/configmap.yaml`. After it syncs, CoreDNS can resolve `vault.sudhanva.me` inside the cluster.
+
 ### Step 4: Sync Headlamp and log in
 
 Headlamp reads OIDC config from the `headlamp-oidc` Secret created by External Secrets. After ArgoCD syncs the app, use the Sign In button.
