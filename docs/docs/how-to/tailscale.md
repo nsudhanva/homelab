@@ -158,6 +158,44 @@ In the Tailscale admin console, add a nameserver and restrict it to `sudhanva.me
 
 The docs HTTPRoute intentionally omits the ExternalDNS expose annotation so ExternalDNS does not overwrite the public record.
 
+### Verify split-horizon behavior
+
+On a tailnet device:
+
+```bash
+dig +short docs.sudhanva.me @100.100.100.100
+curl -I https://docs.sudhanva.me
+```
+
+Expected results:
+
+- DNS resolves to the Tailscale Gateway IP (for example, `100.88.7.18`).
+- Response headers do not include Cloudflare headers like `cf-ray`.
+
+Off the tailnet:
+
+```bash
+dig +short docs.sudhanva.me @1.1.1.1
+curl -I https://docs.sudhanva.me
+```
+
+Expected results:
+
+- DNS resolves to Cloudflare IPs.
+- Response headers include `server: cloudflare`.
+
+### Troubleshooting
+
+If tailnet queries still hit Cloudflare:
+
+- Toggle Tailscale off/on to refresh DNS settings.
+- Flush macOS DNS cache:
+
+```bash
+sudo dscacheutil -flushcache
+sudo killall -HUP mDNSResponder
+```
+
 ## Troubleshooting
 
 ### Connections to subdomains time out

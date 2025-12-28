@@ -38,6 +38,22 @@ kubectl describe httproute <name> -n <namespace>
 
 Hubble UI is available at `https://hubble.sudhanva.me` from a Tailnet client once the HTTPRoute syncs.
 
+### Validate split-horizon DNS
+
+On a tailnet client, `docs.sudhanva.me` should resolve to the Tailscale Gateway IP:
+
+```bash
+dig +short docs.sudhanva.me @100.100.100.100
+curl -I https://docs.sudhanva.me
+```
+
+Off the tailnet, it should resolve to Cloudflare:
+
+```bash
+dig +short docs.sudhanva.me @1.1.1.1
+curl -I https://docs.sudhanva.me
+```
+
 ## Step 4: Run local checks before push
 
 ```bash
