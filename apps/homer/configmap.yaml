@@ -30,6 +30,12 @@ data:
             icon: "fas fa-folder-open"
             tag: "media"
             target: "_blank"
+          - name: "Tdarr"
+            subtitle: "GPU transcoding"
+            url: "https://tdarr.sudhanva.me"
+            icon: "fas fa-bolt"
+            tag: "media"
+            target: "_blank"
       - name: "Docs"
         icon: "fas fa-book"
         items:
