@@ -28,5 +28,3 @@ Check the latest stable release before changing any pinned version.
 - Vault chart: `0.31.0` in `infrastructure/vault/vault.yaml`
 - Intel GPU plugin: `0.34.0` in `infrastructure/gpu/intel-plugin.yaml`
 - NVIDIA GPU plugin: `0.17.0` in `infrastructure/gpu/nvidia-plugin.yaml`
-- Tdarr server: `2.58.02` in `apps/tdarr/deployment-server.yaml`
-- Tdarr node: `2.58.02` in `apps/tdarr/deployment-node.yaml`
