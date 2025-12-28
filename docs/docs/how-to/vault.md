@@ -129,3 +129,16 @@ Once the secrets match Vault, remove any manually created secrets so External Se
 ## Step 8: Access the Vault UI
 
 Vault is exposed at `https://vault.sudhanva.me` via the Tailscale Gateway.
+
+## Troubleshooting
+
+### ClusterSecretStore not ready
+
+If `infra-external-secrets` is Degraded or ExternalSecrets show `SecretSyncedError`, check the Vault token secret:
+
+```bash
+kubectl -n external-secrets get secret vault-eso-token
+kubectl -n external-secrets get clustersecretstore vault -o yaml
+```
+
+The ClusterSecretStore will not become Ready until `vault-eso-token` exists and contains a valid token.
