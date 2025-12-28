@@ -207,3 +207,26 @@ These files implement the OIDC wiring for Headlamp:
 
 - `apps/headlamp/external-secret-oidc.yaml`
 - `apps/headlamp/deployment.yaml`
+
+## OIDC Admin Access
+
+Headlamp users authenticate as OIDC identities. To grant full admin access, bind the OIDC subject to `cluster-admin`.
+
+Use a separate manifest so ArgoCD can manage it:
+
+```yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: headlamp-oidc-admin
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: cluster-admin
+subjects:
+- apiGroup: rbac.authorization.k8s.io
+  kind: User
+  name: oidc:REPLACE_WITH_ENTITY_ID
+```
+
+The repo includes `apps/headlamp/clusterrolebinding-oidc.yaml`. Replace the subject with your Vault entity ID if it changes.
