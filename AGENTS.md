@@ -15,6 +15,7 @@ Multi-node bare-metal Kubernetes cluster on Ubuntu 24.04 LTS, managed via GitOps
 - Place user applications in `apps/{app-name}/`
 - Use Tailscale Gateway API (`gatewayClassName: tailscale`) for HTTPS exposure
 - Commit small, logical changes with descriptive messages. Use brief commit messages.
+- If you add a new httproute, update homer configmap to add it to the dashboard
 - Add any required documentation under `docs/`
 - Use the [Divio documentation system](https://docs.divio.com/documentation-system/) for structuring docs:
   - **Tutorials**: Learning-oriented (e.g., "Setting up the cluster").
