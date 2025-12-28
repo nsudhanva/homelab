@@ -127,7 +127,7 @@ The `EnvoyProxy` resource configures the Envoy deployment as a `LoadBalancer` wi
 ExternalDNS watches HTTPRoute resources with the annotation `external-dns.alpha.kubernetes.io/expose: "true"` and creates DNS records in Cloudflare:
 
 - Subdomain CNAMEs (e.g., `docs.sudhanva.me`)
-- Pointing to the Tailscale hostname (`gateway-envoy.`<tailnet>`.ts.net`)
+- Pointing to the Tailscale hostname (`gateway-envoy.<tailnet>.ts.net`)
 
 ### cert-manager
 
@@ -184,7 +184,7 @@ cilium config view | grep -E "bpf-lb-sock|kubeProxyReplacement"
 
 When you visit `https://docs.sudhanva.me` from your Mac:
 
-- **DNS Resolution**: Your Tailscale client queries Tailscale DNS (100.100.100.100), which knows that `docs.sudhanva.me` points to `gateway-envoy.`<tailnet>`.ts.net`, which resolves to `100.88.7.18`.
+- **DNS Resolution**: Your Tailscale client queries Tailscale DNS (100.100.100.100), which knows that `docs.sudhanva.me` points to `gateway-envoy.<tailnet>.ts.net`, which resolves to `100.88.7.18`.
 
 - **TLS Connection**: Your browser connects to `100.88.7.18:443` via the WireGuard tunnel. The Tailscale proxy pod receives the connection.
 
