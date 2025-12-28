@@ -93,7 +93,7 @@ Some hostnames need different targets on and off the tailnet. For example, `docs
 To make this work:
 
 - Keep the public Cloudflare DNS record pointing at Pages.
-- Add a Tailscale DNS override for the same hostname pointing at `gateway-envoy.<tailnet>.ts.net`.
+- Route tailnet DNS through the `tailscale-dns` resolver, which returns a CNAME to `gateway-envoy.<tailnet>.ts.net`.
 - Do not annotate the HTTPRoute with `external-dns.alpha.kubernetes.io/expose: "true"` so ExternalDNS does not overwrite the public record.
 
 ## Quick validation commands

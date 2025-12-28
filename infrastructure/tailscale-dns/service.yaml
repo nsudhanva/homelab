@@ -1,0 +1,22 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: tailscale-dns
+  namespace: tailscale-dns
+  annotations:
+    tailscale.com/hostname: tailscale-dns
+    tailscale.com/tags: tag:k8s
+spec:
+  type: LoadBalancer
+  loadBalancerClass: tailscale
+  ports:
+  - name: dns
+    port: 53
+    protocol: UDP
+    targetPort: 53
+  - name: dns-tcp
+    port: 53
+    protocol: TCP
+    targetPort: 53
+  selector:
+    app: tailscale-dns

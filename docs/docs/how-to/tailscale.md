@@ -131,17 +131,28 @@ The docs hostname serves two backends:
 
 Keep the public Cloudflare record pointed at Pages, and add a Tailscale DNS override for the same hostname.
 
+### Deploy the split-DNS resolver
+
+This repo includes a CoreDNS deployment that serves `docs.sudhanva.me` as a CNAME to the Tailscale Gateway hostname and forwards everything else to Tailscale DNS.
+
+Sync the `infrastructure/tailscale-dns/` component, then capture the Tailscale IP for the resolver:
+
+```bash
+kubectl -n tailscale-dns get svc tailscale-dns -o wide
+```
+
+If the Tailscale Gateway hostname changes, update it in `infrastructure/tailscale-dns/configmap.yaml`.
+
 ### Configure Cloudflare (public)
 
 Set `docs.sudhanva.me` to the Cloudflare Pages hostname in the `sudhanva.me` zone.
 
 ### Configure Tailscale DNS (tailnet)
 
-In the Tailscale admin console, add a DNS override:
+In the Tailscale admin console, add a nameserver and restrict it to `sudhanva.me`:
 
-- Name: `docs.sudhanva.me`
-- Type: CNAME
-- Value: `gateway-envoy.<tailnet>.ts.net`
+- Nameserver: the Tailscale IP from `tailscale-dns`
+- Restrict to domain: `sudhanva.me`
 
 ### Keep ExternalDNS from overriding public DNS
 

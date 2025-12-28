@@ -26,6 +26,7 @@ kubectl get gateways -n tailscale
 kubectl get certificates -n tailscale
 kubectl get pods -n tailscale
 kubectl get pods -n envoy-gateway
+kubectl get svc -n tailscale-dns
 kubectl get httproute -A
 ```
 
