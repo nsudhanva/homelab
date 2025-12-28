@@ -44,6 +44,16 @@ The `media` namespace is shared by Jellyfin and Filebrowser so they can use the 
 | Service | `apps/docs/service.yaml` | ClusterIP on port 80 |
 | HTTPRoute | `apps/docs/httproute.yaml` | `docs.sudhanva.me` split-horizon (public Pages + tailnet Gateway) |
 
+## Headlamp
+
+| Item | Path | Notes |
+| --- | --- | --- |
+| Namespace | `apps/headlamp/namespace.yaml` | Dedicated `headlamp` namespace |
+| App config | `apps/headlamp/app.yaml` | ArgoCD app definition |
+| Deployment | `apps/headlamp/deployment.yaml` | `ghcr.io/headlamp-k8s/headlamp:v0.39.0` |
+| Service | `apps/headlamp/service.yaml` | ClusterIP on port 80 |
+| HTTPRoute | `apps/headlamp/httproute.yaml` | `headlamp.sudhanva.me` |
+
 ## Home dashboard (Homer)
 
 | Item | Path | Notes |

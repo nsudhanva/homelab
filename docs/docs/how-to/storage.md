@@ -5,6 +5,29 @@ title: Storage
 
 # Storage (Longhorn)
 
+```mermaid
+flowchart LR
+  App["App Pod"] --> PVC["PVC"]
+  PVC --> Longhorn["Longhorn volume"]
+  Longhorn --> Disk["Node disk (/var/lib/longhorn)"]
+```
+
+## Detailed Volume Path
+
+```mermaid
+flowchart LR
+  Pod["Pod mounts /srv or /media"] --> Kubelet["kubelet"]
+  Kubelet --> CSI["Longhorn CSI driver"]
+  CSI --> Volume["Longhorn Volume"]
+  Volume --> Engine["Longhorn Engine"]
+  Engine --> Replica1["Replica A"]
+  Engine --> Replica2["Replica B"]
+  Engine --> Replica3["Replica C"]
+  Replica1 --> Disk1["Node disk"]
+  Replica2 --> Disk2["Node disk"]
+  Replica3 --> Disk3["Node disk"]
+```
+
 ## Step 1: Storage prerequisites for Longhorn
 
 ### Install Required Packages

@@ -7,6 +7,24 @@ title: Vault Secrets
 
 Move cluster secrets into Vault and sync them into Kubernetes with External Secrets Operator.
 
+```mermaid
+flowchart LR
+  Vault["Vault kv/"] --> ESO["External Secrets Operator"]
+  ESO --> Secret["Kubernetes Secret"]
+  Secret --> Workload["Apps and controllers"]
+```
+
+## Detailed Secret Sync Path
+
+```mermaid
+flowchart TB
+  Vault["Vault KV v2 (kv/)"] --> Store["ClusterSecretStore"]
+  Store --> ESO["External Secrets Operator"]
+  ESO --> ExternalSecret["ExternalSecret"]
+  ExternalSecret --> Target["Target Secret"]
+  Target --> Consumers["Deployments/Controllers"]
+```
+
 ## Step 1: Deploy Vault and External Secrets Operator
 
 Push the repo changes and let ArgoCD sync `infrastructure/vault/` and `infrastructure/external-secrets/`.

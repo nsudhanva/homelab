@@ -36,6 +36,50 @@ If you deploy the docs app, also update the image in `apps/docs/deployment.yaml`
 
 :::
 
+```mermaid
+flowchart TD
+  Root["bootstrap/root.yaml"] --> Argo["ArgoCD"]
+  Argo --> InfraSet["infra ApplicationSet"]
+  Argo --> AppsSet["apps ApplicationSet"]
+  InfraSet --> InfraApps["infra-* apps from infrastructure/"]
+  AppsSet --> UserApps["app-* apps from apps/"]
+```
+
+## Detailed ApplicationSet Wiring
+
+```mermaid
+flowchart TB
+  subgraph Bootstrap["bootstrap/"]
+    Root["root.yaml"]
+    InfraAppSet["templates/infra-appset.yaml"]
+    AppsAppSet["templates/apps-appset.yaml"]
+  end
+
+  subgraph Repo["Git repo"]
+    InfraDir["infrastructure/*"]
+    AppsDir["apps/*"]
+    AppYaml["apps/*/app.yaml"]
+  end
+
+  subgraph Argo["ArgoCD namespace"]
+    ArgoServer["argocd-server"]
+    AppSetController["applicationset-controller"]
+    InfraApps["Applications: infra-*"]
+    UserApps["Applications: app-*"]
+  end
+
+  Root --> ArgoServer
+  Root --> InfraAppSet
+  Root --> AppsAppSet
+  InfraAppSet --> AppSetController
+  AppsAppSet --> AppSetController
+  InfraDir --> InfraApps
+  AppYaml --> UserApps
+  AppsDir --> UserApps
+  AppSetController --> InfraApps
+  AppSetController --> UserApps
+```
+
 ## Step 3: Apply the bootstrap
 
 ```bash

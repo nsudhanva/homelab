@@ -4,15 +4,7 @@ Bare-metal Kubernetes on Ubuntu 24.04 LTS with Ansible for node provisioning and
 
 ## Quick Start
 
-### Local Cluster (Multipass)
-
-```bash
-./scripts/local-cluster.sh up
-```
-
-Creates a 3-node cluster on your workstation in ~10 minutes.
-
-### Bare Metal
+### Bare Metal (Primary)
 
 ```bash
 # Edit inventory
@@ -28,6 +20,18 @@ cilium install --set kubeProxyReplacement=true --set socketLB.hostNamespaceOnly=
 # Bootstrap GitOps
 kubectl apply -f bootstrap/root.yaml
 ```
+
+### Local Cluster (Optional Rehearsal)
+
+```bash
+./scripts/local-cluster.sh up
+```
+
+Creates a 3-node cluster on your workstation in ~10 minutes.
+
+---
+
+Bare metal is the primary target for this repo. Use the Multipass flow only to test changes before touching hardware.
 
 ## Documentation
 

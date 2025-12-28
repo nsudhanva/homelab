@@ -5,7 +5,7 @@ title: Local Multipass Cluster
 
 # Local Multipass Cluster
 
-This tutorial runs a multi-node Kubernetes cluster on local VMs using Multipass. The shape mirrors the bare-metal setup with one control plane and two workers.
+This tutorial runs a multi-node Kubernetes cluster on local VMs using Multipass. It is intended as an optional rehearsal path before the bare-metal setup, and mirrors the same control plane and worker layout.
 
 ## Quick Start (Automated)
 

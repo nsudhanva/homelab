@@ -9,39 +9,9 @@ Multi-node bare-metal Kubernetes cluster on Ubuntu 24.04 LTS, managed via GitOps
 
 ## Quick Start
 
-Choose your path based on where you want to run Kubernetes:
+The primary goal of this repository is a bare-metal, multi-node cluster. The local VM path is a rehearsal option for testing changes before touching hardware.
 
-### Option A: Local Rehearsal (Recommended First)
-
-Run a full multi-node cluster on your workstation using Multipass VMs. This mirrors the bare-metal setup without needing real hardware.
-
-**One command:**
-
-```bash
-./scripts/local-cluster.sh up
-```
-
-This script:
-
-- Creates 3 VMs (1 control plane, 2 workers)
-- Runs Ansible provisioning
-- Initializes Kubernetes with kubeadm
-- Installs Cilium CNI
-- Runs a smoke test
-
-**Time:** ~10 minutes
-
-**Prerequisites:** Multipass, Ansible, kubectl ([Install guide](./tutorials/local-multipass-cluster.md#step-1-install-host-tools))
-
-When done, destroy with:
-
-```bash
-./scripts/local-cluster.sh down
-```
-
----
-
-### Option B: Bare Metal Deployment
+### Bare Metal Deployment (Primary)
 
 Deploy to real Ubuntu 24.04 hardware with SSH access.
 
@@ -72,6 +42,93 @@ ArgoCD will sync all infrastructure and apps from Git automatically.
 **Worker join steps:** [Join workers](./tutorials/join-workers.md)
 
 ---
+
+### Local Rehearsal (Optional)
+
+Run a full multi-node cluster on your workstation using Multipass VMs. This mirrors the bare-metal setup without needing real hardware.
+
+**One command:**
+
+```bash
+./scripts/local-cluster.sh up
+```
+
+This script:
+
+- Creates 3 VMs (1 control plane, 2 workers)
+- Runs Ansible provisioning
+- Initializes Kubernetes with kubeadm
+- Installs Cilium CNI
+- Runs a smoke test
+
+**Time:** ~10 minutes
+
+**Prerequisites:** Multipass, Ansible, kubectl ([Install guide](./tutorials/local-multipass-cluster.md#step-1-install-host-tools))
+
+When done, destroy with:
+
+```bash
+./scripts/local-cluster.sh down
+```
+
+## Cluster Bring-up Flow
+
+```mermaid
+flowchart TD
+  Inventory["Inventory + group_vars"] --> Ansible["Ansible provisioning"]
+  Ansible --> Kubeadm["kubeadm init/join"]
+  Kubeadm --> Cilium["Cilium install"]
+  Cilium --> Bootstrap["ArgoCD bootstrap (bootstrap/root.yaml)"]
+  Bootstrap --> AppSets["ApplicationSets"]
+  AppSets --> Infra["Infrastructure components"]
+  AppSets --> Apps["User apps"]
+```
+
+## Cluster Topology (Logical)
+
+```mermaid
+flowchart TB
+  subgraph Nodes["Nodes"]
+    CP["Control plane"]
+    W1["Worker 1"]
+    W2["Worker 2"]
+  end
+
+  subgraph SystemNS["System namespaces"]
+    KubeSystem["kube-system"]
+    ArgoNS["argocd"]
+    EnvoyNS["envoy-gateway"]
+    TailNS["tailscale"]
+    CertNS["cert-manager"]
+    ExtDNS["external-dns"]
+    ExtSecrets["external-secrets"]
+    VaultNS["vault"]
+    LonghornNS["longhorn-system"]
+  end
+
+  subgraph AppNS["App namespaces"]
+    MediaNS["media"]
+    DocsNS["docs"]
+    HomerNS["homer"]
+    HeadlampNS["headlamp"]
+  end
+
+  CP --> KubeSystem
+  CP --> ArgoNS
+  W1 --> MediaNS
+  W2 --> MediaNS
+  W1 --> DocsNS
+  W2 --> HomerNS
+  W1 --> HeadlampNS
+  W2 --> HeadlampNS
+  CP --> EnvoyNS
+  CP --> TailNS
+  CP --> CertNS
+  CP --> ExtDNS
+  CP --> ExtSecrets
+  CP --> VaultNS
+  CP --> LonghornNS
+```
 
 ## What Gets Deployed
 

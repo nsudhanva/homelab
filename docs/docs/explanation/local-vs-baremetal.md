@@ -7,6 +7,44 @@ title: Local Simulation vs Bare Metal
 
 This document explains how the Multipass-based local cluster differs from a bare-metal deployment.
 
+```mermaid
+flowchart LR
+  Ansible["Ansible provisioning"] --> Local["Multipass VMs"]
+  Ansible --> Bare["Bare metal nodes"]
+  Kubeadm["kubeadm init/join"] --> Local
+  Kubeadm --> Bare
+  GitOps["ArgoCD GitOps"] --> Local
+  GitOps --> Bare
+```
+
+## Detailed Environment Parity
+
+```mermaid
+flowchart TB
+  subgraph Local["Local (Multipass)"]
+    VMs["Ubuntu VMs"]
+    VirtualNIC["Virtual NICs"]
+    VirtualDisk["VM disks"]
+  end
+
+  subgraph Bare["Bare metal"]
+    Nodes["Ubuntu nodes"]
+    PhysicalNIC["Physical NICs"]
+    PhysicalDisk["Physical disks"]
+  end
+
+  Ansible["Ansible roles"] --> VMs
+  Ansible --> Nodes
+  VMs --> KubeadmLocal["kubeadm init/join"]
+  Nodes --> KubeadmBare["kubeadm init/join"]
+  KubeadmLocal --> CiliumLocal["Cilium"]
+  KubeadmBare --> CiliumBare["Cilium"]
+  CiliumLocal --> GitOpsLocal["ArgoCD + ApplicationSets"]
+  CiliumBare --> GitOpsBare["ArgoCD + ApplicationSets"]
+  VirtualDisk --> LonghornLocal["Longhorn"]
+  PhysicalDisk --> LonghornBare["Longhorn"]
+```
+
 ## Differences at a glance
 
 | Feature | Local (Multipass VM) | Bare Metal (Production) |

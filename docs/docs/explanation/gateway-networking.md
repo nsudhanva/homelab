@@ -18,10 +18,10 @@ flowchart TB
     end
 
     subgraph Cluster["Kubernetes Cluster"]
-        TS["Tailscale Proxy Pod<br/>(gateway-envoy)"]
-        SVC["LoadBalancer Service<br/>(ClusterIP: 10.x.x.x)"]
-        ENVOY["Envoy Gateway<br/>(TLS Termination)"]
-        APP["App Pod<br/>(e.g., docs, jellyfin)"]
+        TS["Tailscale Proxy Pod (gateway-envoy)"]
+        SVC["LoadBalancer Service (ClusterIP)"]
+        ENVOY["Envoy Gateway (TLS Termination)"]
+        APP["App Pod (e.g., docs, jellyfin)"]
     end
 
     subgraph External["External Services"]
@@ -37,6 +37,69 @@ flowchart TB
     ENVOY -->|"5. Route by hostname"| APP
 
     LE -.->|"ACME DNS-01"| CF
+```
+
+## Detailed Request Path
+
+```mermaid
+sequenceDiagram
+    participant Client as Tailnet Client
+    participant TSdns as Tailscale DNS
+    participant CF as Cloudflare DNS
+    participant TS as Tailscale Proxy Pod
+    participant Svc as Envoy Service (ClusterIP)
+    participant Envoy as Envoy Gateway
+    participant Route as HTTPRoute
+    participant AppSvc as App Service
+    participant Pod as App Pod
+
+    Client->>TSdns: Query docs.sudhanva.me
+    TSdns->>CF: Resolve CNAME gateway-envoy.[tailnet].ts.net
+    CF-->>TSdns: Tailscale hostname
+    TSdns-->>Client: 100.x.y.z
+    Client->>TS: TLS 443 to 100.x.y.z
+    TS->>Svc: DNAT to ClusterIP:443
+    Svc->>Envoy: Forward to Envoy Gateway
+    Envoy->>Route: Match Host header + SNI
+    Route->>AppSvc: Pick backend Service:80
+    AppSvc->>Pod: Forward to Pod:8080
+    Pod-->>Client: HTTP response
+```
+
+## Control Plane Objects and Ownership
+
+```mermaid
+flowchart LR
+  subgraph DNS["DNS + TLS"]
+    CF["Cloudflare DNS zone"]
+    LE["Let's Encrypt"]
+    Issuer["ClusterIssuer"]
+    Cert["Certificate (wildcard)"]
+  end
+
+  subgraph Tailscale["Tailscale"]
+    Operator["Tailscale Operator"]
+    ProxySvc["Envoy Service (LoadBalancer class)"]
+    ProxyPod["Proxy Pod (gateway-envoy)"]
+  end
+
+  subgraph Gateway["Gateway API"]
+    GatewayClass["GatewayClass tailscale"]
+    Gateway["Gateway tailscale-gateway"]
+    EnvoyProxy["EnvoyProxy"]
+    HTTPRoute["HTTPRoute (apps/*/httproute.yaml)"]
+  end
+
+  CF --> Issuer
+  Issuer --> Cert
+  Cert --> Gateway
+  Operator --> ProxyPod
+  ProxySvc --> ProxyPod
+  EnvoyProxy --> ProxySvc
+  GatewayClass --> Gateway
+  Gateway --> HTTPRoute
+  HTTPRoute --> ProxySvc
+  LE -.-> CF
 ```
 
 ## Components
@@ -64,7 +127,7 @@ The `EnvoyProxy` resource configures the Envoy deployment as a `LoadBalancer` wi
 ExternalDNS watches HTTPRoute resources with the annotation `external-dns.alpha.kubernetes.io/expose: "true"` and creates DNS records in Cloudflare:
 
 - Subdomain CNAMEs (e.g., `docs.sudhanva.me`)
-- Pointing to the Tailscale hostname (`gateway-envoy.<tailnet>.ts.net`)
+- Pointing to the Tailscale hostname (`gateway-envoy.`<tailnet>`.ts.net`)
 
 ### cert-manager
 
@@ -121,7 +184,7 @@ cilium config view | grep -E "bpf-lb-sock|kubeProxyReplacement"
 
 When you visit `https://docs.sudhanva.me` from your Mac:
 
-- **DNS Resolution**: Your Tailscale client queries Tailscale DNS (100.100.100.100), which knows that `docs.sudhanva.me` points to `gateway-envoy.<tailnet>.ts.net`, which resolves to `100.88.7.18`.
+- **DNS Resolution**: Your Tailscale client queries Tailscale DNS (100.100.100.100), which knows that `docs.sudhanva.me` points to `gateway-envoy.`<tailnet>`.ts.net`, which resolves to `100.88.7.18`.
 
 - **TLS Connection**: Your browser connects to `100.88.7.18:443` via the WireGuard tunnel. The Tailscale proxy pod receives the connection.
 

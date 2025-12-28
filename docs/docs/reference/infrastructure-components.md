@@ -7,6 +7,46 @@ title: Infrastructure Components
 
 This page maps the infrastructure folders to their roles in the cluster.
 
+```mermaid
+flowchart TB
+  subgraph Git["Git repo folders"]
+    Boot["bootstrap/"]
+    Infra["infrastructure/"]
+    Apps["apps/"]
+  end
+
+  subgraph Argo["ArgoCD"]
+    AppSetInfra["ApplicationSet infra"]
+    AppSetApps["ApplicationSet apps"]
+    InfraApps["infra-* apps"]
+    UserApps["app-* apps"]
+  end
+
+  subgraph Cluster["Cluster namespaces"]
+    Tailscale["tailscale"]
+    Envoy["envoy-gateway"]
+    Cert["cert-manager"]
+    ExtDNS["external-dns"]
+    ExtSecrets["external-secrets"]
+    Vault["vault"]
+    Longhorn["longhorn-system"]
+  end
+
+  Boot --> AppSetInfra
+  Boot --> AppSetApps
+  Infra --> InfraApps
+  Apps --> UserApps
+  AppSetInfra --> InfraApps
+  AppSetApps --> UserApps
+  InfraApps --> Tailscale
+  InfraApps --> Envoy
+  InfraApps --> Cert
+  InfraApps --> ExtDNS
+  InfraApps --> ExtSecrets
+  InfraApps --> Vault
+  InfraApps --> Longhorn
+```
+
 ## ArgoCD ApplicationSets
 
 ApplicationSets watch `apps/` and `infrastructure/` and create ArgoCD Applications automatically.
