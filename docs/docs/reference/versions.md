@@ -20,7 +20,6 @@ Check the latest stable release before changing any pinned version.
 - Tailscale Operator: `1.92.4` in `infrastructure/tailscale/tailscale-operator.yaml`
 - Envoy Gateway: `v1.6.1` image tag in `infrastructure/envoy-gateway/envoy-gateway.yaml` (chart `v0.0.0-latest`)
 - Gateway API CRDs: `v1.4.1` in `infrastructure/gateway-api-crds/`
-- Envoy Gateway CRDs: `v1.6.1` in `infrastructure/envoy-gateway-crds/`
 - cert-manager: `v1.19.2` in `infrastructure/cert-manager/cert-manager.yaml`
 - ExternalDNS chart: `1.19.0` in `infrastructure/external-dns/external-dns.yaml`
 - External Secrets chart: `1.2.0` in `infrastructure/external-secrets/external-secrets.yaml`

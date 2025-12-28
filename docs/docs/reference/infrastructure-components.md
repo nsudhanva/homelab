@@ -19,7 +19,6 @@ ApplicationSets watch `apps/` and `infrastructure/` and create ArgoCD Applicatio
 | Component | Path | Purpose | Notes |
 | --- | --- | --- | --- |
 | Gateway API CRDs | `infrastructure/gateway-api-crds/` | Installs Gateway API CRDs | Applied before Envoy Gateway |
-| Envoy Gateway CRDs | `infrastructure/envoy-gateway-crds/` | Installs Envoy Gateway CRDs | Applied before Envoy Gateway |
 | Envoy Gateway | `infrastructure/envoy-gateway/envoy-gateway.yaml` | Ingress controller for Gateway API | Helm chart with pinned image tag |
 | Tailscale Operator | `infrastructure/tailscale/tailscale-operator.yaml` | Tailnet integration and LoadBalancer proxy pods | Requires `operator-oauth` Secret |
 | cert-manager | `infrastructure/cert-manager/cert-manager.yaml` | TLS certificate management | Used with DNS-01 |
