@@ -45,6 +45,33 @@ If you maintain a kubeadm config, create `clusters/home/` and replace the comman
 
 :::
 
+## Optional: Enable Vault OIDC for Headlamp
+
+If you want OIDC logins for Headlamp, add OIDC flags to the kubeadm config before the first `kubeadm init`. This avoids editing static manifests later.
+
+Create `clusters/home/kubeadm-clusterconfiguration.yaml` with OIDC settings:
+
+```yaml
+apiVersion: kubeadm.k8s.io/v1beta4
+kind: ClusterConfiguration
+apiServer:
+  extraArgs:
+    oidc-issuer-url: https://vault.sudhanva.me/v1/identity/oidc/provider/headlamp
+    oidc-client-id: REPLACE_WITH_VAULT_CLIENT_ID
+    oidc-username-claim: sub
+    oidc-groups-claim: groups
+    oidc-username-prefix: "oidc:"
+    oidc-groups-prefix: "oidc:"
+```
+
+Then initialize with:
+
+```bash
+sudo kubeadm init --config clusters/home/kubeadm-clusterconfiguration.yaml
+```
+
+If the cluster already exists, apply the same flags in `/etc/kubernetes/manifests/kube-apiserver.yaml` and let kubelet restart the API server.
+
 ## Step 3: Join worker nodes
 
 Follow [Join Worker Nodes](./join-workers.md) after the control plane is ready.

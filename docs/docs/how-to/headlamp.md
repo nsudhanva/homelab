@@ -73,3 +73,74 @@ kubectl -n headlamp create token headlamp
 ## Step 4: Adjust permissions if needed
 
 The default setup uses `cluster-admin` for the Headlamp service account. If you want read-only access, bind the service account to a more restrictive cluster role.
+
+## OIDC Login With Vault
+
+This enables long-lived OIDC logins instead of short-lived service account tokens. It uses Vault as the identity provider and requires the Kubernetes API server to trust Vault as an OIDC issuer.
+
+### Step 1: Create Vault OIDC key, provider, and client
+
+Log into Vault with an admin token:
+
+```bash
+kubectl -n vault exec -it vault-0 -- vault login
+```
+
+Create a signing key and provider:
+
+```bash
+kubectl -n vault exec -it vault-0 -- vault write identity/oidc/key/headlamp rotation_period=24h
+kubectl -n vault exec -it vault-0 -- vault write identity/oidc/provider/headlamp \
+  allowed_client_ids="*" \
+  issuer="https://vault.sudhanva.me"
+```
+
+Create the client and capture its ID and secret:
+
+```bash
+kubectl -n vault exec -it vault-0 -- vault write identity/oidc/client/headlamp \
+  redirect_uris="https://headlamp.sudhanva.me/oidc-callback"
+kubectl -n vault exec -it vault-0 -- vault read -field=client_id identity/oidc/client/headlamp
+kubectl -n vault exec -it vault-0 -- vault read -field=client_secret identity/oidc/client/headlamp
+```
+
+### Step 2: Store Headlamp OIDC settings in Vault
+
+```bash
+kubectl -n vault exec -it vault-0 -- vault kv put kv/headlamp/oidc \
+  client_id="REPLACE_ME" \
+  client_secret="REPLACE_ME" \
+  issuer_url="https://vault.sudhanva.me/v1/identity/oidc/provider/headlamp" \
+  callback_url="https://headlamp.sudhanva.me/oidc-callback" \
+  scopes="openid"
+```
+
+### Step 3: Configure Kubernetes API server OIDC
+
+Update your kubeadm config to include OIDC settings. Use the `client_id` returned by Vault.
+
+```yaml
+apiServer:
+  extraArgs:
+    oidc-issuer-url: https://vault.sudhanva.me/v1/identity/oidc/provider/headlamp
+    oidc-client-id: REPLACE_WITH_VAULT_CLIENT_ID
+    oidc-username-claim: sub
+    oidc-groups-claim: groups
+    oidc-username-prefix: "oidc:"
+    oidc-groups-prefix: "oidc:"
+```
+
+Apply the change using your kubeadm workflow and restart the API server. This is a control plane change and should be done directly on the control plane node.
+
+If you edit the static manifest directly, keep the `oidc:` prefixes quoted to avoid YAML parsing errors.
+
+### Step 4: Sync Headlamp and log in
+
+Headlamp reads OIDC config from the `headlamp-oidc` Secret created by External Secrets. After ArgoCD syncs the app, use the Sign In button.
+
+## Repo Wiring For OIDC
+
+These files implement the OIDC wiring for Headlamp:
+
+- `apps/headlamp/external-secret-oidc.yaml`
+- `apps/headlamp/deployment.yaml`
