@@ -92,7 +92,7 @@ Create a signing key and provider:
 kubectl -n vault exec -it vault-0 -- vault write identity/oidc/key/headlamp rotation_period=24h
 kubectl -n vault exec -it vault-0 -- vault write identity/oidc/provider/headlamp \
   allowed_client_ids="*" \
-  issuer="https://vault.sudhanva.me"
+  issuer="https://vault.sudhanva.me/v1/identity/oidc/provider/headlamp"
 ```
 
 Create the client and capture its ID and secret:
@@ -104,7 +104,25 @@ kubectl -n vault exec -it vault-0 -- vault read -field=client_id identity/oidc/c
 kubectl -n vault exec -it vault-0 -- vault read -field=client_secret identity/oidc/client/headlamp
 ```
 
-### Step 2: Store Headlamp OIDC settings in Vault
+### Step 2: Enable a Vault login method for users
+
+Vault must allow humans to authenticate before it can issue OIDC codes. Enable a login method (for example `userpass`) and grant it access to the authorize endpoint.
+
+```bash
+kubectl -n vault exec -it vault-0 -- vault auth enable userpass
+kubectl -n vault exec -it vault-0 -- /bin/sh -c 'cat > /tmp/headlamp-oidc.hcl <<EOF
+path "identity/oidc/provider/headlamp/authorize" {
+  capabilities = ["read"]
+}
+EOF'
+kubectl -n vault exec -it vault-0 -- vault policy write headlamp-oidc /tmp/headlamp-oidc.hcl
+kubectl -n vault exec -it vault-0 -- vault write auth/userpass/users/headlamp \
+  password="REPLACE_ME" policies="default,headlamp-oidc"
+```
+
+Use the userpass credentials to log in when Vault prompts during the OIDC flow.
+
+### Step 3: Store Headlamp OIDC settings in Vault
 
 ```bash
 kubectl -n vault exec -it vault-0 -- vault kv put kv/headlamp/oidc \
@@ -115,7 +133,7 @@ kubectl -n vault exec -it vault-0 -- vault kv put kv/headlamp/oidc \
   scopes="openid"
 ```
 
-### Step 3: Configure Kubernetes API server OIDC
+### Step 4: Configure Kubernetes API server OIDC
 
 Update your kubeadm config to include OIDC settings. Use the `client_id` returned by Vault.
 
@@ -134,11 +152,11 @@ Apply the change using your kubeadm workflow and restart the API server. This is
 
 If you edit the static manifest directly, keep the `oidc:` prefixes quoted to avoid YAML parsing errors.
 
-### Step 3a: Ensure cluster DNS resolves Vault
+### Step 4a: Ensure cluster DNS resolves Vault
 
 The API server validates OIDC against `https://vault.sudhanva.me`. If CoreDNS cannot resolve that hostname, authentication will fail with a `no such host` error.
 
-This repo includes a CoreDNS override that forwards `sudhanva.me` lookups to the `tailscale-dns` service:
+This repo includes a CoreDNS override that forwards `sudhanva.me` lookups to the `tailscale-dns` service ClusterIP:
 
 ```yaml
 apiVersion: v1
@@ -151,13 +169,19 @@ data:
     sudhanva.me:53 {
         errors
         cache 30
-        forward . tailscale-dns.tailscale-dns.svc.cluster.local
+        forward . TAILSCALE_DNS_CLUSTER_IP
     }
+```
+
+Fetch the ClusterIP with:
+
+```bash
+kubectl -n tailscale-dns get svc tailscale-dns -o jsonpath='{.spec.clusterIP}'
 ```
 
 The manifest lives in `infrastructure/coredns/configmap.yaml`. After it syncs, CoreDNS can resolve `vault.sudhanva.me` inside the cluster.
 
-### Step 4: Sync Headlamp and log in
+### Step 5: Sync Headlamp and log in
 
 Headlamp reads OIDC config from the `headlamp-oidc` Secret created by External Secrets. After ArgoCD syncs the app, use the Sign In button.
 
