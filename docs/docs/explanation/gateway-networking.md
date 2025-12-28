@@ -93,7 +93,7 @@ Some hostnames need different targets on and off the tailnet. For example, `docs
 To make this work:
 
 - Keep the public Cloudflare DNS record pointing at Pages.
-- Route tailnet DNS through the `tailscale-dns` resolver, which returns an A record pointing at the Tailscale Gateway IP for any `*.sudhanva.me` hostname.
+- Route tailnet DNS through the `tailscale-dns` resolver, which rewrites `*.sudhanva.me` to the Tailscale Gateway hostname and resolves it via Tailscale DNS.
 - Do not annotate the HTTPRoute with `external-dns.alpha.kubernetes.io/expose: "true"` so ExternalDNS does not overwrite the public record.
 
 ## Quick validation commands
