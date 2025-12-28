@@ -1,0 +1,60 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: homer-config
+  namespace: homer
+data:
+  config.yml: |
+    title: "Home"
+    subtitle: "sudhanva.me"
+    logo: "assets/logo.png"
+    header: true
+    columns: "3"
+    defaults:
+      layout: columns
+      colorTheme: auto
+    services:
+      - name: "Media"
+        icon: "fas fa-film"
+        items:
+          - name: "Jellyfin"
+            subtitle: "Media server"
+            url: "https://jellyfin.sudhanva.me"
+            icon: "fas fa-play-circle"
+            tag: "media"
+          - name: "Filebrowser"
+            subtitle: "Media files"
+            url: "https://filebrowser.sudhanva.me"
+            icon: "fas fa-folder-open"
+            tag: "media"
+      - name: "Docs"
+        icon: "fas fa-book"
+        items:
+          - name: "Homelab Docs"
+            subtitle: "Notes and guides"
+            url: "https://docs.sudhanva.me"
+            icon: "fas fa-book-open"
+            tag: "docs"
+      - name: "Infrastructure"
+        icon: "fas fa-server"
+        items:
+          - name: "Argo CD"
+            subtitle: "GitOps controller"
+            url: "https://argocd.sudhanva.me"
+            icon: "fas fa-code-branch"
+            tag: "infra"
+          - name: "Longhorn"
+            subtitle: "Storage"
+            url: "https://longhorn.sudhanva.me"
+            icon: "fas fa-hdd"
+            tag: "infra"
+          - name: "Vault"
+            subtitle: "Secrets"
+            url: "https://vault.sudhanva.me"
+            icon: "fas fa-lock"
+            tag: "infra"
+          - name: "Hubble UI"
+            subtitle: "Network observability"
+            url: "https://hubble.sudhanva.me"
+            icon: "fas fa-project-diagram"
+            tag: "infra"
