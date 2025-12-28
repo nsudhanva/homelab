@@ -7,12 +7,13 @@ data:
   config.yml: |
     title: "Home"
     subtitle: "sudhanva.me"
-    logo: "assets/logo.png"
+    icon: "fas fa-home"
     header: true
     columns: "3"
     defaults:
       layout: columns
       colorTheme: auto
+    footer: false
     services:
       - name: "Media"
         icon: "fas fa-film"
