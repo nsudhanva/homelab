@@ -8,7 +8,7 @@ data:
     sudhanva.me:53 {
         errors
         cache 30
-        forward . tailscale-dns.tailscale-dns.svc.cluster.local
+        forward . 10.102.95.59
     }
     .:53 {
         errors
