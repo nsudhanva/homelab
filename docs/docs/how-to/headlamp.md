@@ -120,6 +120,22 @@ kubectl -n vault exec -it vault-0 -- vault write auth/userpass/users/headlamp \
   password="REPLACE_ME" policies="default,headlamp-oidc"
 ```
 
+Authorize the user for the Headlamp OIDC client by creating an entity, alias, and assignment, then attach that assignment to the client:
+
+```bash
+kubectl -n vault exec -it vault-0 -- vault auth list
+kubectl -n vault exec -it vault-0 -- vault write -format=json identity/entity name="headlamp"
+kubectl -n vault exec -it vault-0 -- vault write identity/entity-alias name="headlamp" \
+  canonical_id="REPLACE_WITH_ENTITY_ID" mount_accessor="REPLACE_WITH_USERPASS_ACCESSOR"
+kubectl -n vault exec -it vault-0 -- vault write identity/oidc/assignment/headlamp \
+  entity_ids="REPLACE_WITH_ENTITY_ID"
+kubectl -n vault exec -it vault-0 -- vault write identity/oidc/client/headlamp \
+  client_id="REPLACE_WITH_CLIENT_ID" \
+  client_secret="REPLACE_WITH_CLIENT_SECRET" \
+  redirect_uris="https://headlamp.sudhanva.me/oidc-callback" \
+  assignments="headlamp"
+```
+
 Use the userpass credentials to log in when Vault prompts during the OIDC flow.
 
 ### Step 3: Store Headlamp OIDC settings in Vault
