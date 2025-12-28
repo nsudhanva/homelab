@@ -88,6 +88,11 @@ Once ArgoCD syncs, you get:
 | **Tailscale Operator** | VPN-based LoadBalancer |
 | **cert-manager** | Automatic TLS certificates |
 | **ExternalDNS** | Automatic DNS record management |
+| **External Secrets CRDs** | CustomResourceDefinitions for External Secrets |
+| **External Secrets Operator** | Syncs secrets from Vault |
+| **Vault** | Central secrets storage |
+| **Tailscale DNS** | Split-horizon DNS for tailnet clients |
+| **Hubble UI** | Network visibility UI exposed through Gateway API |
 
 ## Repository Structure
 
@@ -100,6 +105,8 @@ homelab/
 ├── bootstrap/            # ArgoCD bootstrap
 ├── infrastructure/       # Cluster components (ArgoCD manages)
 ├── apps/                 # User workloads (ArgoCD manages)
+├── clusters/             # Cluster-specific overrides
+├── manifests/            # Legacy manifests (do not add new files)
 ├── scripts/              # Automation scripts
 └── docs/                 # This documentation
 ```

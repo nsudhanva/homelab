@@ -47,7 +47,18 @@ const config: Config = {
     ],
   ],
 
-  themes: ['@docusaurus/theme-mermaid', '@docusaurus/theme-live-codeblock'],
+  themes: [
+    '@docusaurus/theme-mermaid',
+    '@docusaurus/theme-live-codeblock',
+    [
+      '@easyops-cn/docusaurus-search-local',
+      {
+        hashed: true,
+        indexBlog: false,
+        indexPages: false,
+      },
+    ],
+  ],
 
   markdown: {
     mermaid: true,
@@ -68,6 +79,10 @@ const config: Config = {
           sidebarId: 'tutorialSidebar',
           position: 'left',
           label: 'Documentation',
+        },
+        {
+          type: 'search',
+          position: 'right',
         },
         {
           href: 'https://github.com/nsudhanva/homelab',
