@@ -10,6 +10,7 @@ spec:
     repoURL: oci://docker.io/envoyproxy/gateway-helm
     targetRevision: v0.0.0-latest
     helm:
+      skipCrds: true
       values: |
         config:
           envoyGateway:
@@ -56,4 +57,3 @@ spec:
       selfHeal: true
     syncOptions:
     - CreateNamespace=true
-    - ServerSideApply=true
