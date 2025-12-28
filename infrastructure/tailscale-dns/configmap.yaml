@@ -10,7 +10,6 @@ data:
         health
         ready
         template IN A {
-            match "^(.*)\\.sudhanva\\.me\\.$"
             answer "{{ .Name }} 60 IN A 100.88.7.18"
         }
         forward . 1.1.1.1 1.0.0.1
