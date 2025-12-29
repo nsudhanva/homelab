@@ -18,6 +18,8 @@ Check the latest stable release before changing any pinned version.
 - Cilium Helm chart: `1.18.5` in `infrastructure/cilium/cilium.yaml`
 - containerd: `2.2.1` in `ansible/group_vars/all.yaml`
 - ArgoCD: `v3.2.2` in `bootstrap/argocd/kustomization.yaml`
+- ArgoCD Image Updater chart: `1.0.4` in `infrastructure/argocd-image-updater/argocd-image-updater.yaml`
+- ArgoCD Image Updater app: `v1.0.2` in `infrastructure/argocd-image-updater/argocd-image-updater.yaml`
 - Longhorn: `1.7.2` in `bootstrap/templates/longhorn.yaml`
 - Tailscale Operator: `1.92.4` in `infrastructure/tailscale/tailscale-operator.yaml`
 - Envoy Gateway: `v1.6.1` image tag in `infrastructure/envoy-gateway/envoy-gateway.yaml` (chart `v0.0.0-latest`)

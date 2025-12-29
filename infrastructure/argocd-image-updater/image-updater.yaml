@@ -1,0 +1,50 @@
+apiVersion: argocd-image-updater.argoproj.io/v1alpha1
+kind: ImageUpdater
+metadata:
+  name: apps
+  annotations:
+    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+spec:
+  namespace: argocd
+  writeBackConfig:
+    method: git
+    gitConfig:
+      branch: master
+  applicationRefs:
+    - namePattern: app-docs
+      images:
+        - alias: docs
+          imageName: ghcr.io/nsudhanva/homelab-docs:latest
+          commonUpdateSettings:
+            updateStrategy: digest
+            pullSecret: secret:argocd/argocd-image-updater-registries#ghcr
+    - namePattern: app-headlamp
+      images:
+        - alias: headlamp
+          imageName: ghcr.io/headlamp-k8s/headlamp:v0.39.0
+          commonUpdateSettings:
+            updateStrategy: semver
+            allowTags: regexp:^v[0-9]+\.[0-9]+\.[0-9]+$
+            pullSecret: secret:argocd/argocd-image-updater-registries#ghcr
+    - namePattern: app-homer
+      images:
+        - alias: homer
+          imageName: b4bz/homer:v25.11.1
+          commonUpdateSettings:
+            updateStrategy: semver
+            allowTags: regexp:^v[0-9]+\.[0-9]+\.[0-9]+$
+            pullSecret: secret:argocd/argocd-image-updater-registries#dockerhub
+    - namePattern: app-filebrowser
+      images:
+        - alias: filebrowser
+          imageName: docker.io/filebrowser/filebrowser:latest
+          commonUpdateSettings:
+            updateStrategy: digest
+            pullSecret: secret:argocd/argocd-image-updater-registries#dockerhub
+    - namePattern: app-jellyfin
+      images:
+        - alias: jellyfin
+          imageName: docker.io/jellyfin/jellyfin:latest
+          commonUpdateSettings:
+            updateStrategy: digest
+            pullSecret: secret:argocd/argocd-image-updater-registries#dockerhub

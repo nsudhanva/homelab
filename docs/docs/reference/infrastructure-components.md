@@ -61,6 +61,7 @@ ApplicationSets watch `apps/` and `infrastructure/` and create ArgoCD Applicatio
 | Component | Path | Purpose | Notes |
 | --- | --- | --- | --- |
 | ArgoCD | `bootstrap/argocd/` | GitOps controller install | Apply once before bootstrap |
+| ArgoCD Image Updater | `infrastructure/argocd-image-updater/` | Automated image updates | Uses ImageUpdater CRD and Vault creds |
 | Cilium | `infrastructure/cilium/` | CNI and kube-proxy replacement | Install once manually, ArgoCD manages after bootstrap |
 | Cilium secrets namespace | `infrastructure/cilium-secrets/namespace.yaml` | Namespace for policy secrets | Required by Cilium config |
 | Gateway API CRDs | `infrastructure/gateway-api-crds/gateway-api-crds.yaml` | Installs Gateway API CRDs | ArgoCD pulls upstream `config/crd` |

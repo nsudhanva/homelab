@@ -1,0 +1,15 @@
+config:
+  git.user: argocd-image-updater
+  git.email: argocd-image-updater@users.noreply.github.com
+  registries:
+    - name: GitHub Container Registry
+      api_url: https://ghcr.io
+      prefix: ghcr.io
+      ping: true
+      credentials: secret:argocd/argocd-image-updater-registries#ghcr
+    - name: Docker Hub
+      api_url: https://registry-1.docker.io
+      prefix: docker.io
+      ping: true
+      defaultns: library
+      credentials: secret:argocd/argocd-image-updater-registries#dockerhub
