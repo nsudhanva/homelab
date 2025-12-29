@@ -15,7 +15,7 @@ spec:
       values: |
         fullnameOverride: monitoring
         crds:
-          enabled: true
+          enabled: false
         prometheusOperator:
           resources:
             requests:

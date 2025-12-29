@@ -19,7 +19,7 @@ kubectl -n vault exec -it vault-0 -- vault kv put kv/monitoring/grafana-admin \
 
 ## Step 2: Sync the Prometheus stack
 
-ArgoCD will create the `monitoring` namespace and deploy the stack from `infrastructure/prometheus/`.
+ArgoCD will create the `monitoring` namespace, install the Prometheus Operator CRDs, and deploy the stack from `infrastructure/prometheus/`.
 
 ```bash
 kubectl -n argocd get applications | rg prometheus
