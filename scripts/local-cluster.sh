@@ -271,7 +271,7 @@ wait_for_nodes() {
     while [[ $attempt -lt $max_attempts ]]; do
         local total_nodes
         local ready_nodes
-        
+
         # Capture output safely, ignoring errors during capture to prevent script exit
         local node_output
         if node_output=$(kubectl --kubeconfig "$KUBECONFIG_PATH" get nodes --no-headers 2>/dev/null); then
