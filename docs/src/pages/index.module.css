@@ -1,23 +1,36 @@
-/**
- * CSS files with the .module.css suffix will be treated as CSS modules
- * and scoped locally.
- */
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;700&family=Space+Grotesk:wght@400;500;600;700&display=swap');
+
+.page {
+  font-family: 'Space Grotesk', 'Segoe UI', sans-serif;
+  color: #172522;
+  background: #f4f0e8;
+}
 
 .hero {
   position: relative;
   overflow: hidden;
-  padding: 5rem 2rem 3rem;
+  padding: 5.5rem 2rem 3.5rem;
 }
 
 .heroBackdrop {
   position: absolute;
   inset: 0;
   background:
-    radial-gradient(circle at 15% 25%, rgba(255, 206, 145, 0.4), transparent 55%),
-    radial-gradient(circle at 85% 15%, rgba(93, 156, 129, 0.35), transparent 50%),
-    linear-gradient(120deg, #0f2d28 0%, #173c33 55%, #0f2d28 100%);
-  opacity: 0.98;
+    radial-gradient(circle at 15% 25%, rgba(255, 210, 140, 0.45), transparent 55%),
+    radial-gradient(circle at 85% 10%, rgba(88, 168, 156, 0.4), transparent 50%),
+    linear-gradient(130deg, #0f2a27 0%, #1a403a 55%, #0c2422 100%);
   z-index: 0;
+}
+
+.heroBackdrop::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.08) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.08) 1px, transparent 1px);
+  background-size: 36px 36px;
+  opacity: 0.2;
 }
 
 .heroContent {
@@ -29,18 +42,24 @@
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 2.5rem;
   align-items: center;
-  color: #f6f1e6;
+  color: #f5f0e7;
+}
+
+.heroLeft {
+  animation: fadeUp 0.8s ease-out;
 }
 
 .heroTitle {
-  font-size: clamp(2.8rem, 4vw, 4.4rem);
+  font-family: 'Fraunces', serif;
+  font-size: clamp(2.8rem, 4vw, 4.6rem);
   margin-bottom: 0.8rem;
+  letter-spacing: -0.02em;
 }
 
 .heroSubtitle {
   font-size: 1.2rem;
-  max-width: 32rem;
-  color: rgba(246, 241, 230, 0.8);
+  max-width: 34rem;
+  color: rgba(245, 240, 231, 0.85);
 }
 
 .heroActions {
@@ -50,45 +69,96 @@
   margin-top: 2rem;
 }
 
+.primaryButton,
+.secondaryButton,
+.tertiaryButton {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.85rem 1.6rem;
+  border-radius: 999px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+
 .primaryButton {
   background: #f2a65a;
   color: #0f2d28;
-  padding: 0.85rem 1.6rem;
-  border-radius: 999px;
-  font-weight: 600;
-  text-decoration: none;
+  box-shadow: 0 10px 24px rgba(242, 166, 90, 0.35);
+}
+
+.primaryButton:hover {
+  transform: translateY(-2px);
 }
 
 .secondaryButton {
-  border: 1px solid rgba(246, 241, 230, 0.5);
-  color: #f6f1e6;
-  padding: 0.85rem 1.6rem;
-  border-radius: 999px;
-  font-weight: 600;
-  text-decoration: none;
+  border: 1px solid rgba(245, 240, 231, 0.6);
+  color: #f5f0e7;
+}
+
+.secondaryButton:hover {
+  transform: translateY(-2px);
+}
+
+.tertiaryButton {
+  color: #f5f0e7;
+  opacity: 0.85;
+}
+
+.heroNote {
+  margin-top: 1.5rem;
+  font-size: 0.95rem;
+  color: rgba(245, 240, 231, 0.7);
 }
 
 .heroRight {
-  display: grid;
-  gap: 1.5rem;
+  animation: floatIn 0.9s ease-out;
 }
 
-.card {
-  background: rgba(20, 46, 39, 0.92);
+.snapshotCard {
+  background: rgba(20, 46, 39, 0.95);
   border: 1px solid rgba(242, 166, 90, 0.35);
-  border-radius: 18px;
-  padding: 1.6rem;
+  border-radius: 20px;
+  padding: 1.8rem;
   box-shadow: 0 18px 60px rgba(0, 0, 0, 0.35);
 }
 
 .cardTitle {
-  font-size: 1.5rem;
+  font-family: 'Fraunces', serif;
+  font-size: 1.6rem;
   margin-bottom: 0.5rem;
 }
 
 .cardText {
-  color: rgba(246, 241, 230, 0.7);
+  color: rgba(245, 240, 231, 0.75);
   margin-bottom: 1rem;
+}
+
+.snapshotGrid {
+  display: grid;
+  gap: 0.9rem;
+  margin-bottom: 1.4rem;
+}
+
+.snapshotItem {
+  display: grid;
+  gap: 0.25rem;
+  padding: 0.7rem 0.8rem;
+  border-radius: 14px;
+  background: rgba(11, 23, 20, 0.6);
+  border: 1px solid rgba(245, 240, 231, 0.1);
+}
+
+.snapshotTitle {
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 0.75rem;
+  color: #f2a65a;
+}
+
+.snapshotText {
+  color: rgba(245, 240, 231, 0.85);
 }
 
 .cardFooter {
@@ -103,42 +173,20 @@
   font-weight: 600;
 }
 
-.checklist {
-  display: grid;
-  gap: 0.8rem;
-  background: rgba(15, 26, 23, 0.7);
-  border-radius: 16px;
-  padding: 1.2rem;
-  border: 1px solid rgba(246, 241, 230, 0.2);
-}
-
-.checklistItem {
-  display: grid;
-  grid-template-columns: auto 1fr;
-  gap: 0.7rem;
-  align-items: center;
-}
-
-.checklistTitle {
-  font-size: 0.85rem;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: #f2a65a;
-}
-
-.checklistText {
-  color: rgba(246, 241, 230, 0.78);
-}
-
 .main {
-  background: #f7f3ec;
+  background: linear-gradient(180deg, #f4f0e8 0%, #f9f7f1 100%);
 }
 
-.pathways,
-.quickLinks {
+.launchpads,
+.systems,
+.runbooks {
   max-width: 1200px;
   margin: 0 auto;
   padding: 3.5rem 2rem;
+}
+
+.systems {
+  padding-top: 0;
 }
 
 .sectionHeader {
@@ -149,66 +197,119 @@
 }
 
 .sectionTitle {
+  font-family: 'Fraunces', serif;
   font-size: clamp(2rem, 2.6vw, 2.8rem);
-  color: #142f28;
+  color: #142723;
 }
 
 .sectionSubtitle {
   color: #4a5a54;
-  max-width: 32rem;
+  max-width: 34rem;
 }
 
-.pathwayGrid {
+.launchpadGrid,
+.systemGrid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
   gap: 1.5rem;
 }
 
-.pathwayCard {
+.launchpadCard,
+.systemCard {
   background: #ffffff;
-  border-radius: 16px;
+  border-radius: 18px;
   padding: 1.6rem;
   border: 1px solid rgba(20, 47, 40, 0.1);
   box-shadow: 0 18px 40px rgba(20, 47, 40, 0.08);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
-.pathwayTitle {
+.launchpadCard:hover,
+.systemCard:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 22px 50px rgba(20, 47, 40, 0.14);
+}
+
+.launchpadKicker {
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-size: 0.75rem;
+  color: #c36a1b;
+  font-weight: 600;
+}
+
+.launchpadTitle,
+.systemTitle {
   font-size: 1.25rem;
-  margin-bottom: 0.5rem;
-  color: #142f28;
+  margin: 0.6rem 0 0.5rem;
+  color: #142723;
 }
 
-.pathwayText {
+.launchpadText,
+.systemText {
   color: #4f5d57;
   margin-bottom: 1rem;
 }
 
-.pathwayLink {
-  color: #c46a1b;
+.launchpadLink,
+.systemLink {
+  color: #c36a1b;
   font-weight: 600;
   text-decoration: none;
 }
 
-.quickLinks {
+.runbooks {
   padding-top: 0;
 }
 
-.linkGrid {
+.runbookGrid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: 1rem;
 }
 
-.linkCard {
+.runbookCard {
   display: flex;
   justify-content: space-between;
   align-items: center;
   padding: 1rem 1.2rem;
   border-radius: 14px;
-  background: #142f28;
-  color: #f6f1e6;
+  background: #142723;
+  color: #f5f0e7;
   text-decoration: none;
   font-weight: 600;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.runbookCard:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 14px 30px rgba(20, 39, 35, 0.2);
+}
+
+.runbookArrow {
+  font-size: 1.2rem;
+}
+
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes floatIn {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 @media screen and (max-width: 996px) {
@@ -217,6 +318,23 @@
   }
 
   .hero {
-    padding: 3.5rem 1.5rem 2.5rem;
+    padding: 4rem 1.5rem 3rem;
+  }
+
+  .heroActions {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
+
+@media screen and (max-width: 600px) {
+  .heroTitle {
+    font-size: clamp(2.4rem, 8vw, 3.2rem);
+  }
+
+  .launchpads,
+  .systems,
+  .runbooks {
+    padding: 3rem 1.25rem;
   }
 }
