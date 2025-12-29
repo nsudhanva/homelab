@@ -8,7 +8,12 @@ data:
     sudhanva.me:53 {
         errors
         cache 30
-        forward . 10.102.95.59
+        rewrite name regex (.*)\.sudhanva\.me gateway-internal.envoy-gateway.svc.cluster.local answer auto
+        kubernetes cluster.local in-addr.arpa ip6.arpa {
+            pods insecure
+            fallthrough in-addr.arpa ip6.arpa
+            ttl 30
+        }
     }
     .:53 {
         errors
