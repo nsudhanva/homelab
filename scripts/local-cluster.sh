@@ -16,13 +16,24 @@ KUBECONFIG_PATH="/tmp/homelab-admin.conf"
 
 # VM Configuration
 CP_NAME="homelab-cp"
-WORKER_NAMES=("homelab-w1" "homelab-w2")
-ALL_VMS=("$CP_NAME" "${WORKER_NAMES[@]}")
+DEFAULT_WORKER_COUNT=2
+WORKER_COUNT="${WORKER_COUNT:-$DEFAULT_WORKER_COUNT}"
+WORKER_NAMES=()
+if [[ "$WORKER_COUNT" -gt 0 ]]; then
+    for i in $(seq 1 "$WORKER_COUNT"); do
+        WORKER_NAMES+=("homelab-w${i}")
+    done
+fi
+ALL_VMS=("$CP_NAME")
+if [[ ${#WORKER_NAMES[@]} -gt 0 ]]; then
+    ALL_VMS+=("${WORKER_NAMES[@]}")
+fi
 
 # Resource settings
-VM_CPUS=2
-VM_MEMORY="4G"
-VM_DISK="20G"
+VM_CPUS="${VM_CPUS:-2}"
+VM_MEMORY="${VM_MEMORY:-4G}"
+VM_DISK="${VM_DISK:-20G}"
+CILIUM_HUBBLE_ENABLED="${CILIUM_HUBBLE_ENABLED:-true}"
 
 # Colors for output
 RED='\033[0;31m'
@@ -129,14 +140,16 @@ all:
           hosts:
 EOF
 
-    for worker in "${WORKER_NAMES[@]}"; do
-        local worker_ip
-        worker_ip=$(get_vm_ip "$worker")
-        cat >> "$inv_file" << EOF
+    if [[ "$WORKER_COUNT" -gt 0 ]]; then
+        for worker in "${WORKER_NAMES[@]}"; do
+            local worker_ip
+            worker_ip=$(get_vm_ip "$worker")
+            cat >> "$inv_file" << EOF
             ${worker}:
               ansible_host: ${worker_ip}
 EOF
-    done
+        done
+    fi
 
     log_success "Inventory written to $inv_file"
 }
@@ -161,10 +174,20 @@ init_control_plane() {
         --pod-network-cidr=10.244.0.0/16 \
         --skip-phases=addon/kube-proxy
 
+    if [[ "$WORKER_COUNT" -eq 0 ]]; then
+        multipass exec "$CP_NAME" -- sudo kubectl --kubeconfig /etc/kubernetes/admin.conf \
+            taint nodes --all node-role.kubernetes.io/control-plane- || true
+    fi
+
     log_success "Control plane initialized"
 }
 
 join_workers() {
+    if [[ "$WORKER_COUNT" -eq 0 ]]; then
+        log_info "No worker nodes requested, skipping join..."
+        return
+    fi
+
     log_info "Joining worker nodes..."
 
     local join_cmd
@@ -217,11 +240,20 @@ install_cilium() {
     '
 
     # Install Cilium with required settings for Tailscale compatibility
+    local cp_ip
+    cp_ip=$(get_vm_ip "$CP_NAME")
+    local extra_args=()
+    if [[ "$CILIUM_HUBBLE_ENABLED" != "true" ]]; then
+        extra_args+=(--set hubble.relay.enabled=false)
+        extra_args+=(--set hubble.ui.enabled=false)
+    fi
+    multipass transfer "$REPO_ROOT/infrastructure/cilium/values.yaml" "$CP_NAME":/home/ubuntu/cilium-values.yaml
     multipass exec "$CP_NAME" -- sudo cilium install \
         --kubeconfig /etc/kubernetes/admin.conf \
         --version "$cilium_version" \
-        --set kubeProxyReplacement=true \
-        --set socketLB.hostNamespaceOnly=true
+        --values /home/ubuntu/cilium-values.yaml \
+        --set k8sServiceHost="$cp_ip" \
+        "${extra_args[@]}"
 
     # Wait for Cilium to be ready
     log_info "Waiting for Cilium to be ready..."

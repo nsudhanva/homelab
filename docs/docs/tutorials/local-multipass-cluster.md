@@ -17,6 +17,12 @@ Use the automation script for a one-command setup:
 
 This handles everything: VM creation, Ansible provisioning, kubeadm initialization, Cilium installation, and smoke testing.
 
+For a low-resource rehearsal, run a single-node control plane and disable Hubble UI/Relay:
+
+```bash
+WORKER_COUNT=0 VM_CPUS=2 VM_MEMORY=3G VM_DISK=12G CILIUM_HUBBLE_ENABLED=false ./scripts/local-cluster.sh up
+```
+
 When done:
 
 ```bash
@@ -34,7 +40,8 @@ If you prefer to understand each step or need to customize the process, follow t
 - Multipass installed on your workstation
 - Ansible installed on your workstation
 - kubectl installed on your workstation
-- At least 12GB of free RAM
+- A multi-node rehearsal expects around 12GB of free RAM
+- A single-node rehearsal can run with less by reducing VM sizing
 
 ### Step 1: Install host tools
 

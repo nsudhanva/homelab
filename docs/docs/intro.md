@@ -26,12 +26,20 @@ ansible-playbook -i ansible/inventory/hosts.yaml ansible/playbooks/provision-cpu
 
 # 3. Initialize control plane and install CNI (run on control plane node)
 sudo kubeadm init --pod-network-cidr=10.244.0.0/16
-cilium install --set kubeProxyReplacement=true --set socketLB.hostNamespaceOnly=true
+mkdir -p $HOME/.kube
+sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+sudo chown $(id -u):$(id -g) $HOME/.kube/config
+kubectl taint nodes --all node-role.kubernetes.io/control-plane-
+# Update k8sServiceHost in infrastructure/cilium/values.yaml to match the control plane IP
+CILIUM_VERSION=$(grep -E "cilium_version:" ansible/group_vars/all.yaml | head -n 1 | awk -F'"' '{print $2}')
+cilium install --version $CILIUM_VERSION --values infrastructure/cilium/values.yaml
 ```
 
 Then bootstrap GitOps:
 
 ```bash
+kubectl apply -k bootstrap/argocd
+kubectl wait --for=condition=available --timeout=600s deployment/argocd-server -n argocd
 kubectl apply -f bootstrap/root.yaml
 ```
 

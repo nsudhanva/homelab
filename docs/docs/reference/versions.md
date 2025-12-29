@@ -15,7 +15,9 @@ Check the latest stable release before changing any pinned version.
 
 - Kubernetes: `v1.35` in `ansible/group_vars/all.yaml`
 - Cilium: `1.18.5` in `ansible/group_vars/all.yaml`
+- Cilium Helm chart: `1.18.5` in `infrastructure/cilium/cilium.yaml`
 - containerd: `2.2.1` in `ansible/group_vars/all.yaml`
+- ArgoCD: `v3.2.2` in `bootstrap/argocd/kustomization.yaml`
 - Longhorn: `1.7.2` in `bootstrap/templates/longhorn.yaml`
 - Tailscale Operator: `1.92.4` in `infrastructure/tailscale/tailscale-operator.yaml`
 - Envoy Gateway: `v1.6.1` image tag in `infrastructure/envoy-gateway/envoy-gateway.yaml` (chart `v0.0.0-latest`)

@@ -228,7 +228,7 @@ Cluster-level components (Longhorn, Tailscale, Envoy Gateway, cert-manager, Exte
 
 ## Upgrade Cilium
 
-Update `cilium_version` in `ansible/group_vars/all.yaml`, then run:
+Update `cilium_version` in `ansible/group_vars/all.yaml` and `targetRevision` in `infrastructure/cilium/cilium.yaml`, then run:
 
 ```bash
 CILIUM_VERSION=$(grep -E "cilium_version:" ansible/group_vars/all.yaml | head -n 1 | awk -F'\"' '{print $2}')
@@ -238,8 +238,10 @@ cilium status --wait
 
 ## Upgrade ArgoCD
 
+Update `bootstrap/argocd/kustomization.yaml` to the desired ArgoCD release tag.
+
 ```bash
-kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+kubectl apply -k bootstrap/argocd
 kubectl wait --for=condition=available --timeout=600s deployment/argocd-server -n argocd
 ```
 

@@ -8,8 +8,7 @@ title: ArgoCD and GitOps
 ## Step 1: Install ArgoCD
 
 ```bash
-kubectl create namespace argocd
-kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+kubectl apply -k bootstrap/argocd
 kubectl wait --for=condition=available --timeout=600s deployment/argocd-server -n argocd
 kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath='{.data.password}' | base64 -d; echo
 ```
@@ -27,6 +26,7 @@ Update these files if you fork the repo. The default references point to `nsudha
 - `bootstrap/root.yaml`
 - `bootstrap/templates/infra-appset.yaml`
 - `bootstrap/templates/apps-appset.yaml`
+- `infrastructure/cilium/cilium.yaml`
 
 Confirm the Longhorn data path in `bootstrap/templates/longhorn.yaml` matches your host.
 
