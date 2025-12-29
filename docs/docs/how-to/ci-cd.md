@@ -11,9 +11,8 @@ This guide explains how CI runs in GitHub Actions and how CD flows through ArgoC
 
 These workflows live in `.github/workflows/`:
 
-- `ci.yaml` runs pre-commit, kubeconform validation, and a docs build check on PRs and pushes to `master`.
-- `cluster-smoke.yaml` is a manual workflow that connects to the tailnet and runs `kubectl get nodes` and `kubectl get pods -A`.
-- `docs-build.yaml` builds and pushes the docs image on changes under `docs/`.
+- `ci.yaml` runs pre-commit, kubeconform validation, a docs build check, and pushes the docs image on changes under `docs/`.
+- `cluster-smoke.yaml` is a manual and scheduled workflow that connects to the tailnet and runs `kubectl get nodes` and `kubectl get pods -A`.
 
 ## Step 2: Configure GitHub secrets
 
@@ -34,7 +33,7 @@ CI validation focuses on the Kubernetes and GitOps manifests in this repo.
 | `apps/` | YAML lint, schema validation (excluding `app.yaml`) | `ci.yaml` |
 | `infrastructure/` | YAML lint, schema validation | `ci.yaml` |
 | `bootstrap/` | YAML lint, schema validation | `ci.yaml` |
-| `docs/` | Docusaurus build | `ci.yaml` and `docs-build.yaml` |
+| `docs/` | Docusaurus build and image push | `ci.yaml` |
 
 ## Step 4: Trigger a cluster smoke test
 

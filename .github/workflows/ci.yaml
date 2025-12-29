@@ -56,7 +56,7 @@ jobs:
       if: steps.changes.outputs.docs == 'true'
       uses: actions/setup-node@v6.1.0
       with:
-        node-version: "24"
+        node-version: "24.12.0"
     - name: Install dependencies
       if: steps.changes.outputs.docs == 'true'
       run: npm ci
@@ -65,3 +65,48 @@ jobs:
       if: steps.changes.outputs.docs == 'true'
       run: npm run build
       working-directory: docs
+
+  docs-push:
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    env:
+      REGISTRY: ghcr.io
+      IMAGE_NAME: ${{ github.repository }}-docs
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v6.0.1
+    - name: Detect docs changes
+      id: changes
+      uses: dorny/paths-filter@v3.0.2
+      with:
+        filters: |
+          docs:
+            - "docs/**"
+            - ".github/workflows/ci.yaml"
+    - name: Log in to the Container registry
+      if: steps.changes.outputs.docs == 'true'
+      uses: docker/login-action@v3.6.0
+      with:
+        registry: ${{ env.REGISTRY }}
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    - name: Extract metadata
+      if: steps.changes.outputs.docs == 'true'
+      id: meta
+      uses: docker/metadata-action@v5.10.0
+      with:
+        images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+        tags: |
+          type=raw,value=latest
+          type=sha,format=short
+    - name: Build and push docs image
+      if: steps.changes.outputs.docs == 'true'
+      uses: docker/build-push-action@v6.18.0
+      with:
+        context: ./docs
+        push: true
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
