@@ -36,7 +36,7 @@ jobs:
         sudo mv kubeconform /usr/local/bin/kubeconform
     - name: Validate manifests
       run: |
-        find apps infrastructure bootstrap -name "*.yaml" ! -name "app.yaml" -print0 \
+        find apps infrastructure bootstrap -name "*.yaml" ! -name "app.yaml" ! -name ".argocd-source-*.yaml" -print0 \
           | xargs -0 kubeconform -kubernetes-version 1.35.0 -strict -ignore-missing-schemas -summary
 
   docs-build:
