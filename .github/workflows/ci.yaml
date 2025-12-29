@@ -1,0 +1,67 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+    - master
+
+permissions:
+  contents: read
+
+jobs:
+  pre-commit:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v6.0.1
+    - name: Set up Python
+      uses: actions/setup-python@v6.1.0
+      with:
+        python-version: "3.12"
+    - name: Install pre-commit
+      run: pip install pre-commit==4.5.1
+    - name: Run pre-commit
+      run: pre-commit run --all-files
+
+  kubeconform:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v6.0.1
+    - name: Install kubeconform
+      run: |
+        curl -sSL https://github.com/yannh/kubeconform/releases/download/v0.7.0/kubeconform-linux-amd64.tar.gz \
+          | tar -xz
+        sudo mv kubeconform /usr/local/bin/kubeconform
+    - name: Validate manifests
+      run: |
+        find apps infrastructure bootstrap -name "*.yaml" ! -name "app.yaml" -print0 \
+          | xargs -0 kubeconform -kubernetes-version 1.35.0 -strict -ignore-missing-schemas -summary
+
+  docs-build:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v6.0.1
+    - name: Detect docs changes
+      id: changes
+      uses: dorny/paths-filter@v3.0.2
+      with:
+        filters: |
+          docs:
+            - "docs/**"
+            - ".github/workflows/ci.yaml"
+    - name: Set up Node
+      if: steps.changes.outputs.docs == 'true'
+      uses: actions/setup-node@v6.1.0
+      with:
+        node-version: "24"
+    - name: Install dependencies
+      if: steps.changes.outputs.docs == 'true'
+      run: npm ci
+      working-directory: docs
+    - name: Build docs
+      if: steps.changes.outputs.docs == 'true'
+      run: npm run build
+      working-directory: docs
