@@ -247,7 +247,7 @@ install_cilium() {
         extra_args+=(--set hubble.relay.enabled=false)
         extra_args+=(--set hubble.ui.enabled=false)
     fi
-    multipass transfer "$REPO_ROOT/infrastructure/cilium/values.yaml" "$CP_NAME":/home/ubuntu/cilium-values.yaml
+    multipass transfer "$REPO_ROOT/infrastructure/cilium/values.cilium" "$CP_NAME":/home/ubuntu/cilium-values.yaml
     multipass exec "$CP_NAME" -- sudo cilium install \
         --kubeconfig /etc/kubernetes/admin.conf \
         --version "$cilium_version" \

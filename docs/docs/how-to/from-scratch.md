@@ -38,11 +38,11 @@ If you want OIDC for Headlamp, follow the optional OIDC section in [Kubernetes](
 
 ## Step 4: Install Cilium
 
-Update the control plane IP in `infrastructure/cilium/values.yaml`, then install Cilium:
+Update the control plane IP in `infrastructure/cilium/values.cilium`, then install Cilium:
 
 ```bash
 CILIUM_VERSION=$(grep -E "cilium_version:" ansible/group_vars/all.yaml | head -n 1 | awk -F'"' '{print $2}')
-cilium install --version $CILIUM_VERSION --values infrastructure/cilium/values.yaml
+cilium install --version $CILIUM_VERSION --values infrastructure/cilium/values.cilium
 ```
 
 ## Step 5: Install ArgoCD and bootstrap GitOps

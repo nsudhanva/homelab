@@ -30,9 +30,9 @@ mkdir -p $HOME/.kube
 sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
 sudo chown $(id -u):$(id -g) $HOME/.kube/config
 kubectl taint nodes --all node-role.kubernetes.io/control-plane-
-# Update k8sServiceHost in infrastructure/cilium/values.yaml to match the control plane IP
+# Update k8sServiceHost in infrastructure/cilium/values.cilium to match the control plane IP
 CILIUM_VERSION=$(grep -E "cilium_version:" ansible/group_vars/all.yaml | head -n 1 | awk -F'"' '{print $2}')
-cilium install --version $CILIUM_VERSION --values infrastructure/cilium/values.yaml
+cilium install --version $CILIUM_VERSION --values infrastructure/cilium/values.cilium
 ```
 
 Then bootstrap GitOps:

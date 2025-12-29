@@ -26,12 +26,12 @@ Get the version from `ansible/group_vars/all.yaml`:
 CILIUM_VERSION=$(grep -E "cilium_version:" ansible/group_vars/all.yaml | head -n 1 | awk -F'"' '{print $2}')
 ```
 
-Update `k8sServiceHost` in `infrastructure/cilium/values.yaml` to match the control plane IP.
+Update `k8sServiceHost` in `infrastructure/cilium/values.cilium` to match the control plane IP.
 
 Install with the required settings for Tailscale compatibility:
 
 ```bash
-cilium install --version $CILIUM_VERSION --values infrastructure/cilium/values.yaml
+cilium install --version $CILIUM_VERSION --values infrastructure/cilium/values.cilium
 ```
 
 :::warning
