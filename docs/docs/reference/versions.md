@@ -25,6 +25,7 @@ Check the latest stable release before changing any pinned version.
 - ExternalDNS chart: `1.19.0` in `infrastructure/external-dns/external-dns.yaml`
 - External Secrets CRDs: `v1.2.0` in `infrastructure/external-secrets-crds/`
 - External Secrets chart: `1.2.0` in `infrastructure/external-secrets/external-secrets.yaml`
+- kube-prometheus-stack chart: `80.8.0` in `infrastructure/prometheus/prometheus.yaml`
 - Vault chart: `0.31.0` in `infrastructure/vault/vault.yaml`
 - Intel GPU plugin: `0.34.0` in `infrastructure/gpu/intel-plugin.yaml`
 - NVIDIA GPU plugin: `0.17.0` in `infrastructure/gpu/nvidia-plugin.yaml`

@@ -250,3 +250,11 @@ subjects:
 ```
 
 The repo includes `apps/headlamp/clusterrolebinding-oidc.yaml`. Replace the subject with your Vault entity ID if it changes.
+
+## Prometheus Metrics
+
+Headlamp exposes `/metrics` when `HEADLAMP_CONFIG_METRICS_ENABLED` is set. The repo enables this flag and adds a ServiceMonitor so Prometheus picks it up automatically.
+
+```bash
+kubectl -n headlamp get servicemonitors
+```

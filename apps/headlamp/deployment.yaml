@@ -41,6 +41,8 @@ spec:
             secretKeyRef:
               name: headlamp-oidc
               key: scopes
+        - name: HEADLAMP_CONFIG_METRICS_ENABLED
+          value: "true"
         ports:
         - containerPort: 4466
           name: http

@@ -53,6 +53,7 @@ The `media` namespace is shared by Jellyfin and Filebrowser so they can use the 
 | Deployment | `apps/headlamp/deployment.yaml` | `ghcr.io/headlamp-k8s/headlamp:v0.39.0` |
 | Service | `apps/headlamp/service.yaml` | ClusterIP on port 80 |
 | HTTPRoute | `apps/headlamp/httproute.yaml` | `headlamp.sudhanva.me` |
+| ServiceMonitor | `apps/headlamp/servicemonitor.yaml` | Prometheus scrape config |
 
 ## Home dashboard (Homer)
 

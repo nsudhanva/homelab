@@ -30,6 +30,7 @@ flowchart TB
     ExtSecrets["external-secrets"]
     Vault["vault"]
     Longhorn["longhorn-system"]
+    Monitoring["monitoring"]
   end
 
   Boot --> AppSetInfra
@@ -45,6 +46,7 @@ flowchart TB
   InfraApps --> ExtSecrets
   InfraApps --> Vault
   InfraApps --> Longhorn
+  InfraApps --> Monitoring
 ```
 
 ## ArgoCD ApplicationSets
@@ -73,6 +75,7 @@ ApplicationSets watch `apps/` and `infrastructure/` and create ArgoCD Applicatio
 | Longhorn | `bootstrap/templates/longhorn.yaml` | Storage via Longhorn | Helm chart in ArgoCD |
 | Vault | `infrastructure/vault/vault.yaml` | Central secrets storage | PVC on Longhorn |
 | Hubble UI | `infrastructure/hubble-ui/httproute.yaml` | Exposes Hubble UI over Tailscale | HTTPRoute to `hubble-ui` service in `kube-system` |
+| Prometheus stack | `infrastructure/prometheus/` | Metrics, alerting, dashboards | Grafana, Prometheus, Alertmanager, and HTTPRoutes |
 | GPU plugins | `infrastructure/gpu/` | Intel and NVIDIA device plugins | Optional, based on node hardware |
 
 ## Gateway and route definitions
@@ -88,5 +91,8 @@ Gateway resources are split by purpose:
 - `infrastructure/gateway/longhorn-httproute.yaml`
 - `infrastructure/gateway/vault-httproute.yaml`
 - `infrastructure/hubble-ui/httproute.yaml`
+- `infrastructure/prometheus/httproute-grafana.yaml`
+- `infrastructure/prometheus/httproute-prometheus.yaml`
+- `infrastructure/prometheus/httproute-alertmanager.yaml`
 
 HTTPRoutes for apps live alongside each app under `apps/*/httproute.yaml`.
