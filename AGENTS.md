@@ -9,6 +9,7 @@ Multi-node bare-metal Kubernetes cluster on Ubuntu 24.04 LTS, managed via GitOps
 ## Dos
 
 - Always search online for latest stable versions before adding dependencies
+- Always use Vault to store sensitive information or secrets
 - Follow the step-by-step format in README.md for any new setup instructions
 - Use ArgoCD ApplicationSets for deploying infrastructure and apps
 - Place infrastructure components in `infrastructure/{component-name}/`
@@ -27,7 +28,7 @@ Multi-node bare-metal Kubernetes cluster on Ubuntu 24.04 LTS, managed via GitOps
 
 - Do not add inline comments to YAML files
 - Do make changes as your please as this repository is directly connected to the cluster
-- Do not use numeric bullet points in any documentation .md files. Use headers or docusaurus provided syntax features
+- Do not use numeric bullet points in any documentation .md files. Use something like "Step 1", "Step 2", etc. instead. Use headers or docusaurus provided syntax features
 - Do not use `helm install` manually; let ArgoCD handle Helm charts
 - Do not hardcode versions without researching the latest stable release
 - Do not modify `/etc/fstab` or system files without explicit user approval
