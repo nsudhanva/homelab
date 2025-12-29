@@ -253,7 +253,7 @@ install_cilium() {
         --version "$cilium_version" \
         --values /home/ubuntu/cilium-values.yaml \
         --set k8sServiceHost="$cp_ip" \
-        "${extra_args[@]}"
+        "${extra_args[@]:-}"
 
     # Wait for Cilium to be ready
     log_info "Waiting for Cilium to be ready..."
