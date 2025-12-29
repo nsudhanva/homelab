@@ -65,11 +65,11 @@ ApplicationSets watch `apps/` and `infrastructure/` and create ArgoCD Applicatio
 | cert-manager | `infrastructure/cert-manager/cert-manager.yaml` | TLS certificate management | Used with DNS-01 |
 | ClusterIssuer | `infrastructure/cert-manager-issuer/cluster-issuer.yaml` | ACME issuer for wildcard certs | Update email and Cloudflare token |
 | ExternalDNS | `infrastructure/external-dns/external-dns.yaml` | Creates DNS records for HTTPRoutes | Watches `external-dns.alpha.kubernetes.io/expose=true` |
-| CoreDNS override | `infrastructure/coredns/configmap.yaml` | Forwards `sudhanva.me` lookups to `tailscale-dns` | Required for Vault OIDC resolution |
+| CoreDNS override | `infrastructure/coredns/configmap.yaml` | Rewrites `*.sudhanva.me` to `gateway-internal` | Split-horizon DNS for in-cluster access |
 | Tailscale DNS | `infrastructure/tailscale-dns/` | Split-horizon DNS for tailnet clients | CoreDNS exposed via Tailscale LoadBalancer |
 | External Secrets CRDs | `infrastructure/external-secrets-crds/` | Installs External Secrets CRDs | Kustomize pulls upstream CRD bundle |
 | External Secrets Operator | `infrastructure/external-secrets/external-secrets.yaml` | Syncs secrets from Vault | ClusterSecretStore and ExternalSecret manifests live in `infrastructure/external-secrets/` |
-| Gateway | `infrastructure/gateway/` | GatewayClass, Gateway, EnvoyProxy, cert | Uses Tailscale `gatewayClassName` |
+| Gateway | `infrastructure/gateway/` | GatewayClass, Gateway, EnvoyProxy, cert, internal-service | Uses Tailscale `gatewayClassName` |
 | Longhorn | `bootstrap/templates/longhorn.yaml` | Storage via Longhorn | Helm chart in ArgoCD |
 | Vault | `infrastructure/vault/vault.yaml` | Central secrets storage | PVC on Longhorn |
 | Hubble UI | `infrastructure/hubble-ui/httproute.yaml` | Exposes Hubble UI over Tailscale | HTTPRoute to `hubble-ui` service in `kube-system` |
@@ -83,6 +83,7 @@ Gateway resources are split by purpose:
 - `infrastructure/gateway/gateway.yaml`
 - `infrastructure/gateway/envoyproxy.yaml`
 - `infrastructure/gateway/certificate.yaml`
+- `infrastructure/gateway/internal-service.yaml`
 - `infrastructure/gateway/argocd-httproute.yaml`
 - `infrastructure/gateway/longhorn-httproute.yaml`
 - `infrastructure/gateway/vault-httproute.yaml`

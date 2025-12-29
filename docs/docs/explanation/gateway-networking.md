@@ -159,6 +159,46 @@ To make this work:
 - Route tailnet DNS through the `tailscale-dns` resolver, which rewrites `*.sudhanva.me` to the Tailscale Gateway hostname and resolves it via Tailscale DNS.
 - Do not annotate the HTTPRoute with `external-dns.alpha.kubernetes.io/expose: "true"` so ExternalDNS does not overwrite the public record.
 
+## In-cluster access to Gateway services
+
+Pods inside the cluster cannot route to Tailscale IPs (`100.x.x.x`). When a pod needs to reach a service exposed via the Tailscale Gateway (e.g., Vault for OIDC token exchange), DNS must resolve to an internal IP.
+
+```mermaid
+flowchart LR
+    subgraph Cluster["Kubernetes Cluster"]
+        Pod["App Pod (e.g., Headlamp)"]
+        CoreDNS["CoreDNS"]
+        GWInt["gateway-internal Service"]
+        Envoy["Envoy Gateway"]
+        Backend["Backend Service"]
+    end
+
+    Pod -->|"1. DNS: vault.sudhanva.me"| CoreDNS
+    CoreDNS -->|"2. Rewrite to gateway-internal"| GWInt
+    Pod -->|"3. HTTPS to ClusterIP:443"| GWInt
+    GWInt --> Envoy
+    Envoy -->|"4. Route by hostname"| Backend
+```
+
+CoreDNS rewrites `*.sudhanva.me` to the `gateway-internal` service:
+
+```
+sudhanva.me:53 {
+    rewrite name regex (.*)\.sudhanva\.me gateway-internal.envoy-gateway.svc.cluster.local answer auto
+    kubernetes cluster.local ...
+}
+```
+
+The `gateway-internal` service selects Envoy pods by label, so it tracks the gateway dynamically:
+
+```yaml
+selector:
+  gateway.envoyproxy.io/owning-gateway-name: tailscale-gateway
+  gateway.envoyproxy.io/owning-gateway-namespace: tailscale
+```
+
+This enables pods to use the same hostnames as external clients while routing internally.
+
 ## Quick validation commands
 
 Run these from any kubectl context that can reach the cluster:
@@ -204,6 +244,8 @@ When you visit `https://docs.sudhanva.me` from your Mac:
 | GatewayClass | `infrastructure/gateway/gatewayclass.yaml` | Links to EnvoyProxy |
 | EnvoyProxy | `infrastructure/gateway/envoyproxy.yaml` | LoadBalancer + Tailscale |
 | Certificate | `infrastructure/gateway/certificate.yaml` | Wildcard cert request |
+| Internal Service | `infrastructure/gateway/internal-service.yaml` | In-cluster access to gateway |
+| CoreDNS | `infrastructure/coredns/configmap.yaml` | Split-horizon DNS for pods |
 | HTTPRoutes | `apps/*/httproute.yaml` | Per-app routing rules |
 
 ## Common Issues

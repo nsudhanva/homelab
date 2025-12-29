@@ -172,9 +172,9 @@ If you edit the static manifest directly, keep the `oidc:` prefixes quoted to av
 
 ### Step 4a: Ensure cluster DNS resolves Vault
 
-The API server validates OIDC against `https://vault.sudhanva.me`. If CoreDNS cannot resolve that hostname, authentication will fail with a `no such host` error.
+The API server and Headlamp pods must be able to reach `vault.sudhanva.me` for OIDC token validation and exchange. Tailscale DNS returns Tailscale IPs (`100.x.x.x`) that pods cannot route to directly.
 
-This repo includes a CoreDNS override that forwards `sudhanva.me` lookups to the `tailscale-dns` service ClusterIP:
+This repo uses split-horizon DNS to solve this. CoreDNS rewrites `*.sudhanva.me` queries to the internal gateway service, which pods can reach via the cluster network:
 
 ```yaml
 apiVersion: v1
@@ -187,17 +187,35 @@ data:
     sudhanva.me:53 {
         errors
         cache 30
-        forward . TAILSCALE_DNS_CLUSTER_IP
+        rewrite name regex (.*)\.sudhanva\.me gateway-internal.envoy-gateway.svc.cluster.local answer auto
+        kubernetes cluster.local in-addr.arpa ip6.arpa {
+            pods insecure
+            fallthrough in-addr.arpa ip6.arpa
+            ttl 30
+        }
     }
 ```
 
-Fetch the ClusterIP with:
+The `gateway-internal` service in `envoy-gateway` namespace selects Envoy pods by label, so it dynamically tracks the gateway without hardcoded IPs:
 
-```bash
-kubectl -n tailscale-dns get svc tailscale-dns -o jsonpath='{.spec.clusterIP}'
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: gateway-internal
+  namespace: envoy-gateway
+spec:
+  type: ClusterIP
+  selector:
+    gateway.envoyproxy.io/owning-gateway-name: tailscale-gateway
+    gateway.envoyproxy.io/owning-gateway-namespace: tailscale
+  ports:
+  - name: https
+    port: 443
+    targetPort: 10443
 ```
 
-The manifest lives in `infrastructure/coredns/configmap.yaml`. After it syncs, CoreDNS can resolve `vault.sudhanva.me` inside the cluster.
+These manifests live in `infrastructure/coredns/configmap.yaml` and `infrastructure/gateway/internal-service.yaml`.
 
 ### Step 5: Sync Headlamp and log in
 
