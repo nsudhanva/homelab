@@ -21,6 +21,6 @@ repos:
     hooks:
       - id: kubeconform
         name: kubeconform
-        entry: bash -c 'find apps infrastructure bootstrap -name "*.yaml" ! -name "app.yaml" ! -name ".argocd-source-*.yaml" -print0 | xargs -0 kubeconform -kubernetes-version 1.35.0 -strict -ignore-missing-schemas -summary'
+        entry: bash scripts/run-kubeconform.sh
         language: system
         pass_filenames: false
