@@ -1,73 +1,332 @@
 # Homelab
 
-Bare-metal Kubernetes on Ubuntu 24.04 LTS with Ansible for node provisioning and ArgoCD for GitOps.
+An opinionated, production‑minded homelab blueprint that uses Git, ArgoCD, and Tailscale to manage a Kubernetes cluster. It pairs bare‑metal Kubernetes on Ubuntu 24.04 LTS with Ansible provisioning and ArgoCD GitOps, plus a local rehearsal flow to validate changes before touching hardware.
 
-## Quick Start
+## Features
 
-### Bare Metal (Primary)
+- Multi-node bare-metal Kubernetes with kubeadm and Cilium
+- GitOps-managed infrastructure and apps via ArgoCD ApplicationSets
+- Tailscale Gateway API ingress with split-horizon DNS
+- Vault + External Secrets for centralized secret management
+- Longhorn storage, Prometheus monitoring, and optional GPU plugins
+- Automated image updates with ArgoCD Image Updater
+- Metrics Server for resource usage in Headlamp
+- ExternalDNS automation for Gateway API routes
+- Envoy Gateway data plane for Gateway API
+
+## How it fits together
+
+```mermaid
+flowchart LR
+  subgraph Repo["Homelab Git repo"]
+    Ansible["ansible/"]
+    Bootstrap["bootstrap/"]
+    Infra["infrastructure/"]
+    Apps["apps/"]
+  end
+
+  subgraph Nodes["Ubuntu 24.04 nodes"]
+    Prep["Ansible provisioning"]
+    Kubeadm["kubeadm init/join"]
+  end
+
+  subgraph Cluster["Kubernetes cluster"]
+    Argo["ArgoCD + ApplicationSets"]
+    Workloads["Infra + apps"]
+  end
+
+  Ansible --> Prep
+  Prep --> Kubeadm
+  Kubeadm --> Argo
+  Bootstrap --> Argo
+  Infra --> Argo
+  Apps --> Argo
+  Argo --> Workloads
+```
+
+## From scratch flow
+
+```mermaid
+flowchart TB
+  subgraph Workstation["Workstation"]
+    Inventory["ansible/inventory/hosts.yaml"]
+    Vars["ansible/group_vars/all.yaml"]
+    Playbooks["ansible/playbooks/*"]
+  end
+
+  subgraph Nodes["Ubuntu 24.04 nodes"]
+    OS["OS baseline + containerd"]
+    Kubelet["kubelet + kubeadm"]
+  end
+
+  subgraph ControlPlane["Control plane"]
+    Init["kubeadm init"]
+    Kubeconfig["/etc/kubernetes/admin.conf"]
+    CNI["Cilium install"]
+    Argo["ArgoCD bootstrap"]
+  end
+
+  subgraph GitOps["GitOps reconciliation"]
+    AppSets["ApplicationSets"]
+    InfraApps["infra-* apps"]
+    UserApps["app-* apps"]
+  end
+
+  Inventory --> Playbooks
+  Vars --> Playbooks
+  Playbooks --> OS
+  OS --> Kubelet
+  Kubelet --> Init
+  Init --> Kubeconfig
+  Kubeconfig --> CNI
+  CNI --> Argo
+  Argo --> AppSets
+  AppSets --> InfraApps
+  AppSets --> UserApps
+```
+
+```mermaid
+flowchart TB
+  subgraph Edge["Edge & ingress"]
+    Tailscale["Tailscale Gateway API"]
+    Envoy["Envoy Gateway"]
+    DNS["ExternalDNS + split-horizon CoreDNS"]
+  end
+
+  subgraph Platform["Platform services"]
+    Vault["Vault"]
+    ESO["External Secrets"]
+    Longhorn["Longhorn"]
+    Metrics["Prometheus + Grafana"]
+  end
+
+  subgraph Apps["User apps"]
+    Headlamp["Headlamp"]
+    Docs["Docs"]
+    Homer["Homer"]
+    Media["Jellyfin + Filebrowser"]
+  end
+
+  Tailscale --> Envoy
+  DNS --> Envoy
+  Envoy --> Apps
+  Vault --> ESO
+  ESO --> Apps
+  Longhorn --> Apps
+  Metrics --> Apps
+```
+
+## Network topology
+
+```mermaid
+flowchart LR
+  Public["Public DNS"]
+  Tailnet["Tailscale tailnet"]
+  ExternalDNS["ExternalDNS"]
+  Gateway["Tailscale Gateway API"]
+  Envoy["Envoy Gateway"]
+  Routes["HTTPRoutes"]
+  Services["Cluster Services"]
+  CoreDNS["CoreDNS rewrite"]
+
+  ExternalDNS --> Public
+  Public --> Gateway
+  Tailnet --> Gateway
+  Gateway --> Envoy
+  Envoy --> Routes
+  Routes --> Services
+  CoreDNS --> Services
+```
+
+## Split-domain access
+
+```mermaid
+flowchart LR
+  subgraph Public["Public DNS (Cloudflare)"]
+    PublicZone["sudhanva.me zone"]
+    PublicRecords["A/AAAA/CNAME"]
+  end
+
+  subgraph Tailnet["Tailnet DNS"]
+    TailnetZone["Split-horizon overrides"]
+  end
+
+  subgraph Cluster["Cluster DNS"]
+    CoreDNS["CoreDNS rewrite"]
+    GatewaySvc["gateway-internal service"]
+  end
+
+  PublicZone --> PublicRecords
+  TailnetZone --> CoreDNS
+  CoreDNS --> GatewaySvc
+```
+
+## Quick start
+
+Bare metal is the primary target. The local VM flow exists to rehearse changes before touching hardware.
+
+### Bare metal bring-up
+
+Provision nodes, bootstrap Kubernetes, then hand off to ArgoCD.
 
 ```bash
-# Edit inventory
 nano ansible/inventory/hosts.yaml
-
-# Provision nodes
 ansible-playbook -i ansible/inventory/hosts.yaml ansible/playbooks/provision-cpu.yaml
 
-# Initialize cluster (on control plane)
 sudo kubeadm init --pod-network-cidr=10.244.0.0/16
 mkdir -p $HOME/.kube
 sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
 sudo chown $(id -u):$(id -g) $HOME/.kube/config
 kubectl taint nodes --all node-role.kubernetes.io/control-plane-
-# Update k8sServiceHost in infrastructure/cilium/values.cilium to match the control plane IP
-CILIUM_VERSION=$(grep -E "cilium_version:" ansible/group_vars/all.yaml | head -n 1 | awk -F'"' '{print $2}')
-cilium install --version $CILIUM_VERSION --values infrastructure/cilium/values.cilium
 
-# Install ArgoCD
+CILIUM_VERSION=$(grep -E "cilium_version:" ansible/group_vars/all.yaml | head -n 1 | awk -F'"' '{print $2}')
+cilium install --version "$CILIUM_VERSION" --values infrastructure/cilium/values.cilium
+
 kubectl apply -k bootstrap/argocd
 kubectl wait --for=condition=available --timeout=600s deployment/argocd-server -n argocd
-
-# Bootstrap GitOps
 kubectl apply -f bootstrap/root.yaml
 ```
 
-### Local Cluster (Optional Rehearsal)
+Guided flow: https://docs.sudhanva.me/docs/how-to/from-scratch and https://docs.sudhanva.me/docs/tutorials
+
+### Local rehearsal
+
+Use Multipass to validate the full flow on your workstation.
 
 ```bash
 ./scripts/local-cluster.sh up
 ```
 
-Creates a 3-node cluster on your workstation in ~10 minutes.
+Low-resource rehearsal:
 
----
+```bash
+WORKER_COUNT=0 VM_CPUS=2 VM_MEMORY=3G VM_DISK=12G CILIUM_HUBBLE_ENABLED=false ./scripts/local-cluster.sh up
+```
 
-Bare metal is the primary target for this repo. Use the Multipass flow only to test changes before touching hardware.
+Tear down:
+
+```bash
+./scripts/local-cluster.sh down
+```
 
 ## Documentation
 
-Full docs at [docs.sudhanva.me](https://docs.sudhanva.me) or build locally:
+Docs site: https://docs.sudhanva.me
+
+Build locally:
 
 ```bash
-cd docs && npm ci && npm start
+cd docs
+npm ci
+npm start
 ```
 
-## Structure
+Recommended reading paths:
+
+- Start from scratch: https://docs.sudhanva.me/docs/how-to/from-scratch
+- Prereqs and system prep: https://docs.sudhanva.me/docs/tutorials/prerequisites
+- GitOps model: https://docs.sudhanva.me/docs/explanation/automation-model
+- Infra catalog: https://docs.sudhanva.me/docs/reference/infrastructure-components
+- App catalog: https://docs.sudhanva.me/docs/reference/applications
+
+## Repository layout
 
 ```
-├── ansible/          # Node provisioning
-├── bootstrap/        # ArgoCD bootstrap
-├── infrastructure/   # Cluster components
-├── apps/             # User workloads
-├── scripts/          # Automation scripts
-└── docs/             # Documentation (Docusaurus)
+ansible/          Node provisioning
+bootstrap/        ArgoCD bootstrap and ApplicationSets
+infrastructure/   Cluster components managed by ArgoCD
+apps/             User workloads managed by ArgoCD
+clusters/         Cluster-specific overrides
+scripts/          Automation helpers
+docs/             Docusaurus documentation
 ```
 
-## Automation Model
+## Applications
 
-- **Ansible** → Node configuration (OS, container runtime, kubelet)
-- **ArgoCD** → Cluster state from Git (infrastructure, apps)
+| App | Purpose | Hostname |
+| --- | --- | --- |
+| Docs | Docusaurus site for cluster documentation | `docs.sudhanva.me` |
+| Headlamp | Kubernetes UI with OIDC support and metrics integration | `headlamp.sudhanva.me` |
+| Homer | Home dashboard with service shortcuts | `home.sudhanva.me` |
+| Jellyfin | Media streaming with GPU acceleration when available | `jellyfin.sudhanva.me` |
+| Filebrowser | File manager for the media volume | `filebrowser.sudhanva.me` |
+| ArgoCD | GitOps control plane UI | `argocd.sudhanva.me` |
+| Longhorn | Storage UI | `longhorn.sudhanva.me` |
+| Vault | Secrets UI | `vault.sudhanva.me` |
+| Hubble UI | Cilium network visibility | `hubble.sudhanva.me` |
+| Grafana | Metrics dashboards | `grafana.sudhanva.me` |
+| Prometheus | Metrics queries | `prometheus.sudhanva.me` |
+| Alertmanager | Alerting UI | `alertmanager.sudhanva.me` |
 
-Push to Git. ArgoCD syncs automatically.
+## GitOps
+
+ArgoCD reconciles everything under `infrastructure/` and `apps/` using ApplicationSets. Manual `kubectl apply` is discouraged after bootstrap.
+
+Adding apps:
+
+- Create `apps/<app>/app.yaml` to define the ArgoCD app name/path/namespace
+- Add Kubernetes manifests in the same folder
+- Add `kustomization.yaml` if you want Image Updater to write overrides
+
+Image updates:
+
+- ArgoCD Image Updater writes `.argocd-source-<app>.yaml` files into app folders
+- These files are not Kubernetes resources and are ignored by kubeconform
+
+## Operations
+
+Routine checks:
+
+```bash
+kubectl get nodes
+kubectl get pods -A
+kubectl get apps -n argocd
+```
+
+Before pushing:
+
+```bash
+pre-commit run --all-files
+```
+
+## Conventions
+
+- ApplicationSets generate `infra-*` and `app-*` ArgoCD applications from folders
+- App folders use `app.yaml` for app metadata and manifests in the same directory
+- `kustomization.yaml` enables Image Updater overrides per app
+- Image updates write `.argocd-source-<app>.yaml` files into app folders
+
+## Monitoring topology
+
+```mermaid
+flowchart TB
+  subgraph CRDs["Prometheus Operator CRDs"]
+    CRD["monitoring.coreos.com/*"]
+  end
+
+  subgraph Stack["Monitoring stack"]
+    Prometheus["Prometheus"]
+    Alertmanager["Alertmanager"]
+    Grafana["Grafana"]
+  end
+
+  subgraph Sources["Metrics sources"]
+    ServiceMonitors["ServiceMonitors"]
+    NodeExporter["node-exporter"]
+    KSM["kube-state-metrics"]
+    Apps["App metrics"]
+  end
+
+  CRD --> Prometheus
+  CRD --> Alertmanager
+  CRD --> Grafana
+  ServiceMonitors --> Prometheus
+  NodeExporter --> Prometheus
+  KSM --> Prometheus
+  Apps --> ServiceMonitors
+  Prometheus --> Alertmanager
+  Prometheus --> Grafana
+```
 
 ## Maintainers
 
