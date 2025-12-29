@@ -63,7 +63,7 @@ ApplicationSets watch `apps/` and `infrastructure/` and create ArgoCD Applicatio
 | ArgoCD | `bootstrap/argocd/` | GitOps controller install | Apply once before bootstrap |
 | Cilium | `infrastructure/cilium/` | CNI and kube-proxy replacement | Install once manually, ArgoCD manages after bootstrap |
 | Cilium secrets namespace | `infrastructure/cilium-secrets/namespace.yaml` | Namespace for policy secrets | Required by Cilium config |
-| Gateway API CRDs | `infrastructure/gateway-api-crds/` | Installs Gateway API CRDs | Applied before Envoy Gateway |
+| Gateway API CRDs | `infrastructure/gateway-api-crds/gateway-api-crds.yaml` | Installs Gateway API CRDs | ArgoCD pulls upstream `config/crd` |
 | Envoy Gateway CRDs | `infrastructure/envoy-gateway-crds/` | Installs Envoy Gateway CRDs | Kustomize pulls upstream CRD bundle |
 | Envoy Gateway | `infrastructure/envoy-gateway/envoy-gateway.yaml` | Ingress controller for Gateway API | Helm chart with pinned image tag |
 | Tailscale Operator | `infrastructure/tailscale/tailscale-operator.yaml` | Tailnet integration and LoadBalancer proxy pods | Requires `operator-oauth` Secret |
