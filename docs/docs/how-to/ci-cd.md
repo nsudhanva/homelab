@@ -43,6 +43,8 @@ Run the workflow manually when you want to validate the live cluster health over
 - Workflow: `Cluster Smoke` in GitHub Actions
 - Checks: `kubectl get nodes`, `kubectl get pods -A`, and ArgoCD app status
 
+The workflow also runs every six hours via a scheduled trigger.
+
 ## Step 5: Rely on ArgoCD for CD
 
 ArgoCD watches this repo and applies changes via ApplicationSets. GitHub Actions validates and builds artifacts, while ArgoCD handles the deployment and reconciliation in-cluster.
