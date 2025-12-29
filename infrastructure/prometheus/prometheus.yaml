@@ -11,6 +11,7 @@ spec:
     targetRevision: 80.8.0
     helm:
       releaseName: monitoring
+      skipCrds: false
       values: |
         fullnameOverride: monitoring
         crds:
