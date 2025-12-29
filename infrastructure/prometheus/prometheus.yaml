@@ -83,6 +83,7 @@ spec:
               repeat_interval: 12h
             receivers:
             - name: default
+            - name: "null"
         grafana:
           admin:
             existingSecret: grafana-admin
