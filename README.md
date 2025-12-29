@@ -1,6 +1,6 @@
 # Homelab
 
-An opinionated, production‑minded homelab blueprint that uses Git, ArgoCD, and Tailscale to manage a Kubernetes cluster. It pairs bare‑metal Kubernetes on Ubuntu 24.04 LTS with Ansible provisioning and ArgoCD GitOps, plus a local rehearsal flow to validate changes before touching hardware.
+A self-hosted Kubernetes platform running on bare-metal Ubuntu 24.04 LTS. Combines Ansible for automated node provisioning with ArgoCD for GitOps-based cluster management. Traffic flows through Tailscale for secure ingress and Envoy Gateway for routing, with Vault and External Secrets handling credentials. Longhorn provides distributed storage. A local rehearsal workflow using Multipass VMs allows validating changes before deploying to hardware.
 
 ## Table of contents
 
@@ -232,7 +232,7 @@ Recommended reading paths:
 
 ## Repository layout
 
-```
+```bash
 ansible/          Node provisioning
 bootstrap/        ArgoCD bootstrap and ApplicationSets
 infrastructure/   Cluster components managed by ArgoCD
