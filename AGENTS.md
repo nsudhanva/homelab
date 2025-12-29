@@ -10,7 +10,6 @@ Multi-node bare-metal Kubernetes cluster on Ubuntu 24.04 LTS, managed via GitOps
 
 - Always search online for latest stable versions before adding dependencies
 - Always use Vault to store sensitive information or secrets
-- Follow the step-by-step format in README.md for any new setup instructions
 - Use ArgoCD ApplicationSets for deploying infrastructure and apps
 - Place infrastructure components in `infrastructure/{component-name}/`
 - Place user applications in `apps/{app-name}/`
@@ -37,7 +36,7 @@ Multi-node bare-metal Kubernetes cluster on Ubuntu 24.04 LTS, managed via GitOps
 
 ## Repository Structure
 
-```
+```bash
 homelab/
 ├── bootstrap/               # ArgoCD bootstrap
 │   ├── templates/           # ApplicationSet definitions

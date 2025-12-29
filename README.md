@@ -2,6 +2,26 @@
 
 An opinionated, production‑minded homelab blueprint that uses Git, ArgoCD, and Tailscale to manage a Kubernetes cluster. It pairs bare‑metal Kubernetes on Ubuntu 24.04 LTS with Ansible provisioning and ArgoCD GitOps, plus a local rehearsal flow to validate changes before touching hardware.
 
+## Table of contents
+
+- [Features](#features)
+- [Architecture](#architecture)
+  - [Core systems map](#core-systems-map)
+  - [Platform services map](#platform-services-map)
+  - [Network topology](#network-topology)
+- [Quick start](#quick-start)
+  - [Bare metal bring-up](#bare-metal-bring-up)
+  - [From scratch flow](#from-scratch-flow)
+  - [Local rehearsal](#local-rehearsal)
+- [Documentation](#documentation)
+- [Repository layout](#repository-layout)
+- [Applications](#applications)
+- [GitOps model](#gitops-model)
+- [Operations](#operations)
+- [Conventions](#conventions)
+- [Monitoring topology](#monitoring-topology)
+- [Maintainers](#maintainers)
+
 ## Features
 
 - Multi-node bare-metal Kubernetes with kubeadm and Cilium
@@ -14,7 +34,9 @@ An opinionated, production‑minded homelab blueprint that uses Git, ArgoCD, and
 - ExternalDNS automation for Gateway API routes
 - Envoy Gateway data plane for Gateway API
 
-## How it fits together
+## Architecture
+
+### Core systems map
 
 ```mermaid
 flowchart LR
@@ -44,7 +66,90 @@ flowchart LR
   Argo --> Workloads
 ```
 
-## From scratch flow
+### Platform services map
+
+```mermaid
+flowchart TB
+  subgraph Edge["Edge & ingress"]
+    Tailscale["Tailscale Gateway API"]
+    Envoy["Envoy Gateway"]
+    DNS["ExternalDNS + split-horizon CoreDNS"]
+  end
+
+  subgraph Platform["Platform services"]
+    Vault["Vault"]
+    ESO["External Secrets"]
+    Longhorn["Longhorn"]
+    Metrics["Prometheus + Grafana"]
+  end
+
+  subgraph Apps["User apps"]
+    Headlamp["Headlamp"]
+    Docs["Docs"]
+    Homer["Homer"]
+    Media["Jellyfin + Filebrowser"]
+  end
+
+  Tailscale --> Envoy
+  DNS --> Envoy
+  Envoy --> Apps
+  Vault --> ESO
+  ESO --> Apps
+  Longhorn --> Apps
+  Metrics --> Apps
+```
+
+### Network topology
+
+```mermaid
+flowchart LR
+  Public["Public DNS"]
+  Tailnet["Tailscale tailnet"]
+  ExternalDNS["ExternalDNS"]
+  Gateway["Tailscale Gateway API"]
+  Envoy["Envoy Gateway"]
+  Routes["HTTPRoutes"]
+  Services["Cluster Services"]
+  CoreDNS["CoreDNS rewrite"]
+
+  ExternalDNS --> Public
+  Public --> Gateway
+  Tailnet --> Gateway
+  Gateway --> Envoy
+  Envoy --> Routes
+  Routes --> Services
+  CoreDNS --> Services
+```
+
+## Quick start
+
+Bare metal is the primary target. The local VM flow exists to rehearse changes before touching hardware.
+
+### Bare metal bring-up
+
+Provision nodes, bootstrap Kubernetes, then hand off to ArgoCD.
+
+```bash
+nano ansible/inventory/hosts.yaml
+ansible-playbook -i ansible/inventory/hosts.yaml ansible/playbooks/provision-cpu.yaml
+
+sudo kubeadm init --pod-network-cidr=10.244.0.0/16
+mkdir -p $HOME/.kube
+sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
+sudo chown $(id -u):$(id -g) $HOME/.kube/config
+kubectl taint nodes --all node-role.kubernetes.io/control-plane-
+
+CILIUM_VERSION=$(grep -E "cilium_version:" ansible/group_vars/all.yaml | head -n 1 | awk -F'"' '{print $2}')
+cilium install --version "$CILIUM_VERSION" --values infrastructure/cilium/values.cilium
+
+kubectl apply -k bootstrap/argocd
+kubectl wait --for=condition=available --timeout=600s deployment/argocd-server -n argocd
+kubectl apply -f bootstrap/root.yaml
+```
+
+Guided flow: <https://docs.sudhanva.me/docs/how-to/from-scratch> and <https://docs.sudhanva.me/docs/tutorials>
+
+### From scratch flow
 
 ```mermaid
 flowchart TB
@@ -85,110 +190,6 @@ flowchart TB
   AppSets --> UserApps
 ```
 
-```mermaid
-flowchart TB
-  subgraph Edge["Edge & ingress"]
-    Tailscale["Tailscale Gateway API"]
-    Envoy["Envoy Gateway"]
-    DNS["ExternalDNS + split-horizon CoreDNS"]
-  end
-
-  subgraph Platform["Platform services"]
-    Vault["Vault"]
-    ESO["External Secrets"]
-    Longhorn["Longhorn"]
-    Metrics["Prometheus + Grafana"]
-  end
-
-  subgraph Apps["User apps"]
-    Headlamp["Headlamp"]
-    Docs["Docs"]
-    Homer["Homer"]
-    Media["Jellyfin + Filebrowser"]
-  end
-
-  Tailscale --> Envoy
-  DNS --> Envoy
-  Envoy --> Apps
-  Vault --> ESO
-  ESO --> Apps
-  Longhorn --> Apps
-  Metrics --> Apps
-```
-
-## Network topology
-
-```mermaid
-flowchart LR
-  Public["Public DNS"]
-  Tailnet["Tailscale tailnet"]
-  ExternalDNS["ExternalDNS"]
-  Gateway["Tailscale Gateway API"]
-  Envoy["Envoy Gateway"]
-  Routes["HTTPRoutes"]
-  Services["Cluster Services"]
-  CoreDNS["CoreDNS rewrite"]
-
-  ExternalDNS --> Public
-  Public --> Gateway
-  Tailnet --> Gateway
-  Gateway --> Envoy
-  Envoy --> Routes
-  Routes --> Services
-  CoreDNS --> Services
-```
-
-## Split-domain access
-
-```mermaid
-flowchart LR
-  subgraph Public["Public DNS (Cloudflare)"]
-    PublicZone["sudhanva.me zone"]
-    PublicRecords["A/AAAA/CNAME"]
-  end
-
-  subgraph Tailnet["Tailnet DNS"]
-    TailnetZone["Split-horizon overrides"]
-  end
-
-  subgraph Cluster["Cluster DNS"]
-    CoreDNS["CoreDNS rewrite"]
-    GatewaySvc["gateway-internal service"]
-  end
-
-  PublicZone --> PublicRecords
-  TailnetZone --> CoreDNS
-  CoreDNS --> GatewaySvc
-```
-
-## Quick start
-
-Bare metal is the primary target. The local VM flow exists to rehearse changes before touching hardware.
-
-### Bare metal bring-up
-
-Provision nodes, bootstrap Kubernetes, then hand off to ArgoCD.
-
-```bash
-nano ansible/inventory/hosts.yaml
-ansible-playbook -i ansible/inventory/hosts.yaml ansible/playbooks/provision-cpu.yaml
-
-sudo kubeadm init --pod-network-cidr=10.244.0.0/16
-mkdir -p $HOME/.kube
-sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
-sudo chown $(id -u):$(id -g) $HOME/.kube/config
-kubectl taint nodes --all node-role.kubernetes.io/control-plane-
-
-CILIUM_VERSION=$(grep -E "cilium_version:" ansible/group_vars/all.yaml | head -n 1 | awk -F'"' '{print $2}')
-cilium install --version "$CILIUM_VERSION" --values infrastructure/cilium/values.cilium
-
-kubectl apply -k bootstrap/argocd
-kubectl wait --for=condition=available --timeout=600s deployment/argocd-server -n argocd
-kubectl apply -f bootstrap/root.yaml
-```
-
-Guided flow: https://docs.sudhanva.me/docs/how-to/from-scratch and https://docs.sudhanva.me/docs/tutorials
-
 ### Local rehearsal
 
 Use Multipass to validate the full flow on your workstation.
@@ -211,7 +212,7 @@ Tear down:
 
 ## Documentation
 
-Docs site: https://docs.sudhanva.me
+Docs site: <https://docs.sudhanva.me>
 
 Build locally:
 
@@ -223,11 +224,11 @@ npm start
 
 Recommended reading paths:
 
-- Start from scratch: https://docs.sudhanva.me/docs/how-to/from-scratch
-- Prereqs and system prep: https://docs.sudhanva.me/docs/tutorials/prerequisites
-- GitOps model: https://docs.sudhanva.me/docs/explanation/automation-model
-- Infra catalog: https://docs.sudhanva.me/docs/reference/infrastructure-components
-- App catalog: https://docs.sudhanva.me/docs/reference/applications
+- Start from scratch: <https://docs.sudhanva.me/docs/how-to/from-scratch>
+- Prereqs and system prep: <https://docs.sudhanva.me/docs/tutorials/prerequisites>
+- GitOps model: <https://docs.sudhanva.me/docs/explanation/automation-model>
+- Infra catalog: <https://docs.sudhanva.me/docs/reference/infrastructure-components>
+- App catalog: <https://docs.sudhanva.me/docs/reference/applications>
 
 ## Repository layout
 
@@ -258,7 +259,7 @@ docs/             Docusaurus documentation
 | Prometheus | Metrics queries | `prometheus.sudhanva.me` |
 | Alertmanager | Alerting UI | `alertmanager.sudhanva.me` |
 
-## GitOps
+## GitOps model
 
 ArgoCD reconciles everything under `infrastructure/` and `apps/` using ApplicationSets. Manual `kubectl apply` is discouraged after bootstrap.
 
