@@ -138,6 +138,8 @@ kubectl -n vault exec -it vault-0 -- vault write identity/oidc/client/headlamp \
 
 Use the userpass credentials to log in when Vault prompts during the OIDC flow.
 
+If you prefer to allow any authenticated Vault user (no assignments), recreate the client without assignments. Vault will generate a new client ID and secret, so update the KV entry and the Kubernetes API server flags after doing this.
+
 ### Step 3: Store Headlamp OIDC settings in Vault
 
 ```bash
