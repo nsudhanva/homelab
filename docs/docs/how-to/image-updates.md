@@ -6,7 +6,7 @@ title: Automated Image Updates
 
 This guide enables ArgoCD Image Updater to track container images and commit updates back to Git.
 
-## Step One: Store registry credentials in Vault
+## Step 1: Store registry credentials in Vault
 
 Create these Vault secrets:
 
@@ -18,7 +18,7 @@ kubectl -n vault exec -it vault-0 -- vault kv put kv/argocd-image-updater/docker
   username="REPLACE_ME" token="REPLACE_ME"
 ```
 
-## Step Two: Store Git write-back credentials in Vault
+## Step 2: Store Git write-back credentials in Vault
 
 Create a GitHub token with repo write access and store it:
 
@@ -27,11 +27,11 @@ kubectl -n vault exec -it vault-0 -- vault kv put kv/argocd/repo-creds \
   username="REPLACE_ME" token="REPLACE_ME"
 ```
 
-## Step Three: Let ArgoCD sync
+## Step 3: Let ArgoCD sync
 
 ArgoCD will install ArgoCD Image Updater, create the registry secret, and create the repo credentials.
 
-## Step Four: Verify image updates
+## Step 4: Verify image updates
 
 Look for `.argocd-source-<appName>.yaml` files added under `apps/` after Image Updater runs.
 

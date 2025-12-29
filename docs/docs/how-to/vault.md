@@ -25,7 +25,7 @@ flowchart TB
   Target --> Consumers["Deployments/Controllers"]
 ```
 
-## Step One: Deploy Vault and External Secrets Operator
+## Step 1: Deploy Vault and External Secrets Operator
 
 Push the repo changes and let ArgoCD sync `infrastructure/vault/` and `infrastructure/external-secrets/`.
 
@@ -36,7 +36,7 @@ kubectl -n vault get pods
 kubectl -n external-secrets get pods
 ```
 
-## Step Two: Initialize and unseal Vault
+## Step 2: Initialize and unseal Vault
 
 Initialize Vault and save the unseal keys and root token somewhere safe.
 
@@ -56,7 +56,7 @@ Log in with the root token:
 kubectl -n vault exec -it vault-0 -- vault login
 ```
 
-## Step Three: Enable the KV v2 secrets engine
+## Step 3: Enable the KV v2 secrets engine
 
 Enable KV v2 at `kv/` to match the ExternalSecret store config:
 
@@ -64,7 +64,7 @@ Enable KV v2 at `kv/` to match the ExternalSecret store config:
 kubectl -n vault exec -it vault-0 -- vault secrets enable -path=kv kv-v2
 ```
 
-## Step Four: Create secrets in Vault
+## Step 4: Create secrets in Vault
 
 Write the secrets that Kubernetes currently expects:
 
@@ -89,7 +89,7 @@ kubectl -n vault exec -it vault-0 -- vault kv put kv/argocd/repo-creds \
   username="REPLACE_ME" token="REPLACE_ME"
 ```
 
-## Step Five: Create a token for External Secrets Operator
+## Step 5: Create a token for External Secrets Operator
 
 Create a minimal policy and a token that can read from `kv/`.
 
@@ -112,7 +112,7 @@ Store the token in Kubernetes:
 kubectl -n external-secrets create secret generic vault-eso-token --from-literal=token="REPLACE_ME"
 ```
 
-## Step Six: Add new secrets and ExternalSecret resources
+## Step 6: Add new secrets and ExternalSecret resources
 
 When you add a new secret, write it to Vault first, then create an ExternalSecret manifest in the same folder as the consuming workload.
 
@@ -147,7 +147,7 @@ spec:
 
 Commit the new manifest and let ArgoCD sync it.
 
-## Step Seven: Validate ExternalSecret sync
+## Step 7: Validate ExternalSecret sync
 
 Check that External Secrets Operator created or updated the target secrets:
 
@@ -159,7 +159,7 @@ kubectl -n tailscale get secret operator-oauth
 
 Once the secrets match Vault, remove any manually created secrets so External Secrets Operator owns them.
 
-## Step Eight: Access the Vault UI
+## Step 8: Access the Vault UI
 
 Vault is exposed at `https://vault.sudhanva.me` via the Tailscale Gateway.
 

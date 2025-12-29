@@ -7,7 +7,7 @@ title: Deploy Apps With GitOps
 
 This guide shows how to use this repo to deploy new workloads through ArgoCD ApplicationSets.
 
-## Step One: Add a new app directory
+## Step 1: Add a new app directory
 
 Create a folder under `apps/` and include an `app.yaml` file to define the ArgoCD application settings, plus separate YAML files for each resource.
 
@@ -31,7 +31,7 @@ namespace: my-app
 
 ArgoCD will create an application named `app-my-app` from this folder and sync it to the namespace defined in `app.yaml`.
 
-## Step Two: Use Gateway API for HTTPS
+## Step 2: Use Gateway API for HTTPS
 
 Expose services through the Tailscale Gateway using an `HTTPRoute` in the same namespace.
 
@@ -69,7 +69,7 @@ spec:
       port: 80
 ```
 
-## Step Three: Commit and push
+## Step 3: Commit and push
 
 ArgoCD watches the repo and applies changes via ApplicationSets. Once your changes are pushed, ArgoCD will sync the new app.
 
@@ -79,13 +79,13 @@ If your app needs to share data with another app, place them in the same namespa
 
 :::
 
-## Step Four: Verify in ArgoCD
+## Step 4: Verify in ArgoCD
 
 ```bash
 kubectl get apps -n argocd
 ```
 
-## Step Five: Trigger a manual sync
+## Step 5: Trigger a manual sync
 
 Use this if the app is out of sync or if auto-sync is disabled.
 
