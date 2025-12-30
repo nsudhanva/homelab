@@ -8,20 +8,34 @@ spec:
   - name: ntfy.nodes
     rules:
     - alert: NodeCpuHigh
-      expr: 100 - (avg by (instance) (rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 85
-      for: 10m
+      expr: 100 - (avg by (instance) (rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 90
       labels:
         severity: warning
         alert_channel: ntfy
       annotations:
         summary: Node CPU high
-        description: Node {{ $labels.instance }} CPU usage is above 85%.
+        description: Node {{ $labels.instance }} CPU usage is above 90%.
     - alert: NodeMemoryHigh
       expr: 100 * (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) > 90
-      for: 10m
       labels:
         severity: warning
         alert_channel: ntfy
       annotations:
         summary: Node memory high
         description: Node {{ $labels.instance }} memory usage is above 90%.
+    - alert: NodeDiskUsageHigh
+      expr: 100 * (1 - (node_filesystem_avail_bytes{mountpoint="/",fstype!~"tmpfs|overlay|squashfs|fuse.lxcfs"} / node_filesystem_size_bytes{mountpoint="/",fstype!~"tmpfs|overlay|squashfs|fuse.lxcfs"})) > 90
+      labels:
+        severity: warning
+        alert_channel: ntfy
+      annotations:
+        summary: Node disk usage high
+        description: Node {{ $labels.instance }} root filesystem usage is above 90%.
+    - alert: NodeNotReady
+      expr: kube_node_status_condition{condition="Ready",status="true"} == 0
+      labels:
+        severity: critical
+        alert_channel: ntfy
+      annotations:
+        summary: Node not ready
+        description: Node {{ $labels.node }} is not Ready.
