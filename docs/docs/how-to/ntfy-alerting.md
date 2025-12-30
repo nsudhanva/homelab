@@ -30,3 +30,7 @@ Open Alertmanager and confirm that alerts with `alert_channel="ntfy"` appear in 
 ## Step 4: Verify delivery
 
 Trigger a test alert by creating a crashing pod or temporarily lowering the alert thresholds, then confirm the ntfy notification arrives.
+
+## Notes
+
+Current rules alert on pod crash loops, frequent restarts, failed pods, node CPU/memory/disk usage above 90%, and nodes that are not Ready.

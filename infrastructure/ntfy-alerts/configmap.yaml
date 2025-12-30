@@ -23,24 +23,79 @@ data:
         common_labels = payload.get("commonLabels") or {}
         common_annotations = payload.get("commonAnnotations") or {}
 
-        alertname = common_labels.get("alertname", "Alert")
-        severity = common_labels.get("severity", "unknown")
-        namespace = common_labels.get("namespace")
-        pod = common_labels.get("pod")
-        node = common_labels.get("node") or common_labels.get("instance")
-        summary = common_annotations.get("summary") or common_annotations.get("description") or ""
-        alert_count = len(payload.get("alerts") or [])
+        alerts = payload.get("alerts") or []
+        alert_count = len(alerts)
 
-        title = f"{TITLE_PREFIX}{status} {alertname}".strip()
+        def pick_label(key, default=""):
+            value = common_labels.get(key)
+            if value:
+                return value
+            for alert in alerts:
+                value = (alert.get("labels") or {}).get(key)
+                if value:
+                    return value
+            return default
+
+        def pick_annotation(keys, default=""):
+            for key in keys:
+                value = common_annotations.get(key)
+                if value:
+                    return value
+            for alert in alerts:
+                annotations = alert.get("annotations") or {}
+                for key in keys:
+                    value = annotations.get(key)
+                    if value:
+                        return value
+            return default
+
+        alertname = pick_label("alertname", "Alert")
+        severity = pick_label("severity", "unknown")
+        summary = pick_annotation(["summary", "description"])
+
+        if alert_count > 1:
+            title = f"{TITLE_PREFIX}{status} {alert_count} alerts".strip()
+        else:
+            title = f"{TITLE_PREFIX}{status} {alertname} ({severity})".strip()
+
         lines = [f"severity={severity}", f"alerts={alert_count}"]
-        if namespace:
-            lines.append(f"namespace={namespace}")
-        if pod:
-            lines.append(f"pod={pod}")
-        if node:
-            lines.append(f"node={node}")
-        if summary:
-            lines.append(summary)
+        if alert_count == 1:
+            namespace = pick_label("namespace")
+            pod = pick_label("pod")
+            node = pick_label("node") or pick_label("instance")
+            if namespace:
+                lines.append(f"namespace={namespace}")
+            if pod:
+                lines.append(f"pod={pod}")
+            if node:
+                lines.append(f"node={node}")
+            if summary:
+                lines.append(summary)
+        else:
+            details = []
+            for alert in alerts[:3]:
+                labels = alert.get("labels") or {}
+                annotations = alert.get("annotations") or {}
+                name = labels.get("alertname", "Alert")
+                namespace = labels.get("namespace")
+                pod = labels.get("pod")
+                node = labels.get("node") or labels.get("instance")
+                note = annotations.get("summary") or annotations.get("description") or ""
+                line = name
+                if namespace and pod:
+                    line = f"{line} {namespace}/{pod}"
+                elif namespace:
+                    line = f"{line} ns={namespace}"
+                if node:
+                    line = f"{line} node={node}"
+                if note:
+                    line = f"{line} - {note}"
+                details.append(line)
+            if details:
+                lines.append("details:")
+                lines.extend(details)
+            if alert_count > len(details):
+                lines.append(f"...and {alert_count - len(details)} more")
 
         message = "\n".join(lines)
         if len(message) > 3500:
