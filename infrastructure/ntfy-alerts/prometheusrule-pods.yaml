@@ -8,17 +8,26 @@ spec:
   - name: ntfy.pods
     rules:
     - alert: PodCrashLooping
-      expr: kube_pod_container_status_waiting_reason{reason="CrashLoopBackOff"} == 1
-      for: 5m
+      expr: max_over_time(kube_pod_container_status_waiting_reason{reason="CrashLoopBackOff"}[10m]) > 0
+      for: 2m
       labels:
         severity: warning
         alert_channel: ntfy
       annotations:
         summary: Pod crash looping
         description: Pod {{ $labels.namespace }}/{{ $labels.pod }} is crash looping.
+    - alert: PodRestarting
+      expr: sum by (namespace, pod) (increase(kube_pod_container_status_restarts_total[10m])) > 3
+      for: 2m
+      labels:
+        severity: warning
+        alert_channel: ntfy
+      annotations:
+        summary: Pod restarting frequently
+        description: Pod {{ $labels.namespace }}/{{ $labels.pod }} restarted more than 3 times in 10 minutes.
     - alert: PodFailed
-      expr: kube_pod_status_phase{phase="Failed"} == 1
-      for: 5m
+      expr: max_over_time(kube_pod_status_phase{phase="Failed"}[10m]) > 0
+      for: 2m
       labels:
         severity: warning
         alert_channel: ntfy
