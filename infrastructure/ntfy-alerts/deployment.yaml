@@ -1,0 +1,54 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ntfy-alerts
+  namespace: ntfy-alerts
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ntfy-alerts
+  template:
+    metadata:
+      labels:
+        app: ntfy-alerts
+    spec:
+      containers:
+      - name: ntfy-alerts
+        image: python:3.12.12-alpine3.23
+        command:
+        - python
+        - /app/app.py
+        env:
+        - name: NTFY_URL
+          value: http://ntfy.ntfy.svc.cluster.local
+        - name: NTFY_TOPIC
+          value: alerts
+        - name: TITLE_PREFIX
+          value: ""
+        ports:
+        - name: http
+          containerPort: 8080
+        readinessProbe:
+          httpGet:
+            path: /healthz
+            port: http
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: http
+        resources:
+          requests:
+            cpu: 50m
+            memory: 64Mi
+          limits:
+            cpu: 200m
+            memory: 256Mi
+        volumeMounts:
+        - name: app
+          mountPath: /app/app.py
+          subPath: app.py
+      volumes:
+      - name: app
+        configMap:
+          name: ntfy-alerts-app

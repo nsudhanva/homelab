@@ -1,0 +1,123 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ntfy-alerts-app
+  namespace: ntfy-alerts
+data:
+  app.py: |
+    import json
+    import os
+    import sys
+    import urllib.error
+    import urllib.request
+    from http.server import BaseHTTPRequestHandler, HTTPServer
+
+    NTFY_URL = os.getenv("NTFY_URL", "http://ntfy.ntfy.svc.cluster.local")
+    NTFY_TOPIC = os.getenv("NTFY_TOPIC", "alerts")
+    TITLE_PREFIX = os.getenv("TITLE_PREFIX", "")
+    PORT = int(os.getenv("PORT", "8080"))
+
+
+    def build_message(payload):
+        status = str(payload.get("status", "unknown")).upper()
+        common_labels = payload.get("commonLabels") or {}
+        common_annotations = payload.get("commonAnnotations") or {}
+
+        alertname = common_labels.get("alertname", "Alert")
+        severity = common_labels.get("severity", "unknown")
+        namespace = common_labels.get("namespace")
+        pod = common_labels.get("pod")
+        node = common_labels.get("node") or common_labels.get("instance")
+        summary = common_annotations.get("summary") or common_annotations.get("description") or ""
+        alert_count = len(payload.get("alerts") or [])
+
+        title = f"{TITLE_PREFIX}{status} {alertname}".strip()
+        lines = [f"severity={severity}", f"alerts={alert_count}"]
+        if namespace:
+            lines.append(f"namespace={namespace}")
+        if pod:
+            lines.append(f"pod={pod}")
+        if node:
+            lines.append(f"node={node}")
+        if summary:
+            lines.append(summary)
+
+        message = "\n".join(lines)
+        if len(message) > 3500:
+            message = message[:3497] + "..."
+        return title, message, severity
+
+
+    def severity_priority(severity):
+        severity = (severity or "").lower()
+        if severity in {"critical", "page"}:
+            return "5"
+        if severity in {"warning", "warn"}:
+            return "4"
+        return "3"
+
+
+    def send_ntfy(title, message, severity):
+        url = f"{NTFY_URL.rstrip('/')}/{NTFY_TOPIC}"
+        data = message.encode("utf-8")
+        headers = {
+            "Title": title,
+            "Priority": severity_priority(severity),
+            "Content-Type": "text/plain; charset=utf-8",
+        }
+        request = urllib.request.Request(url, data=data, headers=headers, method="POST")
+        with urllib.request.urlopen(request, timeout=10) as response:
+            response.read()
+
+
+    class WebhookHandler(BaseHTTPRequestHandler):
+        def _send(self, code, body):
+            self.send_response(code)
+            self.send_header("Content-Type", "text/plain; charset=utf-8")
+            self.end_headers()
+            self.wfile.write(body.encode("utf-8"))
+
+        def do_GET(self):
+            if self.path == "/healthz":
+                self._send(200, "ok")
+                return
+            self._send(404, "not found")
+
+        def do_POST(self):
+            if self.path != "/webhook":
+                self._send(404, "not found")
+                return
+
+            length = int(self.headers.get("Content-Length", "0"))
+            if length <= 0:
+                self._send(400, "empty payload")
+                return
+
+            payload = self.rfile.read(length)
+            try:
+                data = json.loads(payload.decode("utf-8"))
+            except json.JSONDecodeError:
+                self._send(400, "invalid json")
+                return
+
+            try:
+                title, message, severity = build_message(data)
+                send_ntfy(title, message, severity)
+            except Exception as exc:
+                print(str(exc), file=sys.stderr)
+                self._send(500, "failed")
+                return
+
+            self._send(200, "sent")
+
+        def log_message(self, format, *args):
+            return
+
+
+    def main():
+        server = HTTPServer(("0.0.0.0", PORT), WebhookHandler)
+        server.serve_forever()
+
+
+    if __name__ == "__main__":
+        main()

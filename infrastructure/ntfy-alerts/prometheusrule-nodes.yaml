@@ -1,0 +1,27 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: ntfy-node-alerts
+  namespace: monitoring
+spec:
+  groups:
+  - name: ntfy.nodes
+    rules:
+    - alert: NodeCpuHigh
+      expr: 100 - (avg by (instance) (rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 85
+      for: 10m
+      labels:
+        severity: warning
+        alert_channel: ntfy
+      annotations:
+        summary: Node CPU high
+        description: Node {{ $labels.instance }} CPU usage is above 85%.
+    - alert: NodeMemoryHigh
+      expr: 100 * (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) > 90
+      for: 10m
+      labels:
+        severity: warning
+        alert_channel: ntfy
+      annotations:
+        summary: Node memory high
+        description: Node {{ $labels.instance }} memory usage is above 90%.

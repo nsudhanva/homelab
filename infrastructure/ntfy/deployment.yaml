@@ -1,0 +1,52 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ntfy
+  namespace: ntfy
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ntfy
+  template:
+    metadata:
+      labels:
+        app: ntfy
+    spec:
+      containers:
+      - name: ntfy
+        image: binwiederhier/ntfy:v2.15.0
+        args:
+        - serve
+        env:
+        - name: NTFY_BASE_URL
+          value: https://ntfy.sudhanva.me
+        - name: NTFY_CACHE_FILE
+          value: /var/cache/ntfy/cache.db
+        - name: NTFY_BEHIND_PROXY
+          value: "true"
+        ports:
+        - name: http
+          containerPort: 80
+        readinessProbe:
+          httpGet:
+            path: /
+            port: http
+        livenessProbe:
+          httpGet:
+            path: /
+            port: http
+        resources:
+          requests:
+            cpu: 50m
+            memory: 128Mi
+          limits:
+            cpu: 500m
+            memory: 512Mi
+        volumeMounts:
+        - name: cache
+          mountPath: /var/cache/ntfy
+      volumes:
+      - name: cache
+        persistentVolumeClaim:
+          claimName: ntfy-cache
