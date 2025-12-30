@@ -81,9 +81,17 @@ spec:
               group_wait: 30s
               group_interval: 5m
               repeat_interval: 12h
+              routes:
+              - receiver: ntfy
+                matchers:
+                - alert_channel="ntfy"
             receivers:
             - name: default
             - name: "null"
+            - name: ntfy
+              webhook_configs:
+              - url: http://ntfy-alerts.ntfy-alerts.svc.cluster.local:8080/webhook
+                send_resolved: true
         grafana:
           admin:
             existingSecret: grafana-admin

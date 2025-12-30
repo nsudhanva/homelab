@@ -63,6 +63,12 @@ data:
       - name: "Observability"
         icon: "fas fa-chart-line"
         items:
+          - name: "Ntfy"
+            subtitle: "Push alerts"
+            url: "https://ntfy.sudhanva.me"
+            icon: "fas fa-bullhorn"
+            tag: "infra"
+            target: "_blank"
           - name: "Grafana"
             subtitle: "Dashboards"
             url: "https://grafana.sudhanva.me"
