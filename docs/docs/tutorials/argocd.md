@@ -5,6 +5,12 @@ title: ArgoCD and GitOps
 
 # ArgoCD and GitOps
 
+:::note
+
+Ansible does not install ArgoCD or apply the GitOps bootstrap. Run these steps after Cilium is ready.
+
+:::
+
 ## Step 1: Install ArgoCD
 
 ```bash

@@ -13,7 +13,7 @@ keywords:
 
 :::note
 
-These steps are handled by the Ansible provisioning playbooks. Use this only if you are doing a manual setup.
+The `provision-*.yaml` playbooks run the `base` role, which disables swap, loads kernel modules, writes sysctl and inotify settings, and installs base packages. Use this only if you are doing a manual setup.
 
 :::
 

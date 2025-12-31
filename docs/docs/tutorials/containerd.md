@@ -7,7 +7,7 @@ title: Install Containerd
 
 :::note
 
-This step is handled by the Ansible provisioning playbooks. Use this only if you are doing a manual setup.
+The `provision-*.yaml` playbooks run the `containerd` role, which installs containerd (upstream or apt), writes `/etc/containerd/config.toml`, and enables the service. Use this only if you are doing a manual setup.
 
 :::
 

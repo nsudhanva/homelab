@@ -12,6 +12,12 @@ keywords:
 
 # Kubernetes
 
+:::note
+
+If you ran the Ansible provisioning playbook, skip Step 1 and start at Step 2. The playbook installs and pins kubeadm/kubelet/kubectl but does not run `kubeadm init` or `kubeadm join`.
+
+:::
+
 ## Step 1: Install Kubernetes packages
 
 ```bash
@@ -29,12 +35,6 @@ sudo apt-get update
 sudo apt-get install -y kubelet kubeadm kubectl
 sudo apt-mark hold kubelet kubeadm kubectl
 ```
-
-:::note
-
-Ansible installs and pins these packages for you when using the provisioning playbook.
-
-:::
 
 ## Step 2: Initialize the control plane
 
