@@ -15,7 +15,7 @@ const config: Config = {
   },
 
   // Set the production url of your site here
-  url: 'https://docs.sudhanva.me',
+  url: process.env.DOCS_URL || 'https://docs.sudhanva.me',
   baseUrl: '/',
 
   // GitHub pages deployment config.
