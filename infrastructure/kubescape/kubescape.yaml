@@ -1,0 +1,50 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: kubescape
+  namespace: argocd
+spec:
+  project: default
+  source:
+    chart: kubescape-operator
+    repoURL: https://kubescape.github.io/helm-charts/
+    targetRevision: 1.30.0
+    helm:
+      values: |
+        clusterName: homelab
+        ksNamespace: kubescape
+        capabilities:
+          operator: enable
+          configurationScan: enable
+          continuousScan: disable
+          nodeScan: enable
+          nodeSbomGeneration: enable
+          scanEmbeddedSBOMs: disable
+          vulnerabilityScan: enable
+          relevancy: enable
+          vexGeneration: disable
+          runtimeObservability: disable
+          networkPolicyService: disable
+          networkEventsStreaming: disable
+          runtimeDetection: disable
+          malwareDetection: disable
+          nodeProfileService: disable
+          admissionController: disable
+          httpDetection: disable
+          seccompProfileService: disable
+          manageWorkloads: disable
+          syncSBOM: disable
+          autoUpgrading: disable
+          kubescapeOffline: enable
+          prometheusExporter: disable
+        configurations:
+          persistence: enable
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: kubescape
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+    - CreateNamespace=true

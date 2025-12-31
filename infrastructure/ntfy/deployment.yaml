@@ -13,6 +13,10 @@ spec:
       labels:
         app: ntfy
     spec:
+      automountServiceAccountToken: false
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
       containers:
       - name: ntfy
         image: binwiederhier/ntfy:v2.15.0

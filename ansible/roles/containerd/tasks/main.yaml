@@ -35,6 +35,21 @@
     mode: '0644'
   when: containerd_install_method == "upstream"
 
+- name: Download containerd checksum
+  ansible.builtin.get_url:
+    url: "{{ containerd_download_base }}/v{{ containerd_version }}/containerd-{{ containerd_version }}-linux-{{ containerd_arch }}.tar.gz.sha256sum"
+    dest: "/tmp/containerd-{{ containerd_version }}-linux-{{ containerd_arch }}.tar.gz.sha256sum"
+    mode: '0644'
+  when: containerd_install_method == "upstream"
+
+- name: Verify containerd checksum
+  ansible.builtin.command:
+    cmd: "sha256sum --check /tmp/containerd-{{ containerd_version }}-linux-{{ containerd_arch }}.tar.gz.sha256sum"
+  args:
+    chdir: /tmp
+  changed_when: false
+  when: containerd_install_method == "upstream"
+
 - name: Extract containerd release
   ansible.builtin.unarchive:
     src: "/tmp/containerd-{{ containerd_version }}-linux-{{ containerd_arch }}.tar.gz"

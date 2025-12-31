@@ -13,14 +13,30 @@ spec:
       labels:
         app: filebrowser
     spec:
+      automountServiceAccountToken: false
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: filebrowser
           image: docker.io/filebrowser/filebrowser
           args:
-            - --noauth
             - --root=/srv
             - --address=0.0.0.0
             - --port=8080
+          env:
+            - name: FB_DATABASE
+              value: /database/filebrowser.db
+            - name: FB_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: filebrowser-auth
+                  key: username
+            - name: FB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: filebrowser-auth
+                  key: password_hash
           resources:
             requests:
               memory: 64Mi
@@ -31,9 +47,14 @@ spec:
           volumeMounts:
             - name: media
               mountPath: /srv
+            - name: config
+              mountPath: /database
           ports:
             - containerPort: 8080
       volumes:
         - name: media
           persistentVolumeClaim:
             claimName: jellyfin-media
+        - name: config
+          persistentVolumeClaim:
+            claimName: filebrowser-config

@@ -33,6 +33,7 @@ A self-hosted bare-metal Kubernetes platform on Ubuntu 24.04 LTS. Combines Ansib
 - Metrics Server for resource usage in Headlamp
 - ExternalDNS automation for Gateway API routes
 - Envoy Gateway data plane for Gateway API
+- Kubescape operator for cluster security scanning
 
 ## Architecture
 

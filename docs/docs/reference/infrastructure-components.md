@@ -81,6 +81,7 @@ ApplicationSets watch `apps/` and `infrastructure/` and create ArgoCD Applicatio
 | Hubble UI | `infrastructure/hubble-ui/httproute.yaml` | Exposes Hubble UI over Tailscale | HTTPRoute to `hubble-ui` service in `kube-system` |
 | Prometheus Operator CRDs | `infrastructure/prometheus-operator-crds/` | Prometheus CRDs | Installed before the monitoring stack |
 | Prometheus stack | `infrastructure/prometheus/` | Metrics, alerting, dashboards | Grafana, Prometheus, Alertmanager, and HTTPRoutes |
+| Kubescape | `infrastructure/kubescape/` | Cluster security scanning | Operator runs in offline mode |
 | ntfy | `infrastructure/ntfy/` | Push notification service | Tailscale HTTPRoute with persistent cache |
 | ntfy alerts | `infrastructure/ntfy-alerts/` | Alertmanager webhook adapter and alert rules | Routes alert rules into ntfy |
 | Metrics Server | `infrastructure/metrics-server/` | CPU and memory metrics API | Required for Headlamp usage graphs |

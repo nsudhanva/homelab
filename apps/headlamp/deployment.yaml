@@ -14,6 +14,9 @@ spec:
         app: headlamp
     spec:
       serviceAccountName: headlamp
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
       containers:
       - name: headlamp
         image: ghcr.io/headlamp-k8s/headlamp:v0.39.0

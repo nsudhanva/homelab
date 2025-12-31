@@ -15,6 +15,10 @@ spec:
       labels:
         app: docs
     spec:
+      automountServiceAccountToken: false
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
       containers:
       - name: docs
         image: ghcr.io/nsudhanva/homelab-docs:latest

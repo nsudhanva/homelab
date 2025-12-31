@@ -175,6 +175,7 @@ Once ArgoCD syncs, you get:
 | **External Secrets CRDs** | CustomResourceDefinitions for External Secrets |
 | **External Secrets Operator** | Syncs secrets from Vault |
 | **Vault** | Central secrets storage |
+| **Kubescape** | Cluster security scanning operator |
 | **Tailscale DNS** | Split-horizon DNS for tailnet clients |
 | **Hubble UI** | Network visibility UI exposed through Gateway API |
 
