@@ -5,8 +5,8 @@ import type * as Preset from '@docusaurus/preset-classic';
 // This runs in Node.js - Don't use client-side code here (browser APIs, JSX...)
 
 const config: Config = {
-  title: 'Homelab',
-  tagline: 'Multi-node bare-metal Kubernetes cluster',
+  title: 'Bare Metal Kubernetes Homelab',
+  tagline: 'How to create a bare-metal Kubernetes cluster with kubeadm, Ansible, and GitOps',
   favicon: 'img/favicon.ico',
 
   // Future flags, see https://docusaurus.io/docs/api/docusaurus-config#future
@@ -15,7 +15,7 @@ const config: Config = {
   },
 
   // Set the production url of your site here
-  url: 'https://docs.homelab', // Internal URL
+  url: 'https://docs.sudhanva.me',
   baseUrl: '/',
 
   // GitHub pages deployment config.
@@ -67,6 +67,22 @@ const config: Config = {
   themeConfig: {
     // Replace with your project's social card
     image: 'img/docusaurus-social-card.jpg',
+    metadata: [
+      {
+        name: 'description',
+        content:
+          'How to create a bare-metal Kubernetes cluster on Ubuntu 24.04 using kubeadm, Ansible, Cilium, and GitOps with ArgoCD.',
+      },
+      {
+        name: 'keywords',
+        content:
+          'bare metal kubernetes, kubeadm, ubuntu 24.04, ansible kubernetes, argocd gitops, cilium, longhorn, tailscale, envoy gateway, homelab k8s',
+      },
+      {
+        property: 'og:site_name',
+        content: 'Bare Metal Kubernetes Homelab Docs',
+      },
+    ],
     navbar: {
       title: 'Homelab',
       logo: {
