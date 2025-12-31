@@ -1,0 +1,53 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: tailscale-dns-updater
+  namespace: tailscale-dns
+spec:
+  schedule: "*/10 * * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 1
+  failedJobsHistoryLimit: 1
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          serviceAccountName: tailscale-dns-updater
+          restartPolicy: OnFailure
+          securityContext:
+            seccompProfile:
+              type: RuntimeDefault
+          containers:
+          - name: updater
+            image: registry.k8s.io/kubectl:v1.34.3
+            imagePullPolicy: IfNotPresent
+            command:
+            - /bin/sh
+            - -c
+            - |
+              set -eu
+              gateway_ip="$(kubectl -n tailscale get gateway tailscale-gateway -o jsonpath='{.status.addresses[?(@.type=="IPAddress")].value}')"
+              if [ -z "$gateway_ip" ]; then
+                echo "gateway IP not found"
+                exit 1
+              fi
+              cat <<EOF | kubectl -n tailscale-dns apply -f -
+              apiVersion: v1
+              kind: ConfigMap
+              metadata:
+                name: tailscale-dns
+                namespace: tailscale-dns
+              data:
+                Corefile: |
+                  sudhanva.me:53 {
+                      errors
+                      health
+                      ready
+                      reload
+                      template IN A {
+                          answer "{{ .Name }} 60 IN A ${gateway_ip}"
+                      }
+                      forward . 1.1.1.1 1.0.0.1
+                      cache 30
+                  }
+              EOF
