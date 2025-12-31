@@ -1,6 +1,13 @@
 ---
 sidebar_position: 12
 title: Add a Worker Node
+description: Provision and join a new worker node to a bare-metal Kubernetes cluster managed with Ansible and kubeadm.
+keywords:
+  - add worker node
+  - kubeadm join
+  - ansible provisioning
+  - bare metal kubernetes
+  - ubuntu 24.04
 ---
 
 # Add a Worker Node

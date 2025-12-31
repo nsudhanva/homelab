@@ -1,5 +1,13 @@
 ---
 title: From Scratch
+description: Step-by-step guide to create a bare-metal Kubernetes cluster with kubeadm, Ansible, Cilium, and ArgoCD.
+keywords:
+  - bare metal kubernetes
+  - how to create bare metal k8s
+  - kubeadm
+  - ansible provisioning
+  - argocd gitops
+  - cilium cni
 ---
 
 # From Scratch

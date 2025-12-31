@@ -1,6 +1,12 @@
 ---
 sidebar_position: 2
 title: System Preparation
+description: Manual system preparation steps for Kubernetes nodes on Ubuntu, including swap, kernel modules, and sysctl.
+keywords:
+  - kubernetes system prep
+  - disable swap
+  - sysctl kubernetes
+  - ubuntu 24.04 k8s
 ---
 
 # System Preparation

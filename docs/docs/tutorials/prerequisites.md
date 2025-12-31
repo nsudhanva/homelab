@@ -1,6 +1,13 @@
 ---
 sidebar_position: 1
 title: Prerequisites
+description: Workstation setup and Ansible inventory prep for building a bare-metal Kubernetes cluster.
+keywords:
+  - bare metal kubernetes
+  - workstation setup
+  - ansible inventory
+  - kubeadm
+  - ubuntu 24.04
 ---
 
 # Prerequisites

@@ -1,6 +1,16 @@
 ---
 sidebar_position: 1
 title: Home
+description: How to create a bare-metal Kubernetes cluster on Ubuntu 24.04 with kubeadm, Ansible, ArgoCD, and Cilium.
+keywords:
+  - bare metal kubernetes
+  - how to create bare metal k8s
+  - kubeadm
+  - ubuntu 24.04
+  - ansible kubernetes
+  - argocd gitops
+  - cilium cni
+  - homelab kubernetes
 ---
 
 # Homelab
