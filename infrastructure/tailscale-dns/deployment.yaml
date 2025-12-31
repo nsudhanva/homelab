@@ -13,6 +13,10 @@ spec:
       labels:
         app: tailscale-dns
     spec:
+      automountServiceAccountToken: false
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
       containers:
       - name: coredns
         image: coredns/coredns:1.13.2

@@ -72,7 +72,7 @@ kubectl -n headlamp create token headlamp
 
 ## Step 4: Adjust permissions if needed
 
-The default setup uses `cluster-admin` for the Headlamp service account. If you want read-only access, bind the service account to a more restrictive cluster role.
+The default setup binds the Headlamp service account to the built-in `view` role. If you want admin access, update the ClusterRoleBinding to use `cluster-admin` or another role.
 
 ## OIDC Login With Vault
 
@@ -230,7 +230,7 @@ These files implement the OIDC wiring for Headlamp:
 
 ## OIDC Admin Access
 
-Headlamp users authenticate as OIDC identities. To grant full admin access, bind the OIDC subject to `cluster-admin`.
+Headlamp users authenticate as OIDC identities. To grant full admin access, bind an OIDC group to `cluster-admin`.
 
 Use a separate manifest so ArgoCD can manage it:
 
@@ -245,11 +245,11 @@ roleRef:
   name: cluster-admin
 subjects:
 - apiGroup: rbac.authorization.k8s.io
-  kind: User
-  name: oidc:REPLACE_WITH_ENTITY_ID
+  kind: Group
+  name: oidc:admins
 ```
 
-The repo includes `apps/headlamp/clusterrolebinding-oidc.yaml`. Replace the subject with your Vault entity ID if it changes.
+The repo includes `apps/headlamp/clusterrolebinding-oidc.yaml`. Update the group name if your OIDC provider uses a different group claim.
 
 ## Prometheus Metrics
 

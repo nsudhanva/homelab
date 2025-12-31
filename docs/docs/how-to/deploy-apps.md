@@ -19,6 +19,12 @@ Example layout:
 - `apps/my-app/service.yaml`
 - `apps/my-app/httproute.yaml`
 
+:::note
+
+App namespaces use Pod Security Admission warn and audit labels at the baseline level. They do not block workloads, but you will see warnings if a manifest requests privileged features. If your app needs Kubernetes API access, set `automountServiceAccountToken: true` and bind a dedicated ServiceAccount.
+
+:::
+
 If you want automated image updates, also include a `kustomization.yaml` that lists the resources in the folder.
 
 `app.yaml` defines the app name, path, and namespace. Example:

@@ -22,7 +22,8 @@ Check the latest stable release before changing any pinned version.
 - ArgoCD Image Updater app: `v1.0.2` in `infrastructure/argocd-image-updater/argocd-image-updater.yaml`
 - Longhorn: `1.7.2` in `bootstrap/templates/longhorn.yaml`
 - Tailscale Operator: `1.92.4` in `infrastructure/tailscale/tailscale-operator.yaml`
-- Envoy Gateway: `v1.6.1` image tag in `infrastructure/envoy-gateway/envoy-gateway.yaml` (chart `v0.0.0-latest`)
+- Envoy Gateway: `v1.6.1` image tag in `infrastructure/envoy-gateway/envoy-gateway.yaml` (chart `v1.6.1`)
+- Kubescape Operator chart: `1.30.0` in `infrastructure/kubescape/kubescape.yaml`
 - Gateway API CRDs: `v1.4.1` in `infrastructure/gateway-api-crds/gateway-api-crds.yaml`
 - Envoy Gateway CRDs: `v1.6.1` in `infrastructure/envoy-gateway-crds/`
 - cert-manager: `v1.19.2` in `infrastructure/cert-manager/cert-manager.yaml`

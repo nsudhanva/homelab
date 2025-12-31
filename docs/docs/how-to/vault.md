@@ -74,6 +74,23 @@ kubectl -n vault exec -it vault-0 -- vault kv put kv/cert-manager/cloudflare api
 kubectl -n vault exec -it vault-0 -- vault kv put kv/tailscale/operator-oauth client_id="REPLACE_ME" client_secret="REPLACE_ME"
 ```
 
+### Step 4a: Filebrowser credentials
+
+Generate a bcrypt hash for the password:
+
+```bash
+htpasswd -bnBC 12 filebrowser "REPLACE_ME" | cut -d ':' -f2
+```
+
+Store the username, plaintext password, and bcrypt hash:
+
+```bash
+kubectl -n vault exec -it vault-0 -- vault kv put kv/filebrowser/auth \
+  username="filebrowser" \
+  password="REPLACE_ME" \
+  password_hash="REPLACE_ME"
+```
+
 ## ArgoCD Image Updater credentials
 
 Store registry and Git credentials for ArgoCD Image Updater:

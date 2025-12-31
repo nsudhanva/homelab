@@ -25,8 +25,21 @@ BIN="$BIN_DIR/kubeconform"
 if [[ ! -x "$BIN" ]]; then
   mkdir -p "$BIN_DIR"
   URL="https://github.com/yannh/kubeconform/releases/download/${VERSION}/kubeconform-${OS}-${ARCH}.tar.gz"
-  curl -sSL "$URL" | tar -xz -C "$BIN_DIR"
+  TAR="$BIN_DIR/$(basename "$URL")"
+  SHA="${TAR}.sha256sum"
+  curl -sSL -o "$TAR" "$URL"
+  curl -sSL -o "$SHA" "${URL}.sha256sum"
+  if command -v sha256sum >/dev/null 2>&1; then
+    (cd "$BIN_DIR" && sha256sum --check "$(basename "$SHA")")
+  elif command -v shasum >/dev/null 2>&1; then
+    (cd "$BIN_DIR" && shasum -a 256 -c "$(basename "$SHA")")
+  else
+    echo "sha256sum or shasum is required to verify kubeconform" >&2
+    exit 1
+  fi
+  tar -xz -C "$BIN_DIR" -f "$TAR"
   chmod +x "$BIN"
+  rm -f "$TAR" "$SHA"
 fi
 
 find apps infrastructure bootstrap -name "*.yaml" ! -name "app.yaml" ! -name ".argocd-source-*.yaml" -print0 \

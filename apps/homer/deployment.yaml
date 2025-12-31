@@ -15,6 +15,10 @@ spec:
       labels:
         app: homer
     spec:
+      automountServiceAccountToken: false
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: homer
           image: b4bz/homer:v25.11.1

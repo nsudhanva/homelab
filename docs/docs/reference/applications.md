@@ -30,7 +30,7 @@ The `media` namespace is shared by Jellyfin and Filebrowser so they can use the 
 | Item | Path | Notes |
 | --- | --- | --- |
 | App config | `apps/filebrowser/app.yaml` | ArgoCD app definition |
-| Deployment | `apps/filebrowser/deployment.yaml` | No auth, mounts Jellyfin media |
+| Deployment | `apps/filebrowser/deployment.yaml` | Auth via Vault-backed secret, mounts Jellyfin media |
 | Service | `apps/filebrowser/service.yaml` | ClusterIP on port 80 |
 | HTTPRoute | `apps/filebrowser/httproute.yaml` | `filebrowser.sudhanva.me` |
 
