@@ -4,11 +4,28 @@
     path: /usr/bin/tailscale
   register: tailscale_binary
 
-- name: Install Tailscale
-  ansible.builtin.shell: curl -fsSL https://tailscale.com/install.sh | sh
+- name: Add Tailscale GPG key
+  ansible.builtin.shell: |
+    curl -fsSL https://pkgs.tailscale.com/stable/ubuntu/noble.noarmor.gpg | \
+      gpg --dearmor -o /usr/share/keyrings/tailscale-archive-keyring.gpg
   when: not tailscale_binary.stat.exists
   args:
-    creates: /usr/bin/tailscale
+    creates: /usr/share/keyrings/tailscale-archive-keyring.gpg
+
+- name: Add Tailscale repository
+  ansible.builtin.copy:
+    dest: /etc/apt/sources.list.d/tailscale.list
+    content: |
+      deb [signed-by=/usr/share/keyrings/tailscale-archive-keyring.gpg] https://pkgs.tailscale.com/stable/ubuntu noble main
+    mode: '0644'
+  when: not tailscale_binary.stat.exists
+
+- name: Install Tailscale package
+  ansible.builtin.apt:
+    name: tailscale
+    state: present
+    update_cache: true
+  when: not tailscale_binary.stat.exists
 
 - name: Enable tailscaled service
   ansible.builtin.systemd:
