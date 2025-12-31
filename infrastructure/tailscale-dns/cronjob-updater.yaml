@@ -19,19 +19,24 @@ spec:
               type: RuntimeDefault
           containers:
           - name: updater
-            image: rancher/kubectl:v1.34.3
+            image: alpine:3.21.5
             imagePullPolicy: IfNotPresent
             command:
             - /bin/sh
             - -c
             - |
               set -eu
-              gateway_ip="$(kubectl -n tailscale get gateway tailscale-gateway -o jsonpath='{.status.addresses[?(@.type=="IPAddress")].value}')"
+              apk add --no-cache curl ca-certificates >/dev/null
+              curl -sSL -o /tmp/kubectl https://dl.k8s.io/release/v1.34.3/bin/linux/amd64/kubectl
+              curl -sSL -o /tmp/kubectl.sha256 https://dl.k8s.io/release/v1.34.3/bin/linux/amd64/kubectl.sha256
+              echo "$(cat /tmp/kubectl.sha256)  /tmp/kubectl" | sha256sum -c - >/dev/null
+              chmod +x /tmp/kubectl
+              gateway_ip="$(/tmp/kubectl -n tailscale get gateway tailscale-gateway -o jsonpath='{.status.addresses[?(@.type=="IPAddress")].value}')"
               if [ -z "$gateway_ip" ]; then
                 echo "gateway IP not found"
                 exit 1
               fi
-              cat <<EOF | kubectl -n tailscale-dns apply -f -
+              cat <<EOF | /tmp/kubectl -n tailscale-dns apply -f -
               apiVersion: v1
               kind: ConfigMap
               metadata:
