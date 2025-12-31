@@ -47,6 +47,14 @@ const config: Config = {
     ],
   ],
 
+  scripts: [
+    {
+      src: 'https://static.cloudflareinsights.com/beacon.min.js',
+      defer: true,
+      'data-cf-beacon': '{"token":"a675b50a9ee14b08b9c027eb417dab44"}',
+    },
+  ],
+
   themes: [
     '@docusaurus/theme-mermaid',
     '@docusaurus/theme-live-codeblock',
