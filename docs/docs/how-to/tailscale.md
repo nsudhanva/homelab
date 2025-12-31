@@ -136,7 +136,7 @@ Keep the public Cloudflare record pointed at Pages, and add a Tailscale DNS over
 
 ### Deploy the split-DNS resolver
 
-This repo includes a CoreDNS deployment that answers any `*.sudhanva.me` hostname with the Tailscale Gateway IP.
+This repo includes a CoreDNS deployment that answers any `*.sudhanva.me` hostname with the Tailscale Gateway IP. A CronJob keeps the IP in sync with the Gateway status.
 
 Sync the `infrastructure/tailscale-dns/` component, then capture the Tailscale IP for the resolver:
 
@@ -144,7 +144,7 @@ Sync the `infrastructure/tailscale-dns/` component, then capture the Tailscale I
 kubectl -n tailscale-dns get svc tailscale-dns -o wide
 ```
 
-If the Tailscale Gateway IP changes, update it in `infrastructure/tailscale-dns/configmap.yaml`.
+If you need to validate the updater, check the `tailscale-dns-updater` CronJob and its latest Job logs.
 
 ### Configure Cloudflare (public)
 

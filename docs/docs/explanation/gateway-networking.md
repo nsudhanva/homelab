@@ -155,6 +155,7 @@ To make this work:
 - Keep the public Cloudflare DNS record pointing at Pages.
 - Route tailnet DNS through the `tailscale-dns` resolver, which answers `*.sudhanva.me` with the Tailscale Gateway IP.
 - Do not annotate the HTTPRoute with `external-dns.alpha.kubernetes.io/expose: "true"` so ExternalDNS does not overwrite the public record.
+- The `tailscale-dns-updater` CronJob refreshes the Gateway IP in the resolver config.
 
 ## In-cluster access to Gateway services
 
