@@ -45,7 +45,6 @@ flowchart TB
 sequenceDiagram
     participant Client as Tailnet Client
     participant TSdns as Tailscale DNS
-    participant CF as Cloudflare DNS
     participant TS as Tailscale Proxy Pod
     participant Svc as Envoy Service (ClusterIP)
     participant Envoy as Envoy Gateway
@@ -54,8 +53,6 @@ sequenceDiagram
     participant Pod as App Pod
 
     Client->>TSdns: Query docs.sudhanva.me
-    TSdns->>CF: Resolve CNAME gateway-envoy.TAILNET.ts.net
-    CF-->>TSdns: Tailscale hostname
     TSdns-->>Client: 100.x.y.z
     Client->>TS: TLS 443 to 100.x.y.z
     TS->>Svc: DNAT to ClusterIP:443
@@ -156,7 +153,7 @@ Some hostnames need different targets on and off the tailnet. For example, `docs
 To make this work:
 
 - Keep the public Cloudflare DNS record pointing at Pages.
-- Route tailnet DNS through the `tailscale-dns` resolver, which rewrites `*.sudhanva.me` to the Tailscale Gateway hostname and resolves it via Tailscale DNS.
+- Route tailnet DNS through the `tailscale-dns` resolver, which answers `*.sudhanva.me` with the Tailscale Gateway IP.
 - Do not annotate the HTTPRoute with `external-dns.alpha.kubernetes.io/expose: "true"` so ExternalDNS does not overwrite the public record.
 
 ## In-cluster access to Gateway services
