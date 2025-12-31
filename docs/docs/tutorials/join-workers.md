@@ -6,6 +6,7 @@ title: Join Worker Nodes
 # Join Worker Nodes
 
 Use this after the control plane is initialized to add worker nodes to the cluster.
+If you are adding a brand new node that has not been provisioned, start with [Add a Worker Node](../how-to/add-worker-node.md).
 
 ## Step 1: Generate a join command
 

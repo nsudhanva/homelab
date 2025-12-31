@@ -49,6 +49,15 @@ ArgoCD will sync all infrastructure and apps from Git automatically.
 
 **Worker join steps:** [Join workers](./tutorials/join-workers.md)
 
+## IP Address Conventions
+
+This repo includes both real configuration values and placeholders that you must replace.
+
+- Inventory IPs in `ansible/inventory/hosts.yaml` and `ansible/inventory/multipass.yaml` are always environment-specific.
+- `k8sServiceHost` in `infrastructure/cilium/values.cilium` must match your control plane IP.
+- `TAILSCALE_GATEWAY_IP` and `GATEWAY_ENVOY_HOSTNAME` in docs are placeholders for your Tailnet-provided values.
+- `100.100.100.100` is the fixed Tailscale DNS resolver and should not be changed.
+
 ---
 
 ### Local Rehearsal (Optional)

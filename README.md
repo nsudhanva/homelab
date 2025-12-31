@@ -225,6 +225,7 @@ npm start
 Recommended reading paths:
 
 - Start from scratch: <https://docs.sudhanva.me/docs/how-to/from-scratch>
+- Add a worker node: <https://docs.sudhanva.me/docs/how-to/add-worker-node>
 - Prereqs and system prep: <https://docs.sudhanva.me/docs/tutorials/prerequisites>
 - GitOps model: <https://docs.sudhanva.me/docs/explanation/automation-model>
 - Infra catalog: <https://docs.sudhanva.me/docs/reference/infrastructure-components>

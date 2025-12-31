@@ -120,7 +120,7 @@ Set your email in `infrastructure/cert-manager-issuer/cluster-issuer.yaml` befor
 
 ### Set the Tailscale Gateway target
 
-Update the `external-dns.alpha.kubernetes.io/target` value in `infrastructure/gateway/gateway.yaml` to the Tailscale hostname created by the Envoy Gateway service (for example, `gateway-envoy.TAILNET.ts.net`). The repo default uses `gateway-envoy.ainu-herring.ts.net`.
+Update the `external-dns.alpha.kubernetes.io/target` value in `infrastructure/gateway/gateway.yaml` to the Tailscale hostname created by the Envoy Gateway service (for example, `gateway-envoy.TAILNET.ts.net`). The repo default uses `GATEWAY_ENVOY_HOSTNAME`.
 
 ## Split-horizon DNS for docs.sudhanva.me
 
@@ -169,7 +169,7 @@ curl -I https://docs.sudhanva.me
 
 Expected results:
 
-- DNS resolves to the Tailscale Gateway IP (for example, `100.88.7.18`).
+- DNS resolves to the Tailscale Gateway IP (for example, `TAILSCALE_GATEWAY_IP`).
 - Response headers do not include Cloudflare headers like `cf-ray`.
 
 Off the tailnet:
