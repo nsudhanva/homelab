@@ -31,7 +31,7 @@ flowchart TB
 
     Client -->|"1. DNS: docs.sudhanva.me"| CF
     CF -->|"2. CNAME: gateway-envoy.TAILNET.ts.net"| Client
-    Client -->|"3. TLS to 100.88.7.18:443"| TS
+    Client -->|"3. TLS to TAILSCALE_GATEWAY_IP:443"| TS
     TS -->|"4. DNAT to ClusterIP"| SVC
     SVC --> ENVOY
     ENVOY -->|"5. Route by hostname"| APP
@@ -109,7 +109,7 @@ flowchart LR
 The Tailscale Kubernetes Operator creates proxy pods for `LoadBalancer` services when `spec.loadBalancerClass: tailscale` is set. Each proxy pod:
 
 - Joins your Tailnet as a device (e.g., `gateway-envoy`)
-- Gets a Tailscale IP (e.g., `100.88.7.18`)
+- Gets a Tailscale IP (for example, `TAILSCALE_GATEWAY_IP`)
 - Uses iptables DNAT to forward traffic to the Kubernetes ClusterIP
 
 ### Envoy Gateway
@@ -224,11 +224,11 @@ cilium config view | grep -E "bpf-lb-sock|kubeProxyReplacement"
 
 When you visit `https://docs.sudhanva.me` from your Mac:
 
-- **DNS Resolution**: Your Tailscale client queries Tailscale DNS (100.100.100.100), which knows that `docs.sudhanva.me` points to `gateway-envoy.TAILNET.ts.net`, which resolves to `100.88.7.18`.
+- **DNS Resolution**: Your Tailscale client queries Tailscale DNS (100.100.100.100), which knows that `docs.sudhanva.me` points to `gateway-envoy.TAILNET.ts.net`, which resolves to `TAILSCALE_GATEWAY_IP`.
 
-- **TLS Connection**: Your browser connects to `100.88.7.18:443` via the WireGuard tunnel. The Tailscale proxy pod receives the connection.
+- **TLS Connection**: Your browser connects to `TAILSCALE_GATEWAY_IP:443` via the WireGuard tunnel. The Tailscale proxy pod receives the connection.
 
-- **DNAT**: iptables rules in the proxy pod rewrite the destination from `100.88.7.18:443` to the ClusterIP `10.x.x.x:443`.
+- **DNAT**: iptables rules in the proxy pod rewrite the destination from `TAILSCALE_GATEWAY_IP:443` to the ClusterIP `10.x.x.x:443`.
 
 - **Cilium Processing**: With `socketLB.hostNamespaceOnly=true`, Cilium processes the DNAT'd packet at the tc layer (not socket layer) and routes it to the Envoy pod.
 
