@@ -7,6 +7,12 @@ title: Cilium CNI
 
 Cilium provides the Container Network Interface (CNI) and replaces kube-proxy with eBPF-based load balancing.
 
+:::note
+
+Ansible does not install Cilium. Run these steps after the control plane is initialized.
+
+:::
+
 ## Step 1: Install Cilium CLI
 
 ```bash

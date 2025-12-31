@@ -21,6 +21,24 @@ Multi-node bare-metal Kubernetes cluster on Ubuntu 24.04 LTS, managed via GitOps
 
 The primary goal of this repository is a bare-metal, multi-node cluster. The local VM path is a rehearsal option for testing changes before touching hardware.
 
+### Ansible vs Manual Flow
+
+```mermaid
+flowchart TD
+  Start["Start here"] --> Choice{"Provision with Ansible?"}
+  Choice -->|Recommended| Ansible["Run Ansible provisioning"]
+  Choice -->|Manual| Manual["Manual node preparation"]
+  Ansible --> Kubeadm["kubeadm init/join"]
+  Manual --> SystemPrep["System Preparation"]
+  SystemPrep --> Containerd["Install Containerd"]
+  Containerd --> Kubeadm
+  Kubeadm --> Cilium["Install Cilium CNI"]
+  Cilium --> Argo["Install ArgoCD + GitOps bootstrap"]
+  Argo --> Sync["Apps and infrastructure sync"]
+```
+
+Ansible provisioning handles system prep, containerd, and Kubernetes packages. Manual setup follows the System Preparation and Install Containerd tutorials, then continues with Kubernetes, Cilium, and ArgoCD. See [Tutorials](./tutorials/index.md) for the full walkthroughs.
+
 ### Bare Metal Deployment (Primary)
 
 Deploy to real Ubuntu 24.04 hardware with SSH access.
