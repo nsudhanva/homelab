@@ -38,7 +38,7 @@ spec:
           kubescapeOffline: enable
           prometheusExporter: disable
         configurations:
-          persistence: enable
+          persistence: disable
   destination:
     server: https://kubernetes.default.svc
     namespace: kubescape
