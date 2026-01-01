@@ -12,6 +12,7 @@ spec:
       envoyService:
         type: LoadBalancer
         loadBalancerClass: tailscale
+        externalTrafficPolicy: Cluster
         annotations:
           tailscale.com/hostname: gateway-envoy
           tailscale.com/tags: tag:k8s
