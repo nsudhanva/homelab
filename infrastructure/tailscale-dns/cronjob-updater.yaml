@@ -18,6 +18,8 @@ spec:
           securityContext:
             seccompProfile:
               type: RuntimeDefault
+          nodeSelector:
+            kubernetes.io/hostname: legion
           containers:
           - name: updater
             image: alpine:3.21.5
