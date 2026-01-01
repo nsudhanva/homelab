@@ -89,4 +89,24 @@ tolerations:
   effect: "NoSchedule"
 ```
 
-Use taints to dedicate nodes to specific workloads (e.g., GPU nodes) and affinity to attract workloads to them.
+## Best Practices: Keep it Flexible
+
+**Avoid pinning every application to a specific node.**
+
+Adding `affinity` or `nodeSelector` to everything create rigid constraints that fight against Kubernetes' ability to self-heal.
+
+### When to use Affinity
+
+1. **Hardware Requirements:** The app *needs* a specific GPU, USB device, or Architecture (ARM64 vs AMD64) present only on certain nodes.
+2. **Performance/Cost:** Offloading non-critical apps to a cheaper/slower node (like our OCI worker).
+3. **Data Gravity:** (Automatic) Kubernetes handles this for you. If a pod uses a PVC on a specific node, Kubernetes naturally schedules the pod there.
+
+### The "Filebrowser Lesson" (Anti-Pattern)
+
+Do not force a pod to a node if it shares dependencies with other pods.
+
+* **Scenario:** Filebrowser shared a volume with Jellyfin.
+* **Constraint 1:** Jellyfin *must* run on `node-1` (GPU).
+* **Constraint 2:** Filebrowser's volume is therefore locked to `node-1`.
+* **Error:** Forcing Filebrowser to `node-2` caused a deadlock because the volume could not follow it.
+* **Fix:** Remove the affinity. Let Kubernetes co-locate them naturally.
