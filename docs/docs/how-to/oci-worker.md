@@ -220,3 +220,14 @@ spec:
 ```bash
 kubectl label node oci-worker node-role.kubernetes.io/worker=worker
 ```
+
+### 6. Longhorn Storage Issues
+
+**Issue:**  Longhorn refuses to schedule pods on the worker, or the node shows `MultipathdIsRunning: False` and `KernelModulesLoaded: False` in `describe node`.
+**Cause:** The default Ubuntu Minimal image on OCI is missing `cryptsetup`, `open-iscsi`, and has `multipathd` enabled (which conflicts with Longhorn).
+**Fix:** Run the Ansible playbook `playbooks/provision-cpu.yaml` targeting the worker. The `longhorn-prereqs` role installs these packages and loads `dm_crypt`.
+
+```bash
+ansible-playbook -i ansible/inventory/oci-workers.yaml \
+  ansible/playbooks/provision-cpu.yaml -e "target_hosts=oci_workers"
+```
