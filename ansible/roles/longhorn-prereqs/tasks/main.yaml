@@ -19,9 +19,16 @@
     name: dm_crypt
     state: present
 
-- name: Disable multipathd (Longhorn conflict)
+- name: Disable multipathd service (Longhorn conflict)
   ansible.builtin.systemd:
     name: multipathd
+    enabled: false
+    state: stopped
+  ignore_errors: true
+
+- name: Disable multipathd socket (Longhorn conflict)
+  ansible.builtin.systemd:
+    name: multipathd.socket
     enabled: false
     state: stopped
   ignore_errors: true
