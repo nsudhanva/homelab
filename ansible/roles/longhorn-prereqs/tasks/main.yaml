@@ -14,6 +14,18 @@
     enabled: true
     state: started
 
+- name: Load dm_crypt kernel module
+  community.general.modprobe:
+    name: dm_crypt
+    state: present
+
+- name: Disable multipathd (Longhorn conflict)
+  ansible.builtin.systemd:
+    name: multipathd
+    enabled: false
+    state: stopped
+  ignore_errors: true
+
 - name: Create Longhorn storage directory
   ansible.builtin.file:
     path: "{{ longhorn_storage_path }}"
