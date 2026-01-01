@@ -35,17 +35,17 @@ spec:
         seccompProfile:
           type: RuntimeDefault
       containers:
-        - name: homer
-          image: b4bz/homer:v25.11.1
-          resources:
-            requests:
-              memory: 64Mi
-              cpu: 50m
-            limits:
-              memory: 256Mi
-              cpu: 300m
-          ports:
-            - containerPort: 8080
+      - name: homer
+        image: b4bz/homer:v25.11.1
+        resources:
+          requests:
+            memory: 64Mi
+            cpu: 50m
+          limits:
+            memory: 256Mi
+            cpu: 300m
+        ports:
+        - containerPort: 8080
           volumeMounts:
             - name: config
               mountPath: /www/assets/config.yml

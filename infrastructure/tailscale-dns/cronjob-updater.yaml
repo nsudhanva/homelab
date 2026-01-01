@@ -30,11 +30,14 @@ spec:
             - |
               set -eu
               apk add --no-cache curl ca-certificates >/dev/null
-              curl -sSL -o /tmp/kubectl https://dl.k8s.io/release/v1.34.3/bin/linux/amd64/kubectl
-              curl -sSL -o /tmp/kubectl.sha256 https://dl.k8s.io/release/v1.34.3/bin/linux/amd64/kubectl.sha256
+              URL="https://dl.k8s.io/release/v1.34.3/bin/linux/amd64"
+              curl -sSL -o /tmp/kubectl "${URL}/kubectl"
+              curl -sSL -o /tmp/kubectl.sha256 "${URL}/kubectl.sha256"
               echo "$(cat /tmp/kubectl.sha256)  /tmp/kubectl" | sha256sum -c - >/dev/null
               chmod +x /tmp/kubectl
-              gateway_ip="$(/tmp/kubectl -n tailscale get gateway tailscale-gateway -o jsonpath='{.status.addresses[?(@.type=="IPAddress")].value}')"
+              NS="tailscale"
+              gateway_ip="$(/tmp/kubectl -n "$NS" get gateway tailscale-gateway \
+                -o jsonpath='{.status.addresses[?(@.type=="IPAddress")].value}')"
               if [ -z "$gateway_ip" ]; then
                 echo "gateway IP not found"
                 exit 1
