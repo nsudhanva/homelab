@@ -20,7 +20,7 @@ The `media` namespace is shared by Jellyfin and Filebrowser so they can use the 
 | --- | --- | --- |
 | Namespace | `apps/media/namespace.yaml` | Shared `media` namespace |
 | App config | `apps/jellyfin/app.yaml` | ArgoCD app definition |
-| Deployment | `apps/jellyfin/deployment.yaml` | Uses Intel iGPU by default |
+| Deployment | `apps/jellyfin/deployment.yaml` | Requests NVIDIA GPUs by default (`nvidia.com/gpu`) |
 | Service | `apps/jellyfin/service.yaml` | ClusterIP on port 80 |
 | HTTPRoute | `apps/jellyfin/httproute.yaml` | `jellyfin.sudhanva.me` |
 | PVCs | `apps/jellyfin/pvc-config.yaml` and `apps/jellyfin/pvc-media.yaml` | Longhorn storage |

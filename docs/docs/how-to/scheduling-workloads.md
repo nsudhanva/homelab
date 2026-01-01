@@ -97,9 +97,9 @@ Adding `affinity` or `nodeSelector` to everything create rigid constraints that 
 
 ### When to use Affinity
 
-1. **Hardware Requirements:** The app *needs* a specific GPU, USB device, or Architecture (ARM64 vs AMD64) present only on certain nodes.
-2. **Performance/Cost:** Offloading non-critical apps to a cheaper/slower node (like our OCI worker).
-3. **Data Gravity:** (Automatic) Kubernetes handles this for you. If a pod uses a PVC on a specific node, Kubernetes naturally schedules the pod there.
+- **Hardware requirements:** The app needs a specific GPU, USB device, or architecture (ARM64 vs AMD64) present only on certain nodes.
+- **Performance/cost:** Offload non-critical apps to a cheaper/slower node (like the OCI worker).
+- **Data gravity:** Kubernetes handles this for you. If a pod uses a PVC on a specific node, Kubernetes naturally schedules the pod there.
 
 ### The "Filebrowser Lesson" (Anti-Pattern)
 

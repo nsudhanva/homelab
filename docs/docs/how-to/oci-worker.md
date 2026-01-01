@@ -177,7 +177,7 @@ Step 2: The default domain OCID is not required for this flow.
 
 During the integration of the OCI worker and Tailscale-based networking, several critical issues were encountered. Here is a summary of the fixes and best practices:
 
-### 1. External Traffic & Envoy Connectivity
+### External Traffic & Envoy Connectivity
 
 **Issue:**  Accessing applications via the Gateway IP from the host machine failed with connection timeouts.
 **Cause:**  The Envoy Gateway service defaulted to `externalTrafficPolicy: Local`. In a multi-node cluster connected via Tailscale (where the Envoy pod might be on a different node than the one receiving the traffic), "Local" policy drops traffic that doesn't terminate on the same node.
@@ -192,7 +192,7 @@ spec:
         externalTrafficPolicy: Cluster
 ```
 
-### 2. Tailscale Split DNS
+### Tailscale Split DNS
 
 **Issue:**  The host machine (Mac) failed to resolve internal domains like `*.sudhanva.me`, even though `nslookup` worked inside the cluster.
 **Cause:**  The Mac was using the Tailscale `100.100.100.100` resolver, but Tailscale's control plane didn't have a specific "Split DNS" rule pointing the domain to the cluster's DNS service.
@@ -201,18 +201,18 @@ spec:
 * **Domain:** `sudhanva.me`
 * **Nameserver:** The Tailscale IP of the `tailscale-dns` service (e.g., `100.118.215.49`).
 
-### 3. Stale DNS Configuration (GitOps)
+### Stale DNS Configuration (GitOps)
 
 **Issue:**  Manual fixes to the `tailscale-dns` ConfigMap (updating the Gateway IP) kept reverting.
 **Cause:**  ArgoCD was syncing the cluster state from the git repository, which contained the old IP.
 **Fix:**  Always commit configuration changes to the git repository. Source of truth must be Git.
 
-### 4. Duplicate Tailscale Devices
+### Duplicate Tailscale Devices
 
 **Issue:**  Re-provisioning nodes or restarting stateful workloads can create duplicate devices in Tailscale (e.g., `gateway-envoy` and `gateway-envoy-1`).
 **Fix:**  Manually delete stale/offline devices from the Tailscale Admin Console to prevent routing confusion. Use persistent state storage for Tailscale pods if possible.
 
-### 5. Node Roles
+### Node Roles
 
 **Issue:**  The OCI worker showed `<none>` under ROLES.
 **Fix:**  Manually label the node for clarity:
@@ -221,7 +221,7 @@ spec:
 kubectl label node oci-worker node-role.kubernetes.io/worker=worker
 ```
 
-### 6. Longhorn Storage Issues
+### Longhorn Storage Issues
 
 **Issue:**  Longhorn refuses to schedule pods on the worker, or the node shows `MultipathdIsRunning: False` and `KernelModulesLoaded: False` in `describe node`.
 **Cause:** The default Ubuntu Minimal image on OCI is missing `cryptsetup`, `open-iscsi`, and has `multipathd` enabled (which conflicts with Longhorn).

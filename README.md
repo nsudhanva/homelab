@@ -6,7 +6,7 @@ A self-hosted bare-metal Kubernetes cluster on Ubuntu 24.04 LTS.
 - Traffic flows through Tailscale for secure ingress and Envoy Gateway for routing, with Vault and External Secrets handling credentials
 - Longhorn provides distributed storage with basic backup capabilities
 - A local rehearsal workflow using Multipass VMs allows validating changes before deploying to hardware
-- Provides the ability to add Nodes from external cloud providers like AWS/GCP/Azure/Oracle Cloud. An example of Oracle Cloud is provided in the docs
+- Includes an OCI worker example; additional cloud providers can follow the same pattern but are not documented yet
 
 ## Table of contents
 
@@ -247,6 +247,7 @@ infrastructure/   Cluster components managed by ArgoCD
 apps/             User workloads managed by ArgoCD
 clusters/         Cluster-specific overrides
 scripts/          Automation helpers
+terraform/        OCI worker provisioning
 docs/             Docusaurus documentation
 ```
 
