@@ -7,7 +7,8 @@
 
 - name: Add Kubernetes GPG key
   ansible.builtin.shell: |
-    curl -fsSL https://pkgs.k8s.io/core:/stable:/{{ k8s_version }}/deb/Release.key | \
+    URL="https://pkgs.k8s.io/core:/stable:/{{ k8s_version }}/deb"
+    curl -fsSL "${URL}/Release.key" | \
       gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
   args:
     creates: /etc/apt/keyrings/kubernetes-apt-keyring.gpg
@@ -16,7 +17,8 @@
   ansible.builtin.copy:
     dest: /etc/apt/sources.list.d/kubernetes.list
     content: |
-      deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/{{ k8s_version }}/deb/ /
+      URL="https://pkgs.k8s.io/core:/stable:/{{ k8s_version }}/deb"
+      deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] ${URL} /
     mode: '0644'
 
 - name: Install Kubernetes packages

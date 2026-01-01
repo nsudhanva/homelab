@@ -6,7 +6,8 @@
 
 - name: Add Tailscale GPG key
   ansible.builtin.shell: |
-    curl -fsSL https://pkgs.tailscale.com/stable/ubuntu/noble.noarmor.gpg | \
+    URL="https://pkgs.tailscale.com/stable/ubuntu"
+    curl -fsSL "${URL}/noble.noarmor.gpg" | \
       gpg --dearmor -o /usr/share/keyrings/tailscale-archive-keyring.gpg
   when: not tailscale_binary.stat.exists
   args:
@@ -16,7 +17,8 @@
   ansible.builtin.copy:
     dest: /etc/apt/sources.list.d/tailscale.list
     content: |
-      deb [signed-by=/usr/share/keyrings/tailscale-archive-keyring.gpg] https://pkgs.tailscale.com/stable/ubuntu noble main
+      URL="https://pkgs.tailscale.com/stable/ubuntu"
+      deb [signed-by=/usr/share/keyrings/tailscale-archive-keyring.gpg] ${URL} noble main
     mode: '0644'
   when: not tailscale_binary.stat.exists
 

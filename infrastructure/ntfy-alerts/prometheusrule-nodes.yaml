@@ -8,7 +8,8 @@ spec:
   - name: ntfy.nodes
     rules:
     - alert: NodeCpuHigh
-      expr: 100 - (avg by (instance) (rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 90
+      expr: |
+        100 - (avg by (instance) (rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 90
       labels:
         severity: warning
         alert_channel: ntfy
@@ -24,7 +25,8 @@ spec:
         summary: Node memory high
         description: Node {{ $labels.instance }} memory usage is above 90%.
     - alert: NodeDiskUsageHigh
-      expr: 100 * (1 - (node_filesystem_avail_bytes{mountpoint="/",fstype!~"tmpfs|overlay|squashfs|fuse.lxcfs"} / node_filesystem_size_bytes{mountpoint="/",fstype!~"tmpfs|overlay|squashfs|fuse.lxcfs"})) > 90
+      expr: |
+        100 * (1 - (node_filesystem_avail_bytes{mountpoint="/",fstype!~"tmpfs|overlay|squashfs|fuse.lxcfs"} / node_filesystem_size_bytes{mountpoint="/",fstype!~"tmpfs|overlay|squashfs|fuse.lxcfs"})) > 90
       labels:
         severity: warning
         alert_channel: ntfy
