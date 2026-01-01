@@ -1,0 +1,13 @@
+tenancy_ocid       = "ocid1.tenancy.oc1..example"
+user_ocid          = "ocid1.user.oc1..example"
+fingerprint        = "aa:bb:cc:dd:ee:ff"
+private_key_path   = "/Users/you/.oci/oci_api_key.pem"
+region             = "us-ashburn-1"
+compartment_ocid   = "ocid1.tenancy.oc1..example"
+availability_domain = "pnMJ:US-ASHBURN-AD-1"
+ssh_authorized_keys = "ssh-ed25519 AAAA... you@host"
+shape_ocpus        = 2
+shape_memory_gbs   = 12
+tailscale_auth_key = "tskey-..."
+tailscale_hostname = "oci-worker"
+tailscale_advertise_tags = "tag:k8s"

@@ -26,3 +26,9 @@ docs/.cache/
 
 # Tool caches
 scripts/.cache/
+
+# Terraform
+terraform/**/.terraform/
+terraform/**/terraform.tfstate*
+terraform/**/terraform.tfvars
+terraform/**/terraform.tfvars.json
