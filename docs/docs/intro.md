@@ -211,6 +211,7 @@ homelab/
 ├── clusters/             # Cluster-specific overrides
 ├── manifests/            # Legacy manifests (do not add new files)
 ├── scripts/              # Automation scripts
+├── terraform/            # OCI worker provisioning
 └── docs/                 # This documentation
 ```
 
