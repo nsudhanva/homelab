@@ -1,6 +1,12 @@
 # Homelab
 
-A self-hosted bare-metal Kubernetes platform on Ubuntu 24.04 LTS. Combines Ansible for automated node provisioning with ArgoCD for GitOps-based cluster management. Traffic flows through Tailscale for secure ingress and Envoy Gateway for routing, with Vault and External Secrets handling credentials. Longhorn provides distributed storage. A local rehearsal workflow using Multipass VMs allows validating changes before deploying to hardware.
+A self-hosted bare-metal Kubernetes cluster on Ubuntu 24.04 LTS.
+
+- Uses Ansible for automated node provisioning with ArgoCD for GitOps-based cluster management
+- Traffic flows through Tailscale for secure ingress and Envoy Gateway for routing, with Vault and External Secrets handling credentials
+- Longhorn provides distributed storage with basic backup capabilities
+- A local rehearsal workflow using Multipass VMs allows validating changes before deploying to hardware
+- Provides the ability to add Nodes from external cloud providers like AWS/GCP/Azure/Oracle Cloud. An example of Oracle Cloud is provided in the docs
 
 ## Table of contents
 
