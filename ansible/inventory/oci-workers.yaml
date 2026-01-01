@@ -1,0 +1,7 @@
+all:
+  children:
+    oci_workers:
+      hosts:
+        oci-worker-1:
+          ansible_host: 100.122.166.101
+          ansible_user: ubuntu

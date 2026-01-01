@@ -12,6 +12,8 @@ spec:
       labels:
         name: nvidia-device-plugin-ds
     spec:
+      nodeSelector:
+        gpu.nvidia.com/present: "true"
       containers:
         - image: nvcr.io/nvidia/k8s-device-plugin:v0.17.0
           name: nvidia-device-plugin-ctr

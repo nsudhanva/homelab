@@ -117,7 +117,7 @@
 - name: Configure containerd sandbox image
   ansible.builtin.replace:
     path: /etc/containerd/config.toml
-    regexp: 'sandbox_image = "registry.k8s.io/pause:3.8"'
+    regexp: '^\s*sandbox_image = ".*"$'
     replace: 'sandbox_image = "{{ containerd_sandbox_image }}"'
   notify: Restart containerd
 
