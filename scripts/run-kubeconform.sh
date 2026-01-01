@@ -29,7 +29,7 @@ if [[ ! -x "$BIN" ]]; then
   CHECKSUMS="$BIN_DIR/CHECKSUMS"
   curl -sSL -o "$TAR" "$URL"
   curl -sSL -o "$CHECKSUMS" "https://github.com/yannh/kubeconform/releases/download/${VERSION}/CHECKSUMS"
-  
+
   if command -v sha256sum >/dev/null 2>&1; then
     grep "$(basename "$TAR")" "$CHECKSUMS" | (cd "$BIN_DIR" && sha256sum --check)
   elif command -v shasum >/dev/null 2>&1; then
