@@ -46,11 +46,11 @@ spec:
             cpu: 300m
         ports:
         - containerPort: 8080
-          volumeMounts:
-            - name: config
-              mountPath: /www/assets/config.yml
-              subPath: config.yml
-      volumes:
+        volumeMounts:
         - name: config
-          configMap:
-            name: homer-config
+          mountPath: /www/assets/config.yml
+          subPath: config.yml
+      volumes:
+      - name: config
+        configMap:
+          name: homer-config
