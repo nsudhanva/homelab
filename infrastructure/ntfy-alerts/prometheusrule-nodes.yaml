@@ -26,7 +26,8 @@ spec:
         description: Node {{ $labels.instance }} memory usage is above 90%.
     - alert: NodeDiskUsageHigh
       expr: |
-        100 * (1 - (node_filesystem_avail_bytes{mountpoint="/",fstype!~"tmpfs|overlay|squashfs|fuse.lxcfs"} / node_filesystem_size_bytes{mountpoint="/",fstype!~"tmpfs|overlay|squashfs|fuse.lxcfs"})) > 90
+        100 * (1 - (node_filesystem_avail_bytes{mountpoint="/",fstype!~"tmpfs|overlay|squashfs|fuse.lxcfs"} /
+        node_filesystem_size_bytes{mountpoint="/",fstype!~"tmpfs|overlay|squashfs|fuse.lxcfs"})) > 90
       labels:
         severity: warning
         alert_channel: ntfy
