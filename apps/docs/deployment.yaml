@@ -10,17 +10,27 @@ spec:
   selector:
     matchLabels:
       app: docs
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
   template:
     metadata:
       labels:
         app: docs
     spec:
+      affinity:
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            preference:
+              matchExpressions:
+              - key: node-role.kubernetes.io/worker
+                operator: In
+                values:
+                - worker
       automountServiceAccountToken: false
-      securityContext:
-        seccompProfile:
-          type: RuntimeDefault
-      nodeSelector:
-        kubernetes.io/arch: amd64
       containers:
       - name: docs
         image: ghcr.io/nsudhanva/homelab-docs:latest
