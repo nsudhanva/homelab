@@ -5,6 +5,8 @@ metadata:
   namespace: headlamp
   annotations:
     argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
+    external-dns.alpha.kubernetes.io/expose: "true"
+    external-dns.alpha.kubernetes.io/cloudflare-proxied: "false"
 spec:
   parentRefs:
   - name: tailscale-gateway
