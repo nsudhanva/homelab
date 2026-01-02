@@ -15,6 +15,17 @@ spec:
   hostnames:
   - vault.sudhanva.me
   rules:
-  - backendRefs:
-    - name: vault
+  - filters:
+    - type: RequestHeaderModifier
+      requestHeaderModifier:
+        set:
+        - name: Connection
+          value: close
+    - type: ResponseHeaderModifier
+      responseHeaderModifier:
+        set:
+        - name: Connection
+          value: close
+    backendRefs:
+    - name: vault-ui
       port: 8200
