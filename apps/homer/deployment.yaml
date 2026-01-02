@@ -39,10 +39,10 @@ spec:
         image: b4bz/homer:v25.11.1
         resources:
           requests:
-            memory: 64Mi
-            cpu: 50m
+            memory: 4096Mi
+            cpu: 300m
           limits:
-            memory: 256Mi
+            memory: 4096Mi
             cpu: 300m
         ports:
         - containerPort: 8080

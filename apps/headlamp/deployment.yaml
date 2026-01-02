@@ -40,10 +40,10 @@ spec:
         - -plugins-dir=/headlamp/plugins
         resources:
           requests:
-            memory: 128Mi
-            cpu: 100m
+            memory: 6144Mi
+            cpu: 500m
           limits:
-            memory: 512Mi
+            memory: 6144Mi
             cpu: 500m
         env:
         - name: HEADLAMP_CONFIG_OIDC_CLIENT_ID
