@@ -15,6 +15,17 @@ spec:
   hostnames:
   - grafana.sudhanva.me
   rules:
-  - backendRefs:
+  - filters:
+    - type: RequestHeaderModifier
+      requestHeaderModifier:
+        set:
+        - name: Connection
+          value: close
+    - type: ResponseHeaderModifier
+      responseHeaderModifier:
+        set:
+        - name: Connection
+          value: close
+    backendRefs:
     - name: monitoring-grafana
       port: 80
