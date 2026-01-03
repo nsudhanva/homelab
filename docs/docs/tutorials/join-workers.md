@@ -28,6 +28,12 @@ Run this on the control plane:
 kubeadm token create --print-join-command
 ```
 
+:::note
+
+The join command includes a short-lived token. Do not commit it to git or share it in public logs.
+
+:::
+
 ## Step 2: Join each worker
 
 Run the generated command on each worker node:
