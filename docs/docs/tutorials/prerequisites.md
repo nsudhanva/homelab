@@ -22,6 +22,14 @@ These tools are installed on your workstation. The Ansible provisioning playbook
 
 :::
 
+### macOS (Homebrew)
+
+```bash
+brew install ansible kubectl helm pre-commit
+```
+
+### Ubuntu
+
 ```bash
 sudo apt update
 sudo add-apt-repository ppa:quentiumyt/nvtop
@@ -35,6 +43,7 @@ sudo apt-get install -y helm
 ## Step 2: Prepare Ansible inventory
 
 Update the node list and user in `ansible/inventory/hosts.yaml`, then confirm versions and paths in `ansible/group_vars/all.yaml`.
+If you are using Tailscale, set `ansible_host` to the Tailscale IP or MagicDNS hostname.
 
 ## Step 3: Run Ansible provisioning
 
