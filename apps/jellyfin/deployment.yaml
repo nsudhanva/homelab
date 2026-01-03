@@ -24,13 +24,11 @@ spec:
           image: docker.io/jellyfin/jellyfin@sha256:6d819e9ab067efcf712993b23455cc100ee5585919bb297ea5a109ac00cb626e
           resources:
             requests:
-              nvidia.com/gpu: 1
-              memory: 6784Mi
-              cpu: 2900m
+              memory: 1024Mi
+              cpu: 300m
             limits:
-              nvidia.com/gpu: 1
-              memory: 6784Mi
-              cpu: 2900m
+              memory: 2048Mi
+              cpu: 1000m
           env:
             - name: NVIDIA_VISIBLE_DEVICES
               value: all
