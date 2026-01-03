@@ -38,7 +38,7 @@ When moving workloads or updating deployments, ensure zero downtime by configuri
 
 ## Example: Preferring a Specific Worker Node
 
-This configuration encourages the pod to run on any node labeled with `node-role.kubernetes.io/worker=worker` (e.g., our OCI worker), but allows it to run on the control plane if the worker is down.
+This configuration encourages the pod to run on any node labeled with `node-role.kubernetes.io/worker=worker` (for example, a dedicated worker), but allows it to run on the control plane if the worker is down.
 
 ```yaml
 apiVersion: apps/v1
@@ -98,7 +98,7 @@ Adding `affinity` or `nodeSelector` to everything create rigid constraints that 
 ### When to use Affinity
 
 - **Hardware requirements:** The app needs a specific GPU, USB device, or architecture (ARM64 vs AMD64) present only on certain nodes.
-- **Performance/cost:** Offload non-critical apps to a cheaper/slower node (like the OCI worker).
+- **Performance/cost:** Offload non-critical apps to a cheaper/slower node.
 - **Data gravity:** Kubernetes handles this for you. If a pod uses a PVC on a specific node, Kubernetes naturally schedules the pod there.
 
 ### The "Filebrowser Lesson" (Anti-Pattern)
