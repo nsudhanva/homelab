@@ -82,6 +82,14 @@ sed -i 's|server: https://.*:6443|server: https://<tailscale-hostname>:6443|' ~/
 kubectl get pods -A
 ```
 
+If the kubeconfig does not exist yet on the node, create it first:
+
+```bash
+mkdir -p ~/.kube
+sudo cp /etc/kubernetes/admin.conf ~/.kube/config
+sudo chown $(id -u):$(id -g) ~/.kube/config
+```
+
 ## Step 2: Enable custom domains with Gateway API
 
 This repo uses Envoy Gateway, ExternalDNS, and cert-manager with the Tailscale Gateway API setup. Subdomains such as `docs.sudhanva.me` resolve to the Tailscale Gateway while your apex `sudhanva.me` remains managed elsewhere.
