@@ -17,8 +17,7 @@
   ansible.builtin.copy:
     dest: /etc/apt/sources.list.d/kubernetes.list
     content: |
-      URL="https://pkgs.k8s.io/core:/stable:/{{ k8s_version }}/deb"
-      deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] ${URL} /
+      deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/{{ k8s_version }}/deb /
     mode: '0644'
 
 - name: Install Kubernetes packages
