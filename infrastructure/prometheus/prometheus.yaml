@@ -47,7 +47,7 @@ spec:
                   - ReadWriteOnce
                   resources:
                     requests:
-                      storage: 50Gi
+                      storage: 10Gi
             resources:
               requests:
                 cpu: 500m
@@ -65,7 +65,7 @@ spec:
                   - ReadWriteOnce
                   resources:
                     requests:
-                      storage: 10Gi
+                      storage: 2Gi
             resources:
               requests:
                 cpu: 100m
@@ -103,7 +103,7 @@ spec:
             storageClassName: longhorn
             accessModes:
             - ReadWriteOnce
-            size: 10Gi
+            size: 2Gi
           service:
             type: ClusterIP
           grafana.ini:
