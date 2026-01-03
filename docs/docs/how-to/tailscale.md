@@ -125,6 +125,17 @@ kubectl create secret generic cloudflare-api-token \
   --from-literal=api-token=YOUR_CLOUDFLARE_API_TOKEN
 ```
 
+:::note
+
+If your cluster uses split-horizon DNS for `*.sudhanva.me`, configure cert-manager to use public recursive resolvers. This repo sets that in `infrastructure/cert-manager/cert-manager.yaml` using:
+
+```bash
+--dns01-recursive-nameservers=1.1.1.1:53,1.0.0.1:53
+--dns01-recursive-nameservers-only=true
+```
+
+:::
+
 ### Update the ACME email
 
 Set your email in `infrastructure/cert-manager-issuer/cluster-issuer.yaml` before syncing.

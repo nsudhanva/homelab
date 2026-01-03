@@ -62,6 +62,38 @@ The default path is `/var/lib/longhorn` to avoid user-specific home directories.
 
 :::
 
+### Move Longhorn to a larger disk
+
+If `/` is small and `/home` is on a larger disk, move Longhorn to `/home/longhorn`.
+
+Step 1: Update the Longhorn path in Git.
+
+Set the data path in both files:
+
+```bash
+ansible/group_vars/all.yaml
+bootstrap/templates/longhorn.yaml
+```
+
+Use `/home/longhorn` as the path in both locations.
+
+Step 2: Create the directory on the node.
+
+```bash
+sudo mkdir -p /home/longhorn
+sudo chown root:root /home/longhorn
+sudo chmod 0755 /home/longhorn
+```
+
+Step 3: Recreate Longhorn.
+
+Delete the Longhorn app and namespace, then reapply it so the new path takes effect.
+
+Step 4: Recreate PVCs.
+
+If you already created PVCs on the old path, delete them and let ArgoCD recreate them.
+This is destructive if you have data.
+
 :::note
 
 Longhorn uses the `longhorn-critical` PriorityClass. This repo applies it from `infrastructure/longhorn/priorityclass.yaml`.
