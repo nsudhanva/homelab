@@ -3,15 +3,11 @@ all:
     k8s_control_plane:
       hosts:
         control-plane-1:
-          ansible_host: 192.168.1.100
-          ansible_user: ubuntu
-          node_type: nvidia
+          ansible_host: legion
+          ansible_user: sudhanva
 
     k8s_workers:
-      hosts:
-        worker-1:
-          ansible_host: 192.168.1.101
-          ansible_user: ubuntu
+      hosts: {}
 
     k8s_nodes:
       children:
@@ -19,12 +15,10 @@ all:
         k8s_workers:
 
     gpu_nvidia:
-      hosts:
-        control-plane-1:
+      hosts: {}
 
     gpu_intel:
       hosts: {}
 
     cpu_only:
-      hosts:
-        worker-1:
+      hosts: {}
