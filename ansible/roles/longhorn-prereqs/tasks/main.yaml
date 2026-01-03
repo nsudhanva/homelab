@@ -19,19 +19,22 @@
     name: dm_crypt
     state: present
 
+- name: Gather service facts
+  ansible.builtin.service_facts:
+
 - name: Disable multipathd service (Longhorn conflict)
   ansible.builtin.systemd:
     name: multipathd
     enabled: false
     state: stopped
-  ignore_errors: true
+  when: "'multipathd.service' in ansible_facts.services"
 
 - name: Disable multipathd socket (Longhorn conflict)
   ansible.builtin.systemd:
     name: multipathd.socket
     enabled: false
     state: stopped
-  ignore_errors: true
+  when: "'multipathd.socket' in ansible_facts.services"
 
 - name: Create Longhorn storage directory
   ansible.builtin.file:
