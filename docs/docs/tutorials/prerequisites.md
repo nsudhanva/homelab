@@ -45,7 +45,38 @@ sudo apt-get install -y helm
 Update the node list and user in `ansible/inventory/hosts.yaml`, then confirm versions and paths in `ansible/group_vars/all.yaml`.
 If you are using Tailscale, set `ansible_host` to the Tailscale IP or MagicDNS hostname.
 
-## Step 3: Run Ansible provisioning
+## Step 3: Enable SSH on the nodes
+
+Ensure the SSH server is installed and running on each Ubuntu node.
+
+```bash
+sudo apt update
+sudo apt install -y openssh-server
+sudo systemctl enable --now ssh
+```
+
+If you use UFW, allow SSH:
+
+```bash
+sudo ufw allow OpenSSH
+```
+
+## Step 4: Configure key-based SSH from the workstation
+
+Install your workstation SSH key on the node so Ansible can connect without passwords.
+
+```bash
+ssh-copy-id -i ~/.ssh/id_ed25519.pub sudhanva@legion
+```
+
+If you reinstalled the node and see a host key warning, remove the old entry and try again:
+
+```bash
+ssh-keygen -R legion
+ssh-copy-id -i ~/.ssh/id_ed25519.pub sudhanva@legion
+```
+
+## Step 5: Run Ansible provisioning
 
 Run this from the repository root so the relative paths resolve correctly.
 
@@ -56,12 +87,21 @@ If you are doing a fully manual setup, skip this step and follow [System Prepara
 :::
 
 ```bash
-ansible-playbook -i ansible/inventory/hosts.yaml \
+ANSIBLE_CONFIG=ansible/ansible.cfg ansible-playbook \
   ansible/playbooks/provision-cpu.yaml \
   -e @ansible/group_vars/all.yaml
 ```
 
 If you need GPU support, use `ansible/playbooks/provision-intel-gpu.yaml` or `ansible/playbooks/provision-nvidia-gpu.yaml`.
+
+If the node requires sudo with a password, add `-K` and enter the password when prompted:
+
+```bash
+ANSIBLE_CONFIG=ansible/ansible.cfg ansible-playbook \
+  ansible/playbooks/provision-cpu.yaml \
+  -e @ansible/group_vars/all.yaml \
+  -K
+```
 
 ## What the provisioning playbook does
 
