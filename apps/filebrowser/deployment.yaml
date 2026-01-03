@@ -45,11 +45,11 @@ spec:
                   key: password_hash
           resources:
             requests:
-              memory: 1024Mi
-              cpu: 500m
+              memory: 256Mi
+              cpu: 100m
             limits:
-              memory: 1024Mi
-              cpu: 500m
+              memory: 512Mi
+              cpu: 300m
           volumeMounts:
             - name: media
               mountPath: /srv
