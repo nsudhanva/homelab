@@ -14,7 +14,7 @@ spec:
         preUpgradeChecker:
           jobEnabled: false
         defaultSettings:
-          defaultDataPath: /var/lib/longhorn
+          defaultDataPath: /home/longhorn
           createDefaultDiskLabeledNodes: true
           defaultReplicaCount: 1
         persistence:
