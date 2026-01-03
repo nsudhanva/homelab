@@ -62,6 +62,12 @@ The default path is `/var/lib/longhorn` to avoid user-specific home directories.
 
 :::
 
+:::note
+
+Longhorn uses the `longhorn-critical` PriorityClass. This repo applies it from `infrastructure/longhorn/priorityclass.yaml`.
+
+:::
+
 ### Add Node Label for Longhorn Disk
 
 :::note
