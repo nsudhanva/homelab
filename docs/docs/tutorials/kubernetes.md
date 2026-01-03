@@ -48,6 +48,12 @@ kubectl taint nodes --all node-role.kubernetes.io/control-plane-
 
 :::note
 
+On a single-node cluster, remove the control-plane taint so Cilium add-ons (Hubble UI/Relay) and apps can schedule. If you plan to add workers soon, you can keep the taint and move workloads later.
+
+:::
+
+:::note
+
 If you maintain a kubeadm config, create `clusters/home/` and replace the command with `sudo kubeadm init --config clusters/home/kubeadm-clusterconfiguration.yaml`.
 
 :::
