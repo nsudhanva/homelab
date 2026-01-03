@@ -82,6 +82,12 @@ For single-node clusters, set `defaultReplicaCount: 1` in `bootstrap/templates/l
 
 :::
 
+:::note
+
+If Longhorn volumes stay `detached` or PVCs remain Pending on small disks, reduce PVC sizes in Git so total requested storage fits on the node.
+
+:::
+
 ```bash
 kubectl label node $(hostname) node.longhorn.io/create-default-disk=true --overwrite
 ```
