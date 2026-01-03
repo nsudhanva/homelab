@@ -32,8 +32,15 @@ Push the repo changes and let ArgoCD sync `infrastructure/vault/` and `infrastru
 Confirm the pods are ready:
 
 ```bash
+kubectl -n longhorn-system get pods
 kubectl -n vault get pods
 kubectl -n external-secrets get pods
+```
+
+If Vault is Pending, confirm the PVC is bound (Vault depends on Longhorn storage):
+
+```bash
+kubectl -n vault get pvc
 ```
 
 ## Step 2: Initialize and unseal Vault
