@@ -32,6 +32,6 @@ Check the latest stable release before changing any pinned version.
 - kube-prometheus-stack chart: `80.8.0` in `infrastructure/prometheus/prometheus.yaml`
 - Prometheus Operator CRDs chart: `25.0.1` in `infrastructure/prometheus-operator-crds/prometheus-operator-crds.yaml`
 - Metrics Server chart: `3.13.0` in `infrastructure/metrics-server/metrics-server.yaml`
-- Vault chart: `0.31.0` in `infrastructure/vault/vault.yaml`
+- Vault chart: `0.30.1` in `infrastructure/vault/vault.yaml`
 - Intel GPU plugin: `0.34.0` in `infrastructure/gpu/intel-plugin.yaml`
 - NVIDIA GPU plugin: `0.17.0` in `infrastructure/gpu/nvidia-plugin.yaml`
