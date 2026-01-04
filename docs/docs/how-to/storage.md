@@ -9,7 +9,7 @@ title: Storage
 flowchart LR
   App["App Pod"] --> PVC["PVC"]
   PVC --> Longhorn["Longhorn volume"]
-  Longhorn --> Disk["Node disk (/var/lib/longhorn)"]
+  Longhorn --> Disk["Node disk (/home/longhorn)"]
 ```
 
 ## Detailed Volume Path
@@ -199,3 +199,52 @@ sudo rsync -av --delete /home/user/media-import/ /var/lib/kubelet/pods/<pod-uid>
 ```
 
 After the copy, Jellyfin should see the media under `/media/Videos`.
+
+## Step 4: Configure Backblaze B2 backups
+
+Step 1: Create a Backblaze B2 bucket and an S3-compatible key.
+
+Step 2: Store the credentials in Vault.
+
+```bash
+kubectl -n vault exec -it vault-0 -- vault kv put kv/longhorn/b2 \
+  access_key_id="REPLACE_ME" \
+  application_key="REPLACE_ME" \
+  endpoint="REPLACE_ME"
+```
+
+Step 3: Ensure the Longhorn backup resources are in Git and let ArgoCD sync them.
+
+- `infrastructure/external-secrets/external-secret-longhorn-backblaze.yaml`
+- `infrastructure/longhorn/backup-target.yaml`
+- `infrastructure/longhorn/backup-target-credential-secret.yaml`
+- `infrastructure/longhorn/recurringjob-monthly-backup.yaml`
+
+The recurring job targets the `default` group and keeps three monthly backups per volume.
+
+## Step 5: Restore from Backblaze B2
+
+Step 1: Reapply the repo so Longhorn, External Secrets, and the backup target settings are live.
+
+Step 2: Open the Longhorn UI and confirm the backup target shows your backups.
+
+Step 3: Restore a backup to a new volume from the Longhorn UI.
+
+Step 4: Create a PVC that restores from the backup (example).
+
+```yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: jellyfin-media-restore
+  namespace: media
+  annotations:
+    longhorn.io/volume-from-backup: "REPLACE_ME"
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: longhorn
+  resources:
+    requests:
+      storage: 100Gi
+```

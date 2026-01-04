@@ -98,6 +98,17 @@ kubectl -n vault exec -it vault-0 -- vault kv put kv/filebrowser/auth \
   password_hash="REPLACE_ME"
 ```
 
+### Step 4b: Longhorn backup credentials
+
+Store the Backblaze B2 credentials for Longhorn:
+
+```bash
+kubectl -n vault exec -it vault-0 -- vault kv put kv/longhorn/b2 \
+  access_key_id="REPLACE_ME" \
+  application_key="REPLACE_ME" \
+  endpoint="REPLACE_ME"
+```
+
 ## ArgoCD Image Updater credentials
 
 Store registry and Git credentials for ArgoCD Image Updater:
