@@ -29,7 +29,33 @@ Open Alertmanager and confirm that alerts with `alert_channel="ntfy"` appear in 
 
 ## Step 4: Verify delivery
 
-Trigger a test alert by creating a crashing pod or temporarily lowering the alert thresholds, then confirm the ntfy notification arrives.
+Trigger a test alert and confirm the ntfy notification arrives.
+
+```bash
+curl -sS -XPOST -H 'Content-Type: application/json' https://alertmanager.sudhanva.me/api/v2/alerts -d '[{"labels":{"alertname":"HomelabTestAlert","severity":"info","alert_channel":"ntfy"},"annotations":{"summary":"Test alert from CLI"},"generatorURL":"https://homelab.local/test"}]'
+```
+
+```bash
+curl -sS 'https://ntfy.sudhanva.me/alerts/json?poll=1' | head -n 5
+```
+
+## Troubleshooting
+
+### Ntfy cache database corruption
+
+If the ntfy logs show `database disk image is malformed`, clear the cache database and restart the deployment.
+
+Step 1: Pause ArgoCD auto-sync for the ntfy app if it keeps recreating the pod.
+
+Step 2: Scale the ntfy deployment to zero and wait for the pod to terminate.
+
+Step 3: Delete `/var/cache/ntfy/cache.db` from the ntfy pod or a debug pod that mounts the `ntfy-cache` PVC.
+
+Step 4: Scale back to one replica and re-enable auto-sync.
+
+Step 5: Re-run the test alert in Step 4.
+
+If deleting `cache.db` returns an I/O error, detach the Longhorn volume and run `fsck` on the node before starting the pod again.
 
 ## Notes
 
