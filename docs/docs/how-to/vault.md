@@ -199,3 +199,21 @@ kubectl -n external-secrets get clustersecretstore vault -o yaml
 ```
 
 The ClusterSecretStore will not become Ready until `vault-eso-token` exists and contains a valid token.
+
+### ExternalSecrets still failing after Vault recovery
+
+If Vault was re-initialized or secrets were added after External Secrets failed, force a resync.
+
+Step 1: Request a reconcile for all ExternalSecrets.
+
+```bash
+kubectl get externalsecrets -A -o jsonpath='{range .items[*]}{.metadata.namespace}{" "}{.metadata.name}{"\n"}{end}' | while read -r ns name; do
+  kubectl -n "$ns" annotate externalsecret "$name" reconcile.external-secrets.io/requested-at="$(date -u +%Y-%m-%dT%H:%M:%SZ)" --overwrite
+done
+```
+
+Step 2: Confirm the sync status.
+
+```bash
+kubectl get externalsecrets -A
+```
