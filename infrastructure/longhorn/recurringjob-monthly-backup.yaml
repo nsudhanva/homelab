@@ -4,6 +4,7 @@ metadata:
   name: monthly-backup
   namespace: longhorn-system
 spec:
+  name: monthly-backup
   cron: "0 3 1 * *"
   task: backup
   groups:
