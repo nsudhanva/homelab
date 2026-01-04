@@ -22,6 +22,8 @@ spec:
             enabled: true
           ha:
             enabled: false
+          extraEnvironmentVars:
+            VAULT_API_ADDR: "https://vault.sudhanva.me"
           dataStorage:
             enabled: true
             size: 20Gi
