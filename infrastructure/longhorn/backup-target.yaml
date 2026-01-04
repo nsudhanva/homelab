@@ -3,4 +3,4 @@ kind: Setting
 metadata:
   name: backup-target
   namespace: longhorn-system
-value: s3://sudhanva-homelab@us-east-005
+value: s3://sudhanva-homelab@us-east-005/
