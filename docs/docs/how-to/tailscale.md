@@ -194,6 +194,17 @@ In the Tailscale admin console, add a nameserver and restrict it to `sudhanva.me
 - Nameserver: the Tailscale IP from `tailscale-dns` (not the Gateway IP)
 - Restrict to domain: `sudhanva.me`
 
+### macOS resolver fallback
+
+If `dig` works but browsers or CLI tools still fail to resolve `*.sudhanva.me`, add a resolver file so macOS sends `sudhanva.me` queries to Tailscale:
+
+```bash
+sudo mkdir -p /etc/resolver
+echo "nameserver 100.100.100.100" | sudo tee /etc/resolver/sudhanva.me
+sudo dscacheutil -flushcache
+sudo killall -HUP mDNSResponder
+```
+
 ### Keep ExternalDNS from overriding public DNS
 
 The docs HTTPRoute intentionally omits the ExternalDNS expose annotation so ExternalDNS does not overwrite the public record.
