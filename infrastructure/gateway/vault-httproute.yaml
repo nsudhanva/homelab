@@ -26,6 +26,9 @@ spec:
         set:
         - name: Connection
           value: close
+    timeouts:
+      request: 60s
+      backendRequest: 60s
     backendRefs:
     - name: vault-ui
       port: 8200
