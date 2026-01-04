@@ -45,7 +45,7 @@ kubectl -n vault get pvc
 
 ## Step 2: Initialize and unseal Vault
 
-Initialize Vault and save the unseal keys and root token somewhere safe.
+Initialize Vault and save the unseal keys and root token somewhere safe. `vault operator init` prints five unseal keys with a threshold of three. Keep them offline (password manager). If you lose them, the only recovery is wiping the Vault PVC and re-initializing, which destroys stored secrets.
 
 ```bash
 kubectl -n vault exec -it vault-0 -- vault operator init
