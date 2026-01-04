@@ -278,6 +278,12 @@ Step 3: Restore and reconnect a StatefulSet (example: Vault).
 - Scale the StatefulSet back to 1.
 - Unseal Vault and verify the service.
 
+:::warning
+
+Deleting a PVC permanently removes the on-disk data. Only do this when you are restoring from a known-good backup.
+
+:::
+
 ## Step 7: Trigger a manual backup
 
 Step 1: Resolve the Longhorn volume name for the PVC.
