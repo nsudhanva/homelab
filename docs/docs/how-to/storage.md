@@ -176,39 +176,17 @@ spec:
 
 For large datasets, use `rsync` to copy from your workstation to the node, then move the data into the PVC mount. This avoids `kubectl cp` timeouts and supports resume.
 
-### Step 1: Sync data to the node (resumable)
+### Step 1: Copy into the PVC using the running Jellyfin pod
+
+This is the default approach and avoids touching the node filesystem directly.
 
 ```bash
-rsync -av --partial --inplace --progress /path/to/Videos/ user@node:/home/user/media-import/
+POD=$(kubectl -n media get pod -l app=jellyfin -o jsonpath='{.items[0].metadata.name}')
+kubectl -n media exec "$POD" -- mkdir -p /media/Videos
+tar -C "/path/to" -cf - "Videos" | kubectl -n media exec -i "$POD" -- tar -C /media/Videos -xf -
 ```
 
-Re-run the same command until it finishes; `rsync` will resume incomplete files.
-
-### Step 2: Find the PVC mount path
-
-```bash
-POD_UID=$(kubectl -n media get pod -l app=jellyfin -o jsonpath='{.items[0].metadata.uid}')
-PVC_ID=$(kubectl -n media get pvc jellyfin-media -o jsonpath='{.spec.volumeName}')
-echo "/var/lib/kubelet/pods/${POD_UID}/volumes/kubernetes.io~csi/${PVC_ID}/mount"
-```
-
-### Step 2b: Copy directly into the PVC from your workstation
-
-If you prefer to skip a staging directory on the node, use a direct `rsync` to the PVC mount.
-
-```bash
-POD_UID=$(kubectl -n media get pod -l app=jellyfin -o jsonpath='{.items[0].metadata.uid}')
-PVC_ID=$(kubectl -n media get pvc jellyfin-media -o jsonpath='{.spec.volumeName}')
-rsync -av --partial --inplace --progress --rsync-path="sudo rsync" /path/to/Videos/ user@node:/var/lib/kubelet/pods/${POD_UID}/volumes/kubernetes.io~csi/${PVC_ID}/mount/Videos/
-```
-
-### Step 3: Copy into the PVC
-
-```bash
-sudo rsync -av --delete /home/user/media-import/ /var/lib/kubelet/pods/<pod-uid>/volumes/kubernetes.io~csi/<pvc-id>/mount/Videos/
-```
-
-After the copy, Jellyfin should see the media under `/media/Videos`.
+After the copy, Jellyfin should see the media under `/media/Videos/`.
 
 ## Step 4: Configure Backblaze B2 backups
 
