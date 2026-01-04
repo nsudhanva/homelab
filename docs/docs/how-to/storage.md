@@ -222,6 +222,12 @@ Step 3: Ensure the Longhorn backup resources are in Git and let ArgoCD sync them
 
 The recurring job targets the `default` group and keeps three monthly backups per volume.
 
+:::note
+
+The backup target URL must end with `/` (for example `s3://bucket@region/`).
+
+:::
+
 ## Step 5: Restore from Backblaze B2
 
 Step 1: Reapply the repo so Longhorn, External Secrets, and the backup target settings are live.
@@ -247,4 +253,59 @@ spec:
   resources:
     requests:
       storage: 100Gi
+```
+
+## Step 6: Reconnect restored volumes to workloads
+
+Step 1: Find the backup URL.
+
+```bash
+kubectl -n longhorn-system get backups.longhorn.io -o jsonpath='{range .items[*]}{.metadata.name}{" "}{.status.url}{"\n"}{end}'
+```
+
+Step 2: Restore and reconnect a Deployment (example: Jellyfin).
+
+- Create a new PVC in Git with `longhorn.io/volume-from-backup`.
+- Update the Deployment to mount the new PVC.
+- Let ArgoCD sync the app.
+
+Step 3: Restore and reconnect a StatefulSet (example: Vault).
+
+- Scale the StatefulSet to 0.
+- Delete the existing PVC (destructive).
+- Add a `longhorn.io/volume-from-backup` annotation to `server.dataStorage` in `infrastructure/vault/vault.yaml`.
+- Let ArgoCD sync so the PVC is recreated from the backup.
+- Scale the StatefulSet back to 1.
+- Unseal Vault and verify the service.
+
+## Step 7: Trigger a manual backup
+
+Step 1: Resolve the Longhorn volume name for the PVC.
+
+```bash
+VOL=$(kubectl -n media get pvc jellyfin-media -o jsonpath='{.spec.volumeName}')
+POD=$(kubectl -n longhorn-system get pods -l app=longhorn-manager -o jsonpath='{.items[0].metadata.name}')
+```
+
+Step 2: Create a snapshot.
+
+```bash
+SNAP=manual-backup-$(date +%Y%m%d%H%M%S)
+kubectl -n longhorn-system exec "$POD" -- /bin/sh -c \
+  "curl -s -X POST -H 'Content-Type: application/json' -d '{\"name\":\"$SNAP\"}' \
+  http://longhorn-backend.longhorn-system:9500/v1/volumes/$VOL?action=snapshotCreate"
+```
+
+Step 3: Start the backup from that snapshot.
+
+```bash
+kubectl -n longhorn-system exec "$POD" -- /bin/sh -c \
+  "curl -s -X POST -H 'Content-Type: application/json' -d '{\"name\":\"$SNAP\"}' \
+  http://longhorn-backend.longhorn-system:9500/v1/volumes/$VOL?action=snapshotBackup"
+```
+
+Step 4: Watch for completion.
+
+```bash
+kubectl -n longhorn-system get backups.longhorn.io
 ```
