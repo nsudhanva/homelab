@@ -200,6 +200,27 @@ Vault is exposed at `https://vault.sudhanva.me` via the Tailscale Gateway.
 
 ## Troubleshooting
 
+### Vault UI blank page
+
+If the Vault UI loads a blank page in the browser while `curl` works, check the Envoy Gateway logs for `response_timeout` entries on `/ui/assets/...`. Large UI bundles can time out through the Gateway.
+
+Update the Vault HTTPRoute to increase the request timeout:
+
+```yaml
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: vault
+  namespace: vault
+spec:
+  rules:
+  - timeouts:
+      request: 60s
+      backendRequest: 60s
+```
+
+Commit the change and let ArgoCD sync `infrastructure/gateway/vault-httproute.yaml`.
+
 ### ClusterSecretStore not ready
 
 If `infra-external-secrets` is Degraded or ExternalSecrets show `SecretSyncedError`, check the Vault token secret:
