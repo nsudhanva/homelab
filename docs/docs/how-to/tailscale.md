@@ -148,6 +148,8 @@ Update the `external-dns.alpha.kubernetes.io/target` value in `infrastructure/ga
 
 The split DNS resolver must point `sudhanva.me` at the `tailscale-dns` service IP, not the Gateway IP. The `tailscale-dns` resolver answers `*.sudhanva.me` with the Gateway IP for you. Pointing split DNS directly at the Gateway IP will time out.
 
+The resolver runs in the `tailscale-dns` namespace, not `tailscale`.
+
 Fetch the resolver IP with:
 
 ```bash

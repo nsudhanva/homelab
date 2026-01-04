@@ -221,6 +221,44 @@ These manifests live in `infrastructure/coredns/configmap.yaml` and `infrastruct
 
 Headlamp reads OIDC config from the `headlamp-oidc` Secret created by External Secrets. After ArgoCD syncs the app, use the Sign In button.
 
+## Troubleshooting OIDC
+
+### "invalid child issuer \"provider\""
+
+This error means the issuer URL stored in Vault is missing the provider name. Confirm what Headlamp is using:
+
+```bash
+kubectl -n headlamp get secret headlamp-oidc -o jsonpath='{.data.issuer_url}' | base64 -d; echo
+```
+
+The URL must end with `/v1/identity/oidc/provider/headlamp`.
+
+If the provider does not exist, the OIDC discovery endpoint returns `404`:
+
+```bash
+curl -s -o /dev/null -w "%{http_code}\n" \
+  https://vault.sudhanva.me/v1/identity/oidc/provider/headlamp/.well-known/openid-configuration
+```
+
+Create the provider and client in Vault (Step 1 above), update `kv/headlamp/oidc`, then force a refresh:
+
+```bash
+kubectl -n headlamp annotate externalsecret headlamp-oidc \
+  reconcile.external-secrets.io/requested-at="$(date -u +%Y-%m-%dT%H:%M:%SZ)" \
+  --overwrite
+```
+
+### OIDC not enabled on the API server
+
+Headlamp OIDC tokens only work if the API server has OIDC flags set. Check the running flags:
+
+```bash
+kubectl -n kube-system get pods -l component=kube-apiserver \
+  -o jsonpath='{.items[0].spec.containers[0].command}' | tr ' ' '\n' | rg oidc
+```
+
+If no OIDC flags are present, add them via your kubeadm config and restart the API server as described in Step 4.
+
 ## Repo Wiring For OIDC
 
 These files implement the OIDC wiring for Headlamp:
