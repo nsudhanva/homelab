@@ -47,6 +47,13 @@ dig +short docs.sudhanva.me @100.100.100.100
 curl -I https://docs.sudhanva.me
 ```
 
+If you have other apps exposed through the Gateway, validate one of them as well:
+
+```bash
+dig +short home.sudhanva.me @100.100.100.100
+curl -I https://home.sudhanva.me
+```
+
 Off the tailnet, it should resolve to Cloudflare:
 
 ```bash

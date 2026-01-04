@@ -38,6 +38,8 @@ sudo apt-mark hold kubelet kubeadm kubectl
 
 ## Step 2: Initialize the control plane
 
+Pick a pod network CIDR that does not overlap your LAN or the service CIDR (default `10.96.0.0/12`). For this homelab, `10.244.0.0/16` is fine. If you prefer Cilium to manage pod IPs without kubeadm pinning a range, omit `--pod-network-cidr` and keep the Cilium defaults.
+
 ```bash
 sudo kubeadm init --pod-network-cidr=10.244.0.0/16
 mkdir -p $HOME/.kube

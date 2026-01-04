@@ -32,7 +32,7 @@ If you need GPU support, use the GPU playbooks in `ansible/playbooks/`.
 
 ## Step 3: Initialize the control plane
 
-Run on the control plane node:
+Run on the control plane node. Pick a pod CIDR that does not overlap your LAN or service CIDR. If you prefer to skip pinning a pod CIDR, omit `--pod-network-cidr` and keep the Cilium defaults.
 
 ```bash
 sudo kubeadm init --pod-network-cidr=10.244.0.0/16

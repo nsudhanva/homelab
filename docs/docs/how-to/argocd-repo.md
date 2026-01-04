@@ -29,6 +29,14 @@ argocd login argocd.sudhanva.me \
   --grpc-web
 ```
 
+If the CLI cannot resolve `argocd.sudhanva.me`, verify split DNS is configured and the tailnet resolver is reachable:
+
+```bash
+dig +short argocd.sudhanva.me @100.100.100.100
+```
+
+Follow [Tailscale](./tailscale.md) if the query times out or returns no records.
+
 ## Step 3: Add the repository
 
 The repo is public, so HTTPS is enough.

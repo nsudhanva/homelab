@@ -103,6 +103,16 @@ ANSIBLE_CONFIG=ansible/ansible.cfg ansible-playbook \
   -K
 ```
 
+## Troubleshooting provisioning
+
+If APT fails with `Malformed line 1 in source list /etc/apt/sources.list.d/kubernetes.list (type)`, remove the file and rerun the playbook:
+
+```bash
+sudo rm -f /etc/apt/sources.list.d/kubernetes.list
+```
+
+If you see a warning about `multipathd` missing, it is safe to continue. The Longhorn prereq role only disables the service if it is present.
+
 ## What the provisioning playbook does
 
 The provisioning playbooks run these roles on each node:
