@@ -92,7 +92,9 @@ Create a signing key and provider:
 kubectl -n vault exec -it vault-0 -- vault write identity/oidc/key/headlamp rotation_period=24h
 kubectl -n vault exec -it vault-0 -- vault write identity/oidc/provider/headlamp \
   allowed_client_ids="*" \
-  issuer="https://vault.sudhanva.me/v1/identity/oidc/provider/headlamp"
+  issuer="https://vault.sudhanva.me"
+
+Vault appends the provider path automatically, so the resulting issuer becomes `https://vault.sudhanva.me/v1/identity/oidc/provider/headlamp`.
 ```
 
 Create the client and capture its ID and secret:
@@ -288,6 +290,12 @@ subjects:
 ```
 
 The repo includes `apps/headlamp/clusterrolebinding-oidc.yaml`. Update the group name if your OIDC provider uses a different group claim.
+
+If you prefer binding a specific OIDC user, set the `User` entry to `oidc:<entity_id>` from Vault:
+
+```bash
+kubectl -n vault exec -it vault-0 -- vault read -field=id identity/entity/name/headlamp
+```
 
 ## Prometheus Metrics
 
