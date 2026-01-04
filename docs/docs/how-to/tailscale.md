@@ -144,6 +144,16 @@ Set your email in `infrastructure/cert-manager-issuer/cluster-issuer.yaml` befor
 
 Update the `external-dns.alpha.kubernetes.io/target` value in `infrastructure/gateway/gateway.yaml` to the Tailscale hostname created by the Envoy Gateway service (for example, `gateway-envoy.TAILNET.ts.net`). The repo default uses `GATEWAY_ENVOY_HOSTNAME`.
 
+### Split DNS target IP
+
+The split DNS resolver should point `*.sudhanva.me` at the Gateway IP. Fetch it with:
+
+```bash
+kubectl get gateway -n tailscale tailscale-gateway -o jsonpath='{.status.addresses[*].value}' && echo
+```
+
+Use the `IPAddress` value when you need to set or validate split DNS entries.
+
 ## Split-horizon DNS for docs.sudhanva.me
 
 The docs hostname serves two backends:
