@@ -144,15 +144,23 @@ Set your email in `infrastructure/cert-manager-issuer/cluster-issuer.yaml` befor
 
 Update the `external-dns.alpha.kubernetes.io/target` value in `infrastructure/gateway/gateway.yaml` to the Tailscale hostname created by the Envoy Gateway service (for example, `gateway-envoy.TAILNET.ts.net`). The repo default uses `GATEWAY_ENVOY_HOSTNAME`.
 
-### Split DNS target IP
+### Split DNS resolver IP
 
-The split DNS resolver should point `*.sudhanva.me` at the Gateway IP. Fetch it with:
+The split DNS resolver must point `sudhanva.me` at the `tailscale-dns` service IP, not the Gateway IP. The `tailscale-dns` resolver answers `*.sudhanva.me` with the Gateway IP for you. Pointing split DNS directly at the Gateway IP will time out.
+
+Fetch the resolver IP with:
+
+```bash
+kubectl -n tailscale-dns get svc tailscale-dns -o wide
+```
+
+If you need to confirm what the resolver returns, fetch the Gateway IP with:
 
 ```bash
 kubectl get gateway -n tailscale tailscale-gateway -o jsonpath='{.status.addresses[*].value}' && echo
 ```
 
-Use the `IPAddress` value when you need to set or validate split DNS entries.
+Use the `IPAddress` value to validate `dig +short <name> @100.100.100.100` output.
 
 ## Split-horizon DNS for docs.sudhanva.me
 
@@ -183,7 +191,7 @@ Set `docs.sudhanva.me` to the Cloudflare Pages hostname in the `sudhanva.me` zon
 
 In the Tailscale admin console, add a nameserver and restrict it to `sudhanva.me`:
 
-- Nameserver: the Tailscale IP from `tailscale-dns`
+- Nameserver: the Tailscale IP from `tailscale-dns` (not the Gateway IP)
 - Restrict to domain: `sudhanva.me`
 
 ### Keep ExternalDNS from overriding public DNS
