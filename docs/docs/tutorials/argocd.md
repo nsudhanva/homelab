@@ -23,6 +23,8 @@ kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath='{.data.pas
 
 ArgoCD is exposed via Gateway API in `infrastructure/gateway/argocd-httproute.yaml` (hostname: `argocd.sudhanva.me`).
 
+This repo patches `argocd-cmd-params-cm` to set `server.insecure: "true"` because TLS is terminated at the Gateway. If the UI or CLI gets stuck in redirect loops, confirm the patch is applied and restart the `argocd-server` deployment.
+
 :::
 
 ## Step 2: Prepare GitOps bootstrap
