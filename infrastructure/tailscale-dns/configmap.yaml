@@ -11,7 +11,7 @@ data:
     ready
     reload
     template IN A {
-        answer "{{ .Name }} 60 IN A 100.109.53.92"
+        answer "{{ .Name }} 60 IN A 100.114.134.52"
     }
         forward . 1.1.1.1 1.0.0.1
         cache 30
