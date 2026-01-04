@@ -192,6 +192,16 @@ PVC_ID=$(kubectl -n media get pvc jellyfin-media -o jsonpath='{.spec.volumeName}
 echo "/var/lib/kubelet/pods/${POD_UID}/volumes/kubernetes.io~csi/${PVC_ID}/mount"
 ```
 
+### Step 2b: Copy directly into the PVC from your workstation
+
+If you prefer to skip a staging directory on the node, use a direct `rsync` to the PVC mount.
+
+```bash
+POD_UID=$(kubectl -n media get pod -l app=jellyfin -o jsonpath='{.items[0].metadata.uid}')
+PVC_ID=$(kubectl -n media get pvc jellyfin-media -o jsonpath='{.spec.volumeName}')
+rsync -av --partial --inplace --progress --rsync-path="sudo rsync" /path/to/Videos/ user@node:/var/lib/kubelet/pods/${POD_UID}/volumes/kubernetes.io~csi/${PVC_ID}/mount/Videos/
+```
+
 ### Step 3: Copy into the PVC
 
 ```bash
