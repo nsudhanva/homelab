@@ -154,7 +154,7 @@ kubectl wait --for=condition=available --timeout=600s deployment/argocd-server -
 kubectl apply -f bootstrap/root.yaml
 ```
 
-Guided flow: <https://docs.sudhanva.me/docs/how-to/from-scratch> and <https://docs.sudhanva.me/docs/tutorials>
+Guided flow: <https://docs.sudhanva.me/how-to/from-scratch> and <https://docs.sudhanva.me/tutorials>
 
 ### From scratch flow
 
@@ -225,18 +225,18 @@ Build locally:
 
 ```bash
 cd docs
-npm ci
-npm start
+bun install
+bun dev
 ```
 
 Recommended reading paths:
 
-- Start from scratch: <https://docs.sudhanva.me/docs/how-to/from-scratch>
-- Add a worker node: <https://docs.sudhanva.me/docs/how-to/add-worker-node>
-- Prereqs and system prep: <https://docs.sudhanva.me/docs/tutorials/prerequisites>
-- GitOps model: <https://docs.sudhanva.me/docs/explanation/automation-model>
-- Infra catalog: <https://docs.sudhanva.me/docs/reference/infrastructure-components>
-- App catalog: <https://docs.sudhanva.me/docs/reference/applications>
+- Start from scratch: <https://docs.sudhanva.me/how-to/from-scratch>
+- Add a worker node: <https://docs.sudhanva.me/how-to/add-worker-node>
+- Prereqs and system prep: <https://docs.sudhanva.me/tutorials/prerequisites>
+- GitOps model: <https://docs.sudhanva.me/explanation/automation-model>
+- Infra catalog: <https://docs.sudhanva.me/reference/infrastructure-components>
+- App catalog: <https://docs.sudhanva.me/reference/applications>
 
 ## Repository layout
 
@@ -247,14 +247,14 @@ infrastructure/   Cluster components managed by ArgoCD
 apps/             User workloads managed by ArgoCD
 clusters/         Cluster-specific overrides
 scripts/          Automation helpers
-docs/             Docusaurus documentation
+docs/             Astro Starlight documentation
 ```
 
 ## Applications
 
 | App | Purpose | Hostname |
 | --- | --- | --- |
-| Docs | Docusaurus site for cluster documentation | `docs.sudhanva.me` |
+| Docs | Documentation site for cluster guides | `docs.sudhanva.me` |
 | Headlamp | Kubernetes UI with OIDC support and metrics integration | `headlamp.sudhanva.me` |
 | Homer | Home dashboard with service shortcuts | `home.sudhanva.me` |
 | Jellyfin | Media streaming with GPU acceleration when available | `jellyfin.sudhanva.me` |

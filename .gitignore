@@ -23,6 +23,11 @@ docs/node_modules/
 docs/build/
 docs/.docusaurus/
 docs/.cache/
+docs/dist/
+docs/.astro/
+
+# Local tooling
+.claude/
 
 # Tool caches
 scripts/.cache/
