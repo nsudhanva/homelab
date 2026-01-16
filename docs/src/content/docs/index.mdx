@@ -1,0 +1,103 @@
+---
+title: Bare Metal Kubernetes Homelab - Complete Guide
+description: Build a multi-node bare-metal Kubernetes cluster on Ubuntu 24.04 with kubeadm, Ansible, ArgoCD GitOps, Cilium CNI, and Longhorn storage. GitOps-first, reproducible, and ready for both bare metal and local rehearsal.
+template: splash
+hero:
+  tagline: GitOps-first, reproducible Kubernetes on bare metal with end-to-end automation. Go from blank nodes to a production-ready cluster in a single flow.
+  actions:
+    - text: Start from scratch
+      link: /how-to/from-scratch/
+      icon: right-arrow
+      variant: primary
+    - text: Local rehearsal
+      link: /tutorials/local-multipass-cluster/
+      icon: external
+    - text: View architecture
+      link: /explanation/automation-model/
+---
+
+import { Aside, Card, CardGrid, LinkCard, Tabs, TabItem } from '@astrojs/starlight/components';
+
+## Why Bare Metal Kubernetes?
+
+Run a **production-ready Kubernetes cluster** on your own hardware. This project provides everything you need: Ansible automation, GitOps with ArgoCD, secure secrets management, and distributed storage with Longhorn.
+
+<Aside type="tip">
+Start with the local rehearsal flow if you want to validate every step before touching hardware.
+</Aside>
+
+## Features
+
+<CardGrid stagger>
+  <Card title="GitOps with ArgoCD" icon="github">
+    Declarative cluster management using ApplicationSets. Push to Git, ArgoCD deploys infrastructure and apps.
+  </Card>
+  <Card title="Ansible Automation" icon="rocket">
+    One-command provisioning with Ansible playbooks. Reproducible and version controlled.
+  </Card>
+  <Card title="Cilium CNI" icon="seti:graphql">
+    Modern eBPF-based networking with Gateway API support via Envoy Gateway.
+  </Card>
+  <Card title="Tailscale Ingress" icon="setting">
+    Secure ingress through Tailscale with split-horizon DNS and ExternalDNS automation.
+  </Card>
+  <Card title="Vault Secrets" icon="approve-check">
+    HashiCorp Vault with External Secrets Operator. No secrets in Git.
+  </Card>
+  <Card title="Longhorn Storage" icon="document">
+    Distributed block storage with backup capabilities and PVC-driven apps.
+  </Card>
+</CardGrid>
+
+## Choose Your Path
+
+<Tabs>
+  <TabItem label="Bare Metal">
+    Use this when you're ready to bootstrap hardware nodes and want the full production flow.
+    Follow the full guide and validate each milestone in order.
+  </TabItem>
+  <TabItem label="Local Rehearsal">
+    Use this when you want a safe, fast rehearsal in Multipass before touching real nodes.
+    Great for testing upgrades, verifying playbooks, and building confidence.
+  </TabItem>
+</Tabs>
+
+## Your First Success Milestones
+
+<CardGrid>
+  <Card title="Prep the Nodes" icon="document">
+    OS-ready Ubuntu 24.04 nodes with required kernel and container runtime settings.
+  </Card>
+  <Card title="Bootstrap the Control Plane" icon="rocket">
+    kubeadm initializes the cluster and hands off to GitOps.
+  </Card>
+  <Card title="GitOps Online" icon="github">
+    ArgoCD reconciles infrastructure and apps from this repo.
+  </Card>
+  <Card title="Ingress Ready" icon="setting">
+    Tailscale Gateway API is ready to expose services securely.
+  </Card>
+</CardGrid>
+
+## Cluster Snapshot
+
+| Component | Purpose |
+|-----------|---------|
+| **kubeadm** | Kubernetes cluster bootstrap on Ubuntu 24.04 |
+| **Ansible** | Node provisioning and configuration management |
+| **ArgoCD** | GitOps continuous deployment with ApplicationSets |
+| **Cilium** | eBPF-based CNI with Gateway API support |
+| **Envoy Gateway** | Gateway API data plane for routing |
+| **Tailscale** | Secure mesh VPN for ingress |
+| **Vault** | Secrets management with External Secrets |
+| **Longhorn** | Distributed storage with snapshots and backups |
+| **Prometheus** | Monitoring stack with Grafana and Alertmanager |
+
+## Quick Links
+
+<CardGrid>
+  <LinkCard title="Start from Scratch" href="/how-to/from-scratch/" description="Rebuild cluster end-to-end on bare metal or VMs" />
+  <LinkCard title="Tutorials" href="/tutorials/" description="Step-by-step walkthroughs for cluster setup" />
+  <LinkCard title="Architecture" href="/explanation/automation-model/" description="Understand the GitOps automation model" />
+  <LinkCard title="GitHub Repository" href="https://github.com/sudhanva/homelab" description="Source code and issue tracker" />
+</CardGrid>

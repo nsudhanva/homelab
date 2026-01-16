@@ -1,0 +1,304 @@
+---
+title: Storage
+---
+
+# Storage (Longhorn)
+
+```mermaid
+flowchart LR
+  App["App Pod"] --> PVC["PVC"]
+  PVC --> Longhorn["Longhorn volume"]
+  Longhorn --> Disk["Node disk (/home/longhorn)"]
+```
+
+## Detailed Volume Path
+
+```mermaid
+flowchart LR
+  Pod["Pod mounts /srv or /media"] --> Kubelet["kubelet"]
+  Kubelet --> CSI["Longhorn CSI driver"]
+  CSI --> Volume["Longhorn Volume"]
+  Volume --> Engine["Longhorn Engine"]
+  Engine --> Replica1["Replica A"]
+  Engine --> Replica2["Replica B"]
+  Engine --> Replica3["Replica C"]
+  Replica1 --> Disk1["Node disk"]
+  Replica2 --> Disk2["Node disk"]
+  Replica3 --> Disk3["Node disk"]
+```
+
+## Step 1: Storage prerequisites for Longhorn
+
+### Install Required Packages
+
+```bash
+sudo apt-get update
+sudo apt-get install -y open-iscsi nfs-common cryptsetup
+sudo systemctl enable --now iscsid
+```
+
+### Create Storage Directory
+
+:::warning
+
+Longhorn needs a storage directory to exist. Create it on your preferred disk.
+
+:::
+
+```bash
+sudo mkdir -p /var/lib/longhorn
+```
+
+:::note
+
+Update the matching path in `bootstrap/templates/longhorn.yaml` and `ansible/group_vars/all.yaml`.
+
+:::
+
+:::note
+
+The default path is `/var/lib/longhorn` to avoid user-specific home directories.
+
+:::
+
+### Move Longhorn to a larger disk
+
+If `/` is small and `/home` is on a larger disk, move Longhorn to `/home/longhorn`.
+
+Step 1: Update the Longhorn path in Git.
+
+Set the data path in both files:
+
+```bash
+ansible/group_vars/all.yaml
+bootstrap/templates/longhorn.yaml
+```
+
+Use `/home/longhorn` as the path in both locations.
+
+Step 2: Create the directory on the node.
+
+```bash
+sudo mkdir -p /home/longhorn
+sudo chown root:root /home/longhorn
+sudo chmod 0755 /home/longhorn
+```
+
+Step 3: Recreate Longhorn.
+
+Delete the Longhorn app and namespace, then reapply it so the new path takes effect.
+
+Step 4: Recreate PVCs.
+
+If you already created PVCs on the old path, delete them and let ArgoCD recreate them.
+This is destructive if you have data.
+
+:::note
+
+Longhorn uses the `longhorn-critical` PriorityClass. This repo applies it from `infrastructure/longhorn/priorityclass.yaml`.
+
+:::
+
+### Add Node Label for Longhorn Disk
+
+:::note
+
+With `createDefaultDiskLabeledNodes: true`, Longhorn only creates disks on nodes with this label.
+
+:::
+
+:::note
+
+For single-node clusters, set `defaultReplicaCount: 1` in `bootstrap/templates/longhorn.yaml` to avoid degraded volumes.
+
+:::
+
+:::note
+
+If Longhorn volumes stay `detached` or PVCs remain Pending on small disks, reduce PVC sizes in Git so total requested storage fits on the node.
+
+:::
+
+```bash
+kubectl label node $(hostname) node.longhorn.io/create-default-disk=true --overwrite
+```
+
+## Step 2: Resize PVCs safely
+
+Longhorn supports volume expansion, but Kubernetes does not allow shrinking PVCs in place.
+
+### Expanding a PVC
+
+Update the PVC size in Git and let ArgoCD sync. Longhorn will expand the volume and filesystem.
+
+### Reducing a PVC size (migration required)
+
+To reduce a volume size without data loss, create a new PVC at the smaller size and copy data across.
+
+- Create a new PVC with the target size (for example `jellyfin-media-200`).
+- Create a temporary Pod that mounts both the old and new PVCs.
+- Copy data across and verify checksums.
+- Update the Deployment to use the new PVC.
+- Remove the old PVC once validated.
+
+Example copy pod (replace names and namespaces):
+
+```yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pvc-migration
+  namespace: media
+spec:
+  restartPolicy: Never
+  containers:
+    - name: rsync
+      image: docker.io/library/alpine:3.20
+      command: ["/bin/sh", "-c"]
+      args:
+        - apk add --no-cache rsync && rsync -aHAX --info=progress2 /old/ /new/
+      volumeMounts:
+        - name: old
+          mountPath: /old
+        - name: new
+          mountPath: /new
+  volumes:
+    - name: old
+      persistentVolumeClaim:
+        claimName: jellyfin-media
+    - name: new
+      persistentVolumeClaim:
+        claimName: jellyfin-media-200
+```
+
+## Step 3: Import media data into Longhorn
+
+For large datasets, use `rsync` to copy from your workstation to the node, then move the data into the PVC mount. This avoids `kubectl cp` timeouts and supports resume.
+
+### Step 1: Copy into the PVC using the running Jellyfin pod
+
+This is the default approach and avoids touching the node filesystem directly.
+
+```bash
+POD=$(kubectl -n media get pod -l app=jellyfin -o jsonpath='{.items[0].metadata.name}')
+kubectl -n media exec "$POD" -- mkdir -p /media/Videos
+tar -C "/path/to" -cf - "Videos" | kubectl -n media exec -i "$POD" -- tar -C /media/Videos -xf -
+```
+
+After the copy, Jellyfin should see the media under `/media/Videos/`.
+
+## Step 4: Configure Backblaze B2 backups
+
+Step 1: Create a Backblaze B2 bucket and an S3-compatible key.
+
+Step 2: Store the credentials in Vault.
+
+```bash
+kubectl -n vault exec -it vault-0 -- vault kv put kv/longhorn/b2 \
+  access_key_id="REPLACE_ME" \
+  application_key="REPLACE_ME" \
+  endpoint="REPLACE_ME"
+```
+
+Step 3: Ensure the Longhorn backup resources are in Git and let ArgoCD sync them.
+
+- `infrastructure/external-secrets/external-secret-longhorn-backblaze.yaml`
+- `infrastructure/longhorn/backup-target.yaml`
+- `infrastructure/longhorn/backup-target-credential-secret.yaml`
+- `infrastructure/longhorn/recurringjob-monthly-backup.yaml`
+
+The recurring job targets the `default` group and keeps three monthly backups per volume.
+
+:::note
+
+The backup target URL must end with `/` (for example `s3://bucket@region/`).
+
+:::
+
+## Step 5: Restore from Backblaze B2
+
+Step 1: Reapply the repo so Longhorn, External Secrets, and the backup target settings are live.
+
+Step 2: Open the Longhorn UI and confirm the backup target shows your backups.
+
+Step 3: Restore a backup to a new volume from the Longhorn UI.
+
+Step 4: Create a PVC that restores from the backup (example).
+
+```yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: jellyfin-media-restore
+  namespace: media
+  annotations:
+    longhorn.io/volume-from-backup: "REPLACE_ME"
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: longhorn
+  resources:
+    requests:
+      storage: 100Gi
+```
+
+## Step 6: Reconnect restored volumes to workloads
+
+Step 1: Find the backup URL.
+
+```bash
+kubectl -n longhorn-system get backups.longhorn.io -o jsonpath='{range .items[*]}{.metadata.name}{" "}{.status.url}{"\n"}{end}'
+```
+
+Step 2: Restore and reconnect a Deployment (example: Jellyfin).
+
+- Create a new PVC in Git with `longhorn.io/volume-from-backup`.
+- Update the Deployment to mount the new PVC.
+- Let ArgoCD sync the app.
+
+Step 3: Restore and reconnect a StatefulSet (example: Vault).
+
+- Scale the StatefulSet to 0.
+- Delete the existing PVC (destructive).
+- Add a `longhorn.io/volume-from-backup` annotation to `server.dataStorage` in `infrastructure/vault/vault.yaml`.
+- Let ArgoCD sync so the PVC is recreated from the backup.
+- Scale the StatefulSet back to 1.
+- Unseal Vault and verify the service.
+
+:::warning
+
+Deleting a PVC permanently removes the on-disk data. Only do this when you are restoring from a known-good backup.
+
+:::
+
+## Step 7: Trigger a manual backup
+
+Step 1: Resolve the Longhorn volume name for the PVC.
+
+```bash
+VOL=$(kubectl -n media get pvc jellyfin-media -o jsonpath='{.spec.volumeName}')
+POD=$(kubectl -n longhorn-system get pods -l app=longhorn-manager -o jsonpath='{.items[0].metadata.name}')
+```
+
+Step 2: Create a snapshot.
+
+```bash
+SNAP=manual-backup-$(date +%Y%m%d%H%M%S)
+kubectl -n longhorn-system exec "$POD" -- /bin/sh -c \
+  "curl -s -X POST -H 'Content-Type: application/json' -d '{\"name\":\"$SNAP\"}' \
+  http://longhorn-backend.longhorn-system:9500/v1/volumes/$VOL?action=snapshotCreate"
+```
+
+Step 3: Start the backup from that snapshot.
+
+```bash
+kubectl -n longhorn-system exec "$POD" -- /bin/sh -c \
+  "curl -s -X POST -H 'Content-Type: application/json' -d '{\"name\":\"$SNAP\"}' \
+  http://longhorn-backend.longhorn-system:9500/v1/volumes/$VOL?action=snapshotBackup"
+```
+
+Step 4: Watch for completion.
+
+```bash
+kubectl -n longhorn-system get backups.longhorn.io
+```
