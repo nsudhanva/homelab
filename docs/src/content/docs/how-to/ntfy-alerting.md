@@ -1,5 +1,16 @@
 ---
-title: Ntfy Alerting
+title: Push Notifications with Ntfy and Alertmanager
+description: Deploy a self-hosted ntfy server for push notifications. Configure Alertmanager to send alerts for pod crashes, node resource pressure, and cluster health via ntfy.
+keywords:
+  - ntfy kubernetes
+  - alertmanager notifications
+  - push notifications kubernetes
+  - ntfy alertmanager webhook
+  - kubernetes alerting
+  - pod crash alerts
+  - node resource alerts
+sidebar:
+  order: 11
 ---
 
 # Ntfy Alerting

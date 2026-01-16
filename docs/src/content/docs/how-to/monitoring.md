@@ -1,5 +1,17 @@
 ---
-title: Deploy Prometheus And Grafana
+title: Deploy Prometheus, Grafana, and Alertmanager
+description: Install the Prometheus monitoring stack with Grafana dashboards and Alertmanager. Configure ServiceMonitors for application metrics and expose dashboards via Tailscale Gateway.
+keywords:
+  - prometheus kubernetes
+  - grafana kubernetes
+  - alertmanager setup
+  - kubernetes monitoring
+  - prometheus operator
+  - servicemonitor
+  - kube-prometheus-stack
+  - kubernetes metrics
+sidebar:
+  order: 10
 ---
 
 # Deploy Prometheus And Grafana

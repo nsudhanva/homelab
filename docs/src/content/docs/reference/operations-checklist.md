@@ -1,5 +1,15 @@
 ---
-title: Operations Checklist
+title: Operations Checklist Reference
+description: Quick reference checklists for routine Kubernetes cluster operations including health checks, pre-push validation, and post-reboot verification commands.
+keywords:
+  - kubernetes operations
+  - kubectl commands
+  - cluster health check
+  - kubernetes checklist
+  - argocd status check
+  - kubernetes maintenance commands
+sidebar:
+  order: 4
 ---
 
 # Operations Checklist

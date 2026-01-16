@@ -1,5 +1,15 @@
 ---
-title: Verify Ansible Roles with Multipass
+title: Test Ansible Roles with Multipass VMs
+description: Validate Ansible provisioning playbooks against a Multipass VM before deploying to bare metal. Test kernel modules, systemd services, and container runtime configuration.
+keywords:
+  - ansible testing
+  - multipass ansible
+  - ansible role validation
+  - ansible provisioning test
+  - kubernetes ansible test
+  - multipass vm testing
+sidebar:
+  order: 19
 ---
 
 # Verify Ansible Roles with Multipass

@@ -1,5 +1,16 @@
 ---
-title: CI And CD With GitHub Actions
+title: CI/CD Pipeline with GitHub Actions
+description: Configure GitHub Actions for Kubernetes manifest validation, pre-commit checks, and docs image builds. Understand the relationship between CI validation and ArgoCD deployment.
+keywords:
+  - github actions kubernetes
+  - kubeconform validation
+  - pre-commit kubernetes
+  - kubernetes ci cd
+  - argocd cd
+  - github actions tailscale
+  - kubernetes manifest validation
+sidebar:
+  order: 15
 ---
 
 # CI And CD With GitHub Actions

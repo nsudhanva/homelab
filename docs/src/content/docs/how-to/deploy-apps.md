@@ -1,5 +1,16 @@
 ---
-title: Deploy Apps With GitOps
+title: Deploy Applications with ArgoCD GitOps
+description: Deploy Kubernetes applications using ArgoCD ApplicationSets. Create app manifests, configure Gateway API HTTPRoutes for HTTPS ingress, and let ArgoCD sync from Git.
+keywords:
+  - argocd deploy application
+  - kubernetes gitops deployment
+  - argocd applicationset
+  - gateway api httproute
+  - kubernetes app deployment
+  - tailscale gateway ingress
+  - externaldns annotation
+sidebar:
+  order: 3
 ---
 
 # Deploy Apps With GitOps

@@ -1,5 +1,17 @@
 ---
-title: Local Multipass Cluster
+title: Local Kubernetes Cluster with Multipass VMs
+description: Create a local multi-node Kubernetes cluster using Multipass VMs for development and testing. Validate Ansible playbooks and cluster configuration before deploying to bare metal.
+keywords:
+  - multipass kubernetes
+  - local kubernetes cluster
+  - kubernetes development environment
+  - multipass vm cluster
+  - kubernetes testing
+  - local kubeadm cluster
+  - kubernetes sandbox
+  - rehearsal cluster
+sidebar:
+  order: 9
 ---
 
 # Local Multipass Cluster

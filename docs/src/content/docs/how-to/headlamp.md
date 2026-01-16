@@ -1,5 +1,16 @@
 ---
-title: Expose Headlamp With Tailscale Gateway
+title: Deploy Headlamp Kubernetes Dashboard
+description: Deploy Headlamp as a Kubernetes dashboard with Tailscale Gateway ingress. Configure OIDC authentication with Vault and Prometheus metrics integration.
+keywords:
+  - headlamp kubernetes
+  - kubernetes dashboard
+  - headlamp oidc
+  - vault oidc kubernetes
+  - kubernetes ui
+  - headlamp metrics
+  - tailscale gateway headlamp
+sidebar:
+  order: 17
 ---
 
 # Expose Headlamp With Tailscale Gateway

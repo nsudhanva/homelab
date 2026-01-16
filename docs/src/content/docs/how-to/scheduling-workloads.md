@@ -1,6 +1,16 @@
 ---
-title: Scheduling Workloads
-description: Control pod placement using Node Affinity, Taints, and Tolerations.
+title: Kubernetes Pod Scheduling and Node Affinity
+description: Control Kubernetes pod placement with node affinity, taints, and tolerations. Configure rolling updates for zero downtime and avoid common scheduling anti-patterns.
+keywords:
+  - kubernetes node affinity
+  - kubernetes taints tolerations
+  - pod scheduling kubernetes
+  - node selector kubernetes
+  - rolling update kubernetes
+  - kubernetes workload placement
+  - kubernetes scheduling best practices
+sidebar:
+  order: 18
 ---
 
 # Scheduling Workloads
@@ -13,9 +23,9 @@ Control exactly where your pods run in the cluster using Node Affinity, Taints, 
 
 Nodes can be labeled with key-value pairs. Standard labels include:
 
-* `kubernetes.io/arch`: `amd64`, `arm64`
-* `kubernetes.io/os`: `linux`
-* `node-role.kubernetes.io/worker`: `worker`
+- `kubernetes.io/arch`: `amd64`, `arm64`
+- `kubernetes.io/os`: `linux`
+- `node-role.kubernetes.io/worker`: `worker`
 
 You can add custom labels:
 
@@ -27,15 +37,15 @@ kubectl label node <node-name> disk=ssd
 
 Affinity allows you to constrain which nodes your pod is eligible to be scheduled on.
 
-* **Required (`requiredDuringSchedulingIgnoredDuringExecution`):** The pod *must* run on a matching node. If no match is found, the pod stays Pending.
-* **Preferred (`preferredDuringSchedulingIgnoredDuringExecution`):** The scheduler tries to find a matching node. If not found, it schedules the pod anywhere.
+- **Required (`requiredDuringSchedulingIgnoredDuringExecution`):** The pod _must_ run on a matching node. If no match is found, the pod stays Pending.
+- **Preferred (`preferredDuringSchedulingIgnoredDuringExecution`):** The scheduler tries to find a matching node. If not found, it schedules the pod anywhere.
 
 ### Zero Downtime Strategy
 
 When moving workloads or updating deployments, ensure zero downtime by configuring the `RollingUpdate` strategy correctly.
 
-* **maxUnavailable: 0**: Ensure no old pods are killed until new ones are Ready.
-* **maxSurge: 1**: Allow creating 1 extra pod above the desired count during updates.
+- **maxUnavailable: 0**: Ensure no old pods are killed until new ones are Ready.
+- **maxSurge: 1**: Allow creating 1 extra pod above the desired count during updates.
 
 ## Example: Preferring a Specific Worker Node
 
@@ -106,8 +116,8 @@ Adding `affinity` or `nodeSelector` to everything create rigid constraints that 
 
 Do not force a pod to a node if it shares dependencies with other pods.
 
-* **Scenario:** Filebrowser shared a volume with Jellyfin.
-* **Constraint 1:** Jellyfin *must* run on `node-1` (GPU).
-* **Constraint 2:** Filebrowser's volume is therefore locked to `node-1`.
-* **Error:** Forcing Filebrowser to `node-2` caused a deadlock because the volume could not follow it.
-* **Fix:** Remove the affinity. Let Kubernetes co-locate them naturally.
+- **Scenario:** Filebrowser shared a volume with Jellyfin.
+- **Constraint 1:** Jellyfin _must_ run on `node-1` (GPU).
+- **Constraint 2:** Filebrowser's volume is therefore locked to `node-1`.
+- **Error:** Forcing Filebrowser to `node-2` caused a deadlock because the volume could not follow it.
+- **Fix:** Remove the affinity. Let Kubernetes co-locate them naturally.

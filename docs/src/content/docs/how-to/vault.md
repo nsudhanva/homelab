@@ -1,5 +1,17 @@
 ---
-title: Vault Secrets
+title: HashiCorp Vault Secrets Management
+description: Deploy HashiCorp Vault for centralized secrets management. Initialize and unseal Vault, configure External Secrets Operator, and sync secrets to Kubernetes workloads.
+keywords:
+  - hashicorp vault kubernetes
+  - vault secrets management
+  - external secrets operator
+  - kubernetes secrets
+  - vault kv secrets
+  - clustersecretstore
+  - vault initialization
+  - vault unseal
+sidebar:
+  order: 8
 ---
 
 # Vault Secrets

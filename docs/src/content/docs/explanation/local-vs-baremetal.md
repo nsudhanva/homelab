@@ -1,5 +1,16 @@
 ---
-title: Local Simulation vs Bare Metal
+title: Local Multipass VMs vs Bare Metal Deployment
+description: Compare local Multipass VM clusters with bare metal deployments. Understand what the local simulation tests and its limitations before deploying to production hardware.
+keywords:
+  - multipass vs bare metal
+  - kubernetes local development
+  - kubernetes testing environment
+  - multipass kubernetes
+  - bare metal kubernetes comparison
+  - kubernetes development workflow
+  - kubernetes sandbox
+sidebar:
+  order: 3
 ---
 
 # Local Simulation vs Bare Metal

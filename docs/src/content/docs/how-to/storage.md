@@ -1,5 +1,17 @@
 ---
-title: Storage
+title: Longhorn Distributed Storage for Kubernetes
+description: Configure Longhorn distributed block storage for Kubernetes. Set up storage prerequisites, manage PVCs, configure Backblaze B2 backups, and restore volumes from backup.
+keywords:
+  - longhorn kubernetes
+  - kubernetes distributed storage
+  - longhorn backup
+  - backblaze b2 kubernetes
+  - kubernetes pvc
+  - longhorn volume restore
+  - kubernetes storage class
+  - iscsi kubernetes
+sidebar:
+  order: 7
 ---
 
 # Storage (Longhorn)

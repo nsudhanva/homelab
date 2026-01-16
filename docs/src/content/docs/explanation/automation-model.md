@@ -1,5 +1,17 @@
 ---
-title: Automation Model
+title: GitOps Automation Model with Ansible and ArgoCD
+description: Understand the automation architecture where Ansible manages host provisioning and ArgoCD handles Kubernetes workloads through GitOps reconciliation.
+keywords:
+  - gitops automation
+  - ansible argocd
+  - infrastructure as code
+  - kubernetes automation
+  - gitops workflow
+  - argocd applicationset
+  - ansible kubernetes
+  - declarative infrastructure
+sidebar:
+  order: 1
 ---
 
 # Automation Model

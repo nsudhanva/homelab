@@ -1,5 +1,16 @@
 ---
-title: Applications Catalog
+title: Applications Catalog Reference
+description: Reference catalog of all user applications deployed via ArgoCD including Jellyfin, Filebrowser, Headlamp, Homer dashboard, and documentation site with their manifest paths.
+keywords:
+  - kubernetes applications
+  - jellyfin kubernetes
+  - headlamp deployment
+  - homer dashboard
+  - filebrowser kubernetes
+  - kubernetes app manifests
+  - argocd apps
+sidebar:
+  order: 2
 ---
 
 # Applications Catalog

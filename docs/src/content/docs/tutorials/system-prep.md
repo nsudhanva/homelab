@@ -1,11 +1,17 @@
 ---
-title: System Preparation
-description: Manual system preparation steps for Kubernetes nodes on Ubuntu, including swap, kernel modules, and sysctl.
+title: System Preparation for Kubernetes Nodes
+description: Configure Ubuntu 24.04 for Kubernetes by disabling swap, loading kernel modules, and setting sysctl parameters for container networking.
 keywords:
-  - kubernetes system prep
-  - disable swap
-  - sysctl kubernetes
-  - ubuntu 24.04 k8s
+  - kubernetes system preparation
+  - disable swap kubernetes
+  - br_netfilter module
+  - overlay module
+  - sysctl kubernetes settings
+  - inotify limits
+  - ubuntu kubernetes prerequisites
+  - containerd prerequisites
+sidebar:
+  order: 3
 ---
 
 # System Preparation
@@ -16,7 +22,7 @@ The `provision-*.yaml` playbooks run the `base` role, which disables swap, loads
 
 :::
 
-### Disable Swap (Permanently)
+## Disable Swap (Permanently)
 
 :::warning
 
@@ -31,7 +37,7 @@ cat /etc/fstab | grep swap
 free -h
 ```
 
-### Load Kernel Modules
+## Load Kernel Modules
 
 ```bash
 cat <<EOF | sudo tee /etc/modules-load.d/k8s.conf
@@ -43,7 +49,7 @@ sudo modprobe overlay
 sudo modprobe br_netfilter
 ```
 
-### Configure Sysctl
+## Configure Sysctl
 
 ```bash
 cat <<EOF | sudo tee /etc/sysctl.d/k8s.conf
@@ -55,7 +61,7 @@ EOF
 sudo sysctl --system
 ```
 
-### Increase Inotify Limits
+## Increase Inotify Limits
 
 :::note
 

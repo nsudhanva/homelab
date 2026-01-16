@@ -1,5 +1,18 @@
 ---
-title: Cilium CNI
+title: Install Cilium CNI with kube-proxy Replacement
+description: Install Cilium as the Container Network Interface for Kubernetes with eBPF-based kube-proxy replacement and Hubble observability enabled.
+keywords:
+  - cilium installation
+  - cilium cni
+  - kube-proxy replacement
+  - ebpf kubernetes
+  - hubble observability
+  - cilium cli
+  - kubernetes networking
+  - cilium tailscale
+  - socketlb hostnamespaceonly
+sidebar:
+  order: 6
 ---
 
 # Cilium CNI
@@ -67,7 +80,7 @@ cilium config view | grep -E "bpf-lb-sock|kubeProxyReplacement"
 
 Expected output should include:
 
-```
+```text
 bpf-lb-sock-hostns-only    true
 kubeProxyReplacement       true
 ```

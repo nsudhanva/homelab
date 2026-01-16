@@ -1,5 +1,14 @@
 ---
-title: Connect This Repo To ArgoCD
+title: Connect Git Repository to ArgoCD
+description: Add a Git repository to ArgoCD for GitOps deployments. Configure repository access via CLI or UI and verify ApplicationSets can sync.
+keywords:
+  - argocd add repository
+  - argocd repo connection
+  - argocd git repository
+  - argocd login cli
+  - argocd repository credentials
+sidebar:
+  order: 5
 ---
 
 # Connect This Repo To ArgoCD

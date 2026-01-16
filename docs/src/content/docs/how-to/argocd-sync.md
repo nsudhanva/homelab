@@ -1,5 +1,15 @@
 ---
-title: Sync ArgoCD Applications
+title: Sync and Manage ArgoCD Applications
+description: Force sync, refresh status, and recover from drift in ArgoCD applications. Manage ApplicationSets and troubleshoot sync issues.
+keywords:
+  - argocd sync
+  - argocd refresh
+  - argocd drift
+  - argocd applicationset sync
+  - argocd troubleshooting
+  - argocd cli commands
+sidebar:
+  order: 4
 ---
 
 # Sync ArgoCD Applications

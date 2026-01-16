@@ -1,5 +1,17 @@
 ---
-title: Maintenance
+title: Kubernetes Cluster Maintenance and Upgrades
+description: Perform routine cluster maintenance including node upgrades, Kubernetes version upgrades, Cilium and ArgoCD updates, and node drain procedures for bare-metal clusters.
+keywords:
+  - kubernetes maintenance
+  - kubeadm upgrade
+  - kubernetes version upgrade
+  - node drain kubernetes
+  - cilium upgrade
+  - argocd upgrade
+  - longhorn upgrade
+  - kubernetes node maintenance
+sidebar:
+  order: 13
 ---
 
 # Maintenance

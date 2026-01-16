@@ -1,5 +1,16 @@
 ---
-title: Kubescape Security Scanning
+title: Kubescape Security Scanning for Kubernetes
+description: Enable Kubescape security scanning in offline mode for Kubernetes configuration and vulnerability analysis. View workload security scans and image vulnerability reports.
+keywords:
+  - kubescape kubernetes
+  - kubernetes security scanning
+  - vulnerability scanning
+  - workload configuration scan
+  - kubernetes security posture
+  - kubescape operator
+  - container vulnerability scan
+sidebar:
+  order: 12
 ---
 
 # Kubescape Security Scanning

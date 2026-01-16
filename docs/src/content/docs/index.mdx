@@ -1,103 +1,168 @@
 ---
-title: Bare Metal Kubernetes Homelab - Complete Guide
-description: Build a multi-node bare-metal Kubernetes cluster on Ubuntu 24.04 with kubeadm, Ansible, ArgoCD GitOps, Cilium CNI, and Longhorn storage. GitOps-first, reproducible, and ready for both bare metal and local rehearsal.
+title: Bare Metal Kubernetes Homelab - Complete Setup Guide
+description: Build a production-ready bare-metal Kubernetes cluster on Ubuntu 24.04 using kubeadm, Ansible automation, ArgoCD GitOps, Cilium CNI, Tailscale ingress, Vault secrets, and Longhorn storage. Complete guide from scratch with local development workflow.
+keywords:
+  - bare metal kubernetes
+  - kubernetes homelab
+  - kubeadm cluster
+  - ansible kubernetes
+  - argocd gitops
+  - cilium cni
+  - tailscale kubernetes
+  - longhorn storage
+  - vault secrets kubernetes
+  - ubuntu 24.04 kubernetes
+  - kubernetes from scratch
+  - production kubernetes cluster
 template: splash
 hero:
-  tagline: GitOps-first, reproducible Kubernetes on bare metal with end-to-end automation. Go from blank nodes to a production-ready cluster in a single flow.
+  tagline: Production-ready Kubernetes on bare metal with GitOps automation. Go from blank Ubuntu nodes to a fully operational cluster with one streamlined workflow.
   actions:
-    - text: Start from scratch
+    - text: Start from Scratch
       link: /how-to/from-scratch/
       icon: right-arrow
       variant: primary
-    - text: Local rehearsal
+    - text: Local Development
       link: /tutorials/local-multipass-cluster/
       icon: external
-    - text: View architecture
+    - text: Architecture
       link: /explanation/automation-model/
 ---
 
 import { Aside, Card, CardGrid, LinkCard, Tabs, TabItem } from '@astrojs/starlight/components';
 
-## Why Bare Metal Kubernetes?
+## What You'll Build
 
-Run a **production-ready Kubernetes cluster** on your own hardware. This project provides everything you need: Ansible automation, GitOps with ArgoCD, secure secrets management, and distributed storage with Longhorn.
+A production-ready Kubernetes cluster with these services accessible via HTTPS on your Tailnet:
 
-<Aside type="tip">
-Start with the local rehearsal flow if you want to validate every step before touching hardware.
-</Aside>
+| Service | URL | Purpose |
+|---------|-----|---------|
+| ArgoCD | `argocd.yourdomain.com` | GitOps dashboard |
+| Grafana | `grafana.yourdomain.com` | Metrics and dashboards |
+| Prometheus | `prometheus.yourdomain.com` | Metrics collection |
+| Alertmanager | `alertmanager.yourdomain.com` | Alert routing |
+| Vault | `vault.yourdomain.com` | Secrets management |
+| Longhorn | `longhorn.yourdomain.com` | Storage dashboard |
+| Headlamp | `headlamp.yourdomain.com` | Kubernetes UI |
+| Hubble | `hubble.yourdomain.com` | Network observability |
+| Home | `home.yourdomain.com` | Dashboard with links |
 
-## Features
+## Architecture
+
+```mermaid
+flowchart TB
+    subgraph Workstation["Your Workstation"]
+        Ansible["Ansible Playbooks"]
+        Git["Git Push"]
+    end
+
+    subgraph Nodes["Ubuntu 24.04 Nodes"]
+        CP["Control Plane"]
+        W1["Worker 1"]
+        W2["Worker N"]
+    end
+
+    subgraph Cluster["Kubernetes Cluster"]
+        ArgoCD["ArgoCD"]
+        Cilium["Cilium CNI"]
+        Envoy["Envoy Gateway"]
+        Vault["Vault"]
+        Longhorn["Longhorn"]
+        Apps["Your Apps"]
+    end
+
+    subgraph External["External Services"]
+        TS["Tailscale"]
+        CF["Cloudflare DNS"]
+        B2["Backblaze Backup"]
+    end
+
+    Ansible -->|provision| Nodes
+    Git -->|GitOps| ArgoCD
+    ArgoCD -->|deploys| Cluster
+    Envoy -->|ingress via| TS
+    CF -->|DNS records| TS
+    Longhorn -->|backups| B2
+```
+
+## Prerequisites
+
+<Tabs>
+  <TabItem label="Hardware">
+    - **1+ Ubuntu 24.04 nodes** (bare metal or VMs)
+    - Minimum 2 CPU, 4GB RAM, 20GB disk per node
+    - Nodes can reach each other over the network
+    - Optional: GPU for transcoding (Intel iGPU or NVIDIA)
+  </TabItem>
+  <TabItem label="Accounts">
+    - **Tailscale** - Free account at [tailscale.com](https://tailscale.com)
+    - **Cloudflare** - Domain with API token for DNS management
+    - **Backblaze B2** (optional) - For Longhorn backup storage
+    - **GitHub** - For ArgoCD Image Updater write-back
+  </TabItem>
+  <TabItem label="Workstation">
+    - macOS, Linux, or WSL2
+    - Ansible, kubectl, Helm, Cilium CLI installed
+    - SSH access to all nodes
+  </TabItem>
+</Tabs>
+
+## Choose Your Path
+
+<CardGrid>
+  <LinkCard
+    title="Bare Metal Setup"
+    href="/how-to/from-scratch/"
+    description="Production deployment on real hardware. Full guide from blank nodes to running cluster."
+  />
+  <LinkCard
+    title="Local Development"
+    href="/tutorials/local-multipass-cluster/"
+    description="Test everything locally with Multipass VMs before touching hardware."
+  />
+</CardGrid>
+
+## What's Included
 
 <CardGrid stagger>
   <Card title="GitOps with ArgoCD" icon="github">
-    Declarative cluster management using ApplicationSets. Push to Git, ArgoCD deploys infrastructure and apps.
+    Declarative cluster management. Push to Git, ArgoCD deploys.
   </Card>
   <Card title="Ansible Automation" icon="rocket">
-    One-command provisioning with Ansible playbooks. Reproducible and version controlled.
+    One-command node provisioning. Reproducible and version controlled.
   </Card>
   <Card title="Cilium CNI" icon="seti:graphql">
-    Modern eBPF-based networking with Gateway API support via Envoy Gateway.
+    eBPF networking with Gateway API via Envoy Gateway.
   </Card>
   <Card title="Tailscale Ingress" icon="setting">
-    Secure ingress through Tailscale with split-horizon DNS and ExternalDNS automation.
+    Secure ingress with split-horizon DNS and automatic certificates.
   </Card>
   <Card title="Vault Secrets" icon="approve-check">
     HashiCorp Vault with External Secrets Operator. No secrets in Git.
   </Card>
   <Card title="Longhorn Storage" icon="document">
-    Distributed block storage with backup capabilities and PVC-driven apps.
+    Distributed block storage with S3 backups.
   </Card>
 </CardGrid>
 
-## Choose Your Path
+## Component Stack
 
-<Tabs>
-  <TabItem label="Bare Metal">
-    Use this when you're ready to bootstrap hardware nodes and want the full production flow.
-    Follow the full guide and validate each milestone in order.
-  </TabItem>
-  <TabItem label="Local Rehearsal">
-    Use this when you want a safe, fast rehearsal in Multipass before touching real nodes.
-    Great for testing upgrades, verifying playbooks, and building confidence.
-  </TabItem>
-</Tabs>
-
-## Your First Success Milestones
-
-<CardGrid>
-  <Card title="Prep the Nodes" icon="document">
-    OS-ready Ubuntu 24.04 nodes with required kernel and container runtime settings.
-  </Card>
-  <Card title="Bootstrap the Control Plane" icon="rocket">
-    kubeadm initializes the cluster and hands off to GitOps.
-  </Card>
-  <Card title="GitOps Online" icon="github">
-    ArgoCD reconciles infrastructure and apps from this repo.
-  </Card>
-  <Card title="Ingress Ready" icon="setting">
-    Tailscale Gateway API is ready to expose services securely.
-  </Card>
-</CardGrid>
-
-## Cluster Snapshot
-
-| Component | Purpose |
-|-----------|---------|
-| **kubeadm** | Kubernetes cluster bootstrap on Ubuntu 24.04 |
-| **Ansible** | Node provisioning and configuration management |
-| **ArgoCD** | GitOps continuous deployment with ApplicationSets |
-| **Cilium** | eBPF-based CNI with Gateway API support |
-| **Envoy Gateway** | Gateway API data plane for routing |
-| **Tailscale** | Secure mesh VPN for ingress |
-| **Vault** | Secrets management with External Secrets |
-| **Longhorn** | Distributed storage with snapshots and backups |
-| **Prometheus** | Monitoring stack with Grafana and Alertmanager |
+| Layer | Components |
+|-------|------------|
+| **Bootstrap** | kubeadm, Ansible playbooks |
+| **Networking** | Cilium, Envoy Gateway, Tailscale Operator |
+| **GitOps** | ArgoCD, ApplicationSets, Image Updater |
+| **Secrets** | Vault, External Secrets Operator |
+| **Storage** | Longhorn, Backblaze B2 backup |
+| **DNS/TLS** | ExternalDNS, cert-manager, Cloudflare |
+| **Monitoring** | Prometheus, Grafana, Alertmanager, ntfy |
+| **Security** | Kubescape scanning |
 
 ## Quick Links
 
 <CardGrid>
-  <LinkCard title="Start from Scratch" href="/how-to/from-scratch/" description="Rebuild cluster end-to-end on bare metal or VMs" />
-  <LinkCard title="Tutorials" href="/tutorials/" description="Step-by-step walkthroughs for cluster setup" />
-  <LinkCard title="Architecture" href="/explanation/automation-model/" description="Understand the GitOps automation model" />
-  <LinkCard title="GitHub Repository" href="https://github.com/sudhanva/homelab" description="Source code and issue tracker" />
+  <LinkCard title="Tutorials" href="/tutorials/" description="Step-by-step cluster setup guides" />
+  <LinkCard title="How-To Guides" href="/how-to/from-scratch/" description="Task-specific procedures" />
+  <LinkCard title="Architecture" href="/explanation/automation-model/" description="GitOps automation model" />
+  <LinkCard title="GitHub" href="https://github.com/nsudhanva/homelab" description="Source code" />
 </CardGrid>
