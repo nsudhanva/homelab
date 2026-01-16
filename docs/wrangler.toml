@@ -1,6 +1,4 @@
 [vars]
 DOCS_URL = "https://docs.sudhanva.me"
 
-[build]
-command = "bun run build"
-output_dir = "dist"
+pages_build_output_dir = "dist"
