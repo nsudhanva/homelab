@@ -103,7 +103,7 @@ export default defineConfig({
           label: 'Tutorials',
           collapsed: false,
           items: [
-            { label: 'Tutorial Overview', slug: 'tutorials/index' },
+            { label: 'Tutorial Overview', slug: 'tutorials' },
             {
               label: 'Node Setup',
               collapsed: true,
