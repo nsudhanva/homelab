@@ -1,5 +1,16 @@
 ---
-title: Validation
+title: Validate Kubernetes Cluster Health
+description: Verify cluster health, GitOps sync status, Tailscale ingress, External Secrets, and split-horizon DNS configuration. Run pre-push validation checks.
+keywords:
+  - kubernetes cluster validation
+  - kubectl get nodes
+  - argocd app status
+  - tailscale gateway validation
+  - external secrets validation
+  - split horizon dns test
+  - kubernetes health check
+sidebar:
+  order: 14
 ---
 
 # Validation

@@ -1,5 +1,16 @@
 ---
-title: Version Matrix
+title: Component Version Matrix
+description: Reference matrix of all pinned component versions including Kubernetes, Cilium, containerd, ArgoCD, Longhorn, and other infrastructure tools with their configuration file locations.
+keywords:
+  - kubernetes version
+  - cilium version
+  - argocd version
+  - longhorn version
+  - containerd version
+  - helm chart versions
+  - kubernetes component versions
+sidebar:
+  order: 3
 ---
 
 # Version Matrix

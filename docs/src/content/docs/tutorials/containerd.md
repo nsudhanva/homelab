@@ -1,5 +1,16 @@
 ---
-title: Install Containerd
+title: Install Containerd on Ubuntu 24.04
+description: Download, configure, and install containerd as the container runtime for Kubernetes with SystemdCgroup enabled for kubeadm compatibility.
+keywords:
+  - containerd installation
+  - kubernetes container runtime
+  - containerd systemd cgroup
+  - install containerd ubuntu
+  - containerd config
+  - kubernetes cri
+  - runc installation
+sidebar:
+  order: 4
 ---
 
 # Install Containerd

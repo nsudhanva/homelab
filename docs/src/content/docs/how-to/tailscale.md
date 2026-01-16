@@ -1,5 +1,17 @@
 ---
-title: Tailscale
+title: Tailscale Ingress and Split-Horizon DNS
+description: Configure Tailscale Gateway API for secure Kubernetes ingress. Set up split-horizon DNS, ExternalDNS automation, and cert-manager wildcard certificates for custom domains.
+keywords:
+  - tailscale kubernetes
+  - tailscale gateway api
+  - split horizon dns
+  - kubernetes ingress tailscale
+  - tailscale operator
+  - externaldns cloudflare
+  - cert-manager dns01
+  - tailscale oauth
+sidebar:
+  order: 9
 ---
 
 # Tailscale
@@ -20,7 +32,7 @@ sudo tailscale up
 
 Ensure the Tailscale ACL allows the operator to tag devices. Set a real owner for `tag:k8s-operator`, then allow it to own `tag:k8s`:
 
-```
+```json
 {
   "tagOwners": {
     "tag:k8s-operator": ["autogroup:admin"],

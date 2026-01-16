@@ -1,13 +1,17 @@
 ---
-title: From Scratch
-description: Step-by-step guide to create a bare-metal Kubernetes cluster with kubeadm, Ansible, Cilium, and ArgoCD.
+title: Build Kubernetes Cluster from Scratch
+description: Complete guide to building a bare-metal Kubernetes cluster from blank Ubuntu 24.04 nodes. Covers Ansible provisioning, kubeadm initialization, Cilium CNI, ArgoCD GitOps, and Vault secrets management.
 keywords:
-  - bare metal kubernetes
-  - how to create bare metal k8s
-  - kubeadm
-  - ansible provisioning
-  - argocd gitops
-  - cilium cni
+  - bare metal kubernetes from scratch
+  - build kubernetes cluster
+  - kubeadm cluster setup
+  - ansible kubernetes provisioning
+  - argocd gitops bootstrap
+  - cilium cni setup
+  - kubernetes homelab
+  - production kubernetes cluster
+sidebar:
+  order: 1
 ---
 
 # From Scratch

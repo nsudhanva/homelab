@@ -1,5 +1,16 @@
 ---
-title: Automated Image Updates
+title: Automated Container Image Updates with ArgoCD
+description: Configure ArgoCD Image Updater to automatically track container image versions and commit updates back to Git for GitOps deployments.
+keywords:
+  - argocd image updater
+  - automated image updates
+  - container image versioning
+  - gitops image automation
+  - ghcr credentials
+  - dockerhub credentials
+  - kustomization image override
+sidebar:
+  order: 6
 ---
 
 # Automated Image Updates

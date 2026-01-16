@@ -17,6 +17,15 @@ repos:
       - id: yamllint
         args: [-c, .yamllint.yaml]
 
+  # Markdown linting
+  - repo: https://github.com/DavidAnson/markdownlint-cli2
+    rev: v0.17.2
+    hooks:
+      - id: markdownlint-cli2
+        args: [--config, .markdownlint.json]
+        files: \.(md|mdx)$
+        exclude: ^docs/node_modules/
+
   - repo: local
     hooks:
       - id: kubeconform

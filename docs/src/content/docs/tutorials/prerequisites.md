@@ -1,12 +1,17 @@
 ---
-title: Prerequisites
-description: Workstation setup and Ansible inventory prep for building a bare-metal Kubernetes cluster.
+title: Prerequisites for Bare Metal Kubernetes
+description: Set up your workstation with Ansible, kubectl, and Helm. Configure SSH access and Ansible inventory for automated Kubernetes node provisioning on Ubuntu 24.04.
 keywords:
-  - bare metal kubernetes
-  - workstation setup
+  - kubernetes prerequisites
+  - ansible kubernetes setup
+  - kubectl installation
+  - helm installation
+  - ssh key configuration
   - ansible inventory
-  - kubeadm
-  - ubuntu 24.04
+  - bare metal kubernetes requirements
+  - ubuntu 24.04 kubernetes
+sidebar:
+  order: 2
 ---
 
 # Prerequisites

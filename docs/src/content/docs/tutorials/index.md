@@ -1,9 +1,21 @@
 ---
-title: Tutorials
-description: Learn-oriented walkthroughs for bringing up the cluster on bare metal or local VMs.
+title: Kubernetes Cluster Setup Tutorials
+description: Step-by-step tutorials for building a bare-metal Kubernetes cluster with kubeadm, Ansible, Cilium, and ArgoCD on Ubuntu 24.04.
+keywords:
+  - kubernetes tutorial
+  - kubeadm tutorial
+  - bare metal kubernetes setup
+  - ansible kubernetes
+  - cilium cni installation
+  - argocd gitops setup
+  - ubuntu 24.04 kubernetes
+sidebar:
+  order: 1
 ---
 
-# Tutorials
+# Cluster Setup Tutorials
+
+These tutorials walk you through building a production-ready Kubernetes cluster from scratch. Choose your path based on whether you want automated provisioning or prefer manual control.
 
 ```mermaid
 flowchart TD
@@ -25,20 +37,32 @@ Ansible provisioning handles system prep, containerd, and Kubernetes packages. I
 
 :::
 
-## Ansible path (recommended)
+## Ansible Path (Recommended)
 
-- Step 1: [Prerequisites](./prerequisites.md) for workstation setup, inventory, and provisioning
-- Step 2: [Kubernetes](./kubernetes.md) to initialize the control plane
-- Step 3: [Cilium CNI](./cilium.md) to install the CNI and remove kube-proxy
-- Step 4: [ArgoCD and GitOps](./argocd.md) to bootstrap GitOps
-- Step 5: [Join Worker Nodes](./join-workers.md) to add workers
+Use this path for reproducible, version-controlled node provisioning.
 
-## Manual path (advanced)
+| Step | Tutorial | What You Get |
+|------|----------|--------------|
+| 1 | [Prerequisites](./prerequisites.md) | Workstation tools, Ansible inventory, SSH access |
+| 2 | [Kubernetes](./kubernetes.md) | Control plane initialized with kubeadm |
+| 3 | [Cilium CNI](./cilium.md) | eBPF networking, kube-proxy replacement |
+| 4 | [ArgoCD and GitOps](./argocd.md) | GitOps continuous deployment |
+| 5 | [Join Worker Nodes](./join-workers.md) | Multi-node cluster |
 
-- Step 1: [Prerequisites](./prerequisites.md) for workstation setup and inventory
-- Step 2: [System Preparation](./system-prep.md) for swap, kernel modules, and sysctl
-- Step 3: [Install Containerd](./containerd.md) for the container runtime
-- Step 4: [Kubernetes](./kubernetes.md) to initialize the control plane
-- Step 5: [Cilium CNI](./cilium.md) to install the CNI and remove kube-proxy
-- Step 6: [ArgoCD and GitOps](./argocd.md) to bootstrap GitOps
-- Step 7: [Join Worker Nodes](./join-workers.md) to add workers
+## Manual Path (Advanced)
+
+Use this path when you need full control over each configuration step.
+
+| Step | Tutorial | What You Get |
+|------|----------|--------------|
+| 1 | [Prerequisites](./prerequisites.md) | Workstation tools, inventory |
+| 2 | [System Preparation](./system-prep.md) | Swap disabled, kernel modules, sysctl |
+| 3 | [Install Containerd](./containerd.md) | Container runtime configured |
+| 4 | [Kubernetes](./kubernetes.md) | Control plane initialized |
+| 5 | [Cilium CNI](./cilium.md) | CNI and kube-proxy replacement |
+| 6 | [ArgoCD and GitOps](./argocd.md) | GitOps deployment |
+| 7 | [Join Worker Nodes](./join-workers.md) | Multi-node cluster |
+
+## Local Development
+
+Want to test the setup before touching hardware? Use the [Local Multipass Cluster](./local-multipass-cluster.md) tutorial to spin up VMs on your workstation.

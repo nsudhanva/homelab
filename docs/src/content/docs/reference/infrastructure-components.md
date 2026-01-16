@@ -1,5 +1,18 @@
 ---
-title: Infrastructure Components
+title: Infrastructure Components Reference
+description: Complete reference of all infrastructure components managed by ArgoCD including networking, storage, secrets, monitoring, and security tools with their configuration paths.
+keywords:
+  - kubernetes infrastructure components
+  - argocd applications
+  - cilium configuration
+  - longhorn storage
+  - vault secrets
+  - prometheus monitoring
+  - cert-manager
+  - external dns
+  - envoy gateway
+sidebar:
+  order: 1
 ---
 
 # Infrastructure Components

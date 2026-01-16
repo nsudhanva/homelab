@@ -1,12 +1,16 @@
 ---
-title: Add a Worker Node
-description: Provision and join a new worker node to a bare-metal Kubernetes cluster managed with Ansible and kubeadm.
+title: Add Worker Node to Kubernetes Cluster
+description: Provision a new Ubuntu 24.04 worker node with Ansible and join it to an existing Kubernetes cluster using kubeadm. Includes GPU node provisioning and Longhorn storage configuration.
 keywords:
-  - add worker node
-  - kubeadm join
-  - ansible provisioning
-  - bare metal kubernetes
-  - ubuntu 24.04
+  - add kubernetes worker node
+  - kubeadm join worker
+  - ansible node provisioning
+  - kubernetes cluster scaling
+  - gpu worker node
+  - longhorn node label
+  - tailscale node
+sidebar:
+  order: 2
 ---
 
 # Add a Worker Node

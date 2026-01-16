@@ -1,5 +1,16 @@
 ---
-title: GPU Support
+title: GPU Support for Kubernetes Workloads
+description: Enable Intel iGPU and NVIDIA GPU support for Kubernetes workloads. Install device plugins and configure containerd for GPU container access.
+keywords:
+  - kubernetes gpu
+  - nvidia gpu kubernetes
+  - intel gpu kubernetes
+  - gpu device plugin
+  - nvidia container toolkit
+  - kubernetes transcoding
+  - jellyfin gpu
+sidebar:
+  order: 16
 ---
 
 # GPU Support

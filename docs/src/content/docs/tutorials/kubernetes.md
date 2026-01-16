@@ -1,12 +1,18 @@
 ---
-title: Kubernetes
-description: Install kubeadm, kubelet, and kubectl, then initialize a bare-metal Kubernetes control plane.
+title: Initialize Kubernetes Control Plane with kubeadm
+description: Install kubeadm, kubelet, and kubectl on Ubuntu 24.04. Initialize a bare-metal Kubernetes control plane with kubeadm init and configure kubectl access.
 keywords:
   - kubeadm init
-  - kubelet kubectl
-  - bare metal kubernetes
-  - ubuntu 24.04
-  - control plane setup
+  - kubernetes control plane
+  - install kubelet
+  - install kubectl
+  - kubeadm ubuntu
+  - bare metal kubernetes cluster
+  - kubernetes apt repository
+  - pod network cidr
+  - oidc kubernetes
+sidebar:
+  order: 5
 ---
 
 # Kubernetes

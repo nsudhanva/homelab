@@ -1,5 +1,17 @@
 ---
-title: Gateway API and Networking
+title: Kubernetes Gateway API and Tailscale Networking
+description: Deep dive into the networking architecture using Gateway API, Envoy Gateway, and Tailscale. Understand traffic flow from tailnet clients to cluster services with TLS termination and HTTPRoute matching.
+keywords:
+  - kubernetes gateway api
+  - envoy gateway
+  - tailscale kubernetes networking
+  - kubernetes tls termination
+  - httproute kubernetes
+  - kubernetes ingress architecture
+  - cilium socket lb
+  - split horizon dns kubernetes
+sidebar:
+  order: 2
 ---
 
 # Gateway API and Networking
@@ -179,7 +191,7 @@ flowchart LR
 
 CoreDNS rewrites `*.sudhanva.me` to the `gateway-internal` service:
 
-```
+```text
 sudhanva.me:53 {
     rewrite name regex (.*)\.sudhanva\.me gateway-internal.envoy-gateway.svc.cluster.local answer auto
     kubernetes cluster.local ...

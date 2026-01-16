@@ -1,5 +1,17 @@
 ---
-title: ArgoCD and GitOps
+title: Bootstrap ArgoCD for GitOps Deployment
+description: Install ArgoCD and configure ApplicationSets for automated GitOps deployment of infrastructure and applications from a Git repository.
+keywords:
+  - argocd installation
+  - gitops kubernetes
+  - argocd applicationset
+  - argocd bootstrap
+  - kubernetes gitops
+  - argocd application
+  - infrastructure as code
+  - argocd auto sync
+sidebar:
+  order: 7
 ---
 
 # ArgoCD and GitOps

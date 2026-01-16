@@ -1,11 +1,16 @@
 ---
-title: Join Worker Nodes
-description: Join Ubuntu worker nodes to an existing kubeadm control plane for a bare-metal Kubernetes cluster.
+title: Join Worker Nodes to Kubernetes Cluster
+description: Generate a kubeadm join command and add Ubuntu worker nodes to an existing Kubernetes control plane for a multi-node bare-metal cluster.
 keywords:
   - kubeadm join
-  - add worker node
-  - bare metal kubernetes
-  - ubuntu 24.04
+  - kubernetes worker node
+  - add node to cluster
+  - kubeadm token
+  - discovery-token-ca-cert-hash
+  - multi-node kubernetes
+  - kubernetes cluster expansion
+sidebar:
+  order: 8
 ---
 
 # Join Worker Nodes
