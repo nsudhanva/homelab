@@ -1,0 +1,13 @@
+apiVersion: longhorn.io/v1beta2
+kind: RecurringJob
+metadata:
+  name: quarterly-backup
+  namespace: longhorn-system
+spec:
+  name: quarterly-backup
+  cron: "0 3 1 */3 *"
+  task: backup
+  groups:
+  - default
+  retain: 1
+  concurrency: 1
