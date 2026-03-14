@@ -1,3 +1,3 @@
 kustomize:
   images:
-  - docker.io/filebrowser/filebrowser:latest@sha256:5c93c111d3351d9f83f59fffc44baf1b164adad207ec876717205ebd42159d74
+  - docker.io/filebrowser/filebrowser:latest@sha256:6a0b050d4a5aae763783137eb3049f4f960428b363d05182c774bf4cc633becc
