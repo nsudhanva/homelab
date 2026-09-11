@@ -1,0 +1,3 @@
+machine:
+  nodeLabels:
+    node.homelab/role: worker

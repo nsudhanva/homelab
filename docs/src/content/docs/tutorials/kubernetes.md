@@ -1,104 +1,59 @@
 ---
-title: Initialize Kubernetes Control Plane with kubeadm
-description: Install kubeadm, kubelet, and kubectl on Ubuntu 24.04. Initialize a bare-metal Kubernetes control plane with kubeadm init and configure kubectl access.
+title: Bootstrap the Talos Cluster
+description: Apply machine configuration to Talos nodes, bootstrap etcd, fetch kubeconfig, and verify the Kubernetes API on Talos Linux v1.14 with Kubernetes v1.37.
 keywords:
-  - kubeadm init
-  - kubernetes control plane
-  - install kubelet
-  - install kubectl
-  - kubeadm ubuntu
+  - talos bootstrap
+  - talos apply-config
+  - talos etcd bootstrap
+  - talos kubeconfig
+  - talos maintenance mode
   - bare metal kubernetes cluster
-  - kubernetes apt repository
-  - pod network cidr
-  - oidc kubernetes
 sidebar:
   order: 5
 ---
 
-# Kubernetes
+# Talos Bootstrap
 
-:::note
+Bootstrapping turns configured Talos machines into a Kubernetes cluster. The whole flow runs from the workstation through the Talos API.
 
-If you ran the Ansible provisioning playbook, skip Step 1 and start at Step 2. The playbook installs and pins kubeadm/kubelet/kubectl but does not run `kubeadm init` or `kubeadm join`.
+## Step 1: Apply machine configuration
 
-:::
-
-## Step 1: Install Kubernetes packages
+Every machine boots its installer image into maintenance mode first. Push each rendered configuration from `talos/_out/`:
 
 ```bash
-K8S_VERSION=$(grep -E "k8s_version:" ansible/group_vars/all.yaml | head -n 1 | awk -F'\"' '{print $2}')
-
-sudo apt-get install -y apt-transport-https ca-certificates curl gpg
-sudo mkdir -p -m 755 /etc/apt/keyrings
-curl -fsSL https://pkgs.k8s.io/core:/stable:/$K8S_VERSION/deb/Release.key | \
-  sudo gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg
-
-echo "deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/$K8S_VERSION/deb/ /" | \
-  sudo tee /etc/apt/sources.list.d/kubernetes.list
-
-sudo apt-get update
-sudo apt-get install -y kubelet kubeadm kubectl
-sudo apt-mark hold kubelet kubeadm kubectl
+./scripts/talos-baremetal.sh apply
 ```
 
-## Step 2: Initialize the control plane
-
-Pick a pod network CIDR that does not overlap your LAN or the service CIDR (default `10.96.0.0/12`). For this homelab, `10.244.0.0/16` is fine. If you prefer Cilium to manage pod IPs without kubeadm pinning a range, omit `--pod-network-cidr` and keep the Cilium defaults.
+Machines install Talos to their install disks and reboot into the configured system. Wait until every machine answers over the API:
 
 ```bash
-sudo kubeadm init --pod-network-cidr=10.244.0.0/16
-mkdir -p $HOME/.kube
-sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
-sudo chown $(id -u):$(id -g) $HOME/.kube/config
-kubectl taint nodes --all node-role.kubernetes.io/control-plane-
+talosctl -n <machine-ip> get members
 ```
 
-:::note
+## Step 2: Bootstrap etcd
 
-On a single-node cluster, remove the control-plane taint so Cilium add-ons (Hubble UI/Relay) and apps can schedule. If you plan to add workers soon, you can keep the taint and move workloads later.
-
-:::
-
-:::note
-
-If you maintain a kubeadm config, create `clusters/home/` and replace the command with `sudo kubeadm init --config clusters/home/kubeadm-clusterconfiguration.yaml`.
-
-:::
-
-## Optional: Enable Vault OIDC for Headlamp
-
-If you want OIDC logins for Headlamp, add OIDC flags to the kubeadm config before the first `kubeadm init`. This avoids editing static manifests later.
-
-Create `clusters/home/kubeadm-clusterconfiguration.yaml` with OIDC settings:
-
-```yaml
-apiVersion: kubeadm.k8s.io/v1beta4
-kind: ClusterConfiguration
-apiServer:
-  extraArgs:
-    oidc-issuer-url: https://vault.sudhanva.me/v1/identity/oidc/provider/headlamp
-    oidc-client-id: REPLACE_WITH_VAULT_CLIENT_ID
-    oidc-username-claim: sub
-    oidc-groups-claim: groups
-    oidc-username-prefix: "oidc:"
-    oidc-groups-prefix: "oidc:"
-```
-
-Then initialize with:
+Bootstrap once against the first control plane:
 
 ```bash
-sudo kubeadm init --config clusters/home/kubeadm-clusterconfiguration.yaml
+./scripts/talos-baremetal.sh bootstrap
 ```
 
-If the cluster already exists, apply the same flags in `/etc/kubernetes/manifests/kube-apiserver.yaml` and let kubelet restart the API server.
+Etcd forms, the Kubernetes control plane components start, and worker nodes join with the PKI from the shared secrets bundle.
 
-## Step 3: Join worker nodes
-
-Follow [Join Worker Nodes](./join-workers.md) after the control plane is ready.
-
-## Step 4: Save kubeadm configuration
+## Step 3: Fetch kubeconfig
 
 ```bash
-mkdir -p clusters/home
-kubectl -n kube-system get configmap kubeadm-config -o jsonpath='{.data.ClusterConfiguration}' > clusters/home/kubeadm-clusterconfiguration.yaml
+./scripts/talos-baremetal.sh kubeconfig
+export KUBECONFIG=$PWD/talos/_out/kubeconfig
+kubectl get nodes -o wide
 ```
+
+Nodes report Ready once Cilium is deployed by ArgoCD in [ArgoCD and GitOps](./argocd.md). Pods stay pending until the CNI arrives, which is expected on a fresh bootstrap.
+
+## Step 4: Confirm API OIDC for Headlamp
+
+If Headlamp should offer OIDC logins, set the API server OIDC arguments before the first bootstrap by extending the control plane patch with an API server configuration document. Apply the change with `./scripts/talos-baremetal.sh apply` and the API server rolls with the new flags. See [Headlamp](../how-to/headlamp.md) for the Vault provider values.
+
+## Step 5: Add workers later
+
+Follow [Add Workers](./join-workers.md) after the control plane is healthy.

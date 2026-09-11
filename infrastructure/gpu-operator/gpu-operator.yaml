@@ -1,21 +1,20 @@
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:
-  name: gateway-api-crds
+  name: gpu-operator
   namespace: argocd
 spec:
   project: default
   source:
-    repoURL: https://github.com/kubernetes-sigs/gateway-api.git
-    targetRevision: v1.6.2
-    path: config/crd
+    repoURL: https://helm.ngc.nvidia.com/nvidia
+    chart: gpu-operator
+    targetRevision: v26.7.0
   destination:
     server: https://kubernetes.default.svc
-    namespace: default
+    namespace: gpu-operator
   syncPolicy:
     automated:
       prune: true
       selfHeal: true
     syncOptions:
-      - ServerSideApply=true
-      - Replace=true
+      - CreateNamespace=true

@@ -1,28 +1,26 @@
 ---
-title: Local Multipass VMs vs Bare Metal Deployment
-description: Compare local Multipass VM clusters with bare metal deployments. Understand what the local simulation tests and its limitations before deploying to production hardware.
+title: Local QEMU Cluster vs Hardware Deployment
+description: Compare the local Talos QEMU rehearsal cluster with hardware deployments. Understand what the local simulation tests and its limits before installing on a laptop.
 keywords:
-  - multipass vs bare metal
+  - talos qemu vs hardware
   - kubernetes local development
   - kubernetes testing environment
-  - multipass kubernetes
-  - bare metal kubernetes comparison
+  - talos development
+  - hardware kubernetes comparison
   - kubernetes development workflow
   - kubernetes sandbox
 sidebar:
   order: 3
 ---
 
-# Local Simulation vs Bare Metal
+# Local Rehearsal vs Hardware
 
-This document explains how the Multipass-based local cluster differs from a bare-metal deployment.
+This document explains how the local Talos QEMU cluster differs from a hardware deployment.
 
 ```mermaid
 flowchart LR
-  Ansible["Ansible provisioning"] --> Local["Multipass VMs"]
-  Ansible --> Bare["Bare metal nodes"]
-  Kubeadm["kubeadm init/join"] --> Local
-  Kubeadm --> Bare
+  TalosConfig["Talos machine configuration"] --> Local["QEMU VMs"]
+  TalosConfig --> Bare["Hardware nodes"]
   GitOps["ArgoCD GitOps"] --> Local
   GitOps --> Bare
 ```
@@ -31,24 +29,22 @@ flowchart LR
 
 ```mermaid
 flowchart TB
-  subgraph Local["Local (Multipass)"]
-    VMs["Ubuntu VMs"]
+  subgraph Local["Local (QEMU)"]
+    VMs["Talos VMs"]
     VirtualNIC["Virtual NICs"]
     VirtualDisk["VM disks"]
   end
 
-  subgraph Bare["Bare metal"]
-    Nodes["Ubuntu nodes"]
+  subgraph Bare["Hardware"]
+    Nodes["Talos nodes"]
     PhysicalNIC["Physical NICs"]
     PhysicalDisk["Physical disks"]
   end
 
-  Ansible["Ansible roles"] --> VMs
-  Ansible --> Nodes
-  VMs --> KubeadmLocal["kubeadm init/join"]
-  Nodes --> KubeadmBare["kubeadm init/join"]
-  KubeadmLocal --> CiliumLocal["Cilium"]
-  KubeadmBare --> CiliumBare["Cilium"]
+  TalosConfig["Talos configuration"] --> VMs
+  TalosConfig --> Nodes
+  VMs --> CiliumLocal["Cilium"]
+  Nodes --> CiliumBare["Cilium"]
   CiliumLocal --> GitOpsLocal["ArgoCD + ApplicationSets"]
   CiliumBare --> GitOpsBare["ArgoCD + ApplicationSets"]
   VirtualDisk --> LonghornLocal["Longhorn"]
@@ -57,29 +53,29 @@ flowchart TB
 
 ## Differences at a glance
 
-| Feature | Local (Multipass VM) | Bare Metal (Production) |
+| Feature | Local (QEMU VM) | Hardware (Production) |
 | :--- | :--- | :--- |
-| Kernel | VM kernel, virtualized | Dedicated kernel on hardware |
-| Init system | Native systemd (PID 1) | Native systemd (PID 1) |
+| OS | Immutable Talos Linux | Immutable Talos Linux |
+| Init system | Talos machined (API-driven) | Talos machined (API-driven) |
 | File system | Virtual disk image | Native filesystem |
 | Networking | Virtual NICs, NAT or bridge | Physical NICs |
 | Gateway API | Tailscale in VM | Tailscale on host |
 
-## Kernel and modules
+## OS and configuration
 
-Multipass VMs run their own kernels, so module loading and sysctl tuning happen inside the VM. Bare metal applies the same steps directly on hardware.
+Both environments run the same immutable Talos image built from the repo schematic. Machine configuration renders from the same patches, so OS behavior matches by construction.
 
 ## Networking model
 
-Multipass uses virtual networking, which is closer to real host networking than containers but still differs from physical NICs, routing, and latency characteristics.
+QEMU uses virtual networking, which is closer to real host networking than containers but still differs from physical NICs, routing, and latency characteristics.
 
 ## Storage behavior
 
-Local clusters use VM disk images. Bare metal uses the host filesystem and persistent storage systems like Longhorn.
+Local clusters use VM disk images. Hardware uses the host disks and persistent storage systems like Longhorn.
 
 ## How close is it to real hardware
 
-The Multipass workflow exercises the same kubeadm flow, systemd services, container runtime configuration, kernel modules, and CNI behavior as a physical node. It is a strong approximation for validating playbooks and cluster bootstrap logic.
+The QEMU workflow exercises the same Talos API flow, machine configuration rendering, CNI behavior, and GitOps bootstrap as a physical node. It is a strong approximation for validating configuration and cluster bootstrap logic.
 
 ## What it does not test
 
@@ -88,18 +84,18 @@ The Multipass workflow exercises the same kubeadm flow, systemd services, contai
 - Disk controller performance and SMART behavior
 - Tailscale exit node performance on real uplinks
 
-## Moving from Multipass to bare metal
+## Moving from rehearsal to hardware
 
-The migration path keeps the same Ansible roles and GitOps layout and switches only the host inventory and hardware assumptions.
+The migration path keeps the same Talos configuration and GitOps layout and switches only the machine inventory.
 
-### Prepare the bare metal host
+### Prepare the hardware
 
-Follow [Prerequisites](../tutorials/prerequisites.md) and [System Preparation](../tutorials/system-prep.md) on the real machine.
+Follow [Prerequisites](../tutorials/prerequisites.md) and [Boot Media](../tutorials/system-prep.md) on the real machine.
 
 ### Switch inventory
 
-Update `ansible/inventory/hosts.yaml` with the bare metal host IPs and user, then run the provisioning playbook again.
+Update `talos/nodes.yaml` with the hardware hostnames, IPs, and install disks, then render the configuration again.
 
 ### Bootstrap the cluster
 
-Follow [Kubernetes](../tutorials/kubernetes.md), [Cilium CNI](../tutorials/cilium.md), and [ArgoCD and GitOps](../tutorials/argocd.md).
+Follow [Talos Bootstrap](../tutorials/kubernetes.md), [Cilium CNI](../tutorials/cilium.md), and [ArgoCD and GitOps](../tutorials/argocd.md).
