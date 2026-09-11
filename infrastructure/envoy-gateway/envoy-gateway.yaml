@@ -26,7 +26,7 @@ spec:
           envoyGateway:
             image:
               repository: docker.io/envoyproxy/gateway
-              tag: v1.6.1
+              tag: v1.9.1
             resources:
               requests:
                 cpu: 100m
@@ -43,8 +43,6 @@ spec:
               limits:
                 cpu: 200m
                 memory: 256Mi
-            nodeSelector:
-              kubernetes.io/hostname: legion
         topologyInjector:
           enabled: true
   destination:
