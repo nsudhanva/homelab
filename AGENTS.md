@@ -43,8 +43,7 @@ homelab/
 │   └── root.yaml            # Entrypoint
 ├── infrastructure/          # Cluster components (storage, networking, etc.)
 ├── apps/                    # User workloads
-├── clusters/                # Cluster-specific overrides (if needed)
-├── manifests/               # Legacy (do not add new files here)
+├── talos/                   # Talos machine config, versions, inventory
 ├── scripts/                 # Setup scripts (referenced by README)
 └── README.md                # Single source of truth for setup
 ```

@@ -248,7 +248,6 @@ talos/            Talos machine config, versions, schematic, inventory
 bootstrap/        ArgoCD bootstrap and ApplicationSets
 infrastructure/   Cluster components managed by ArgoCD
 apps/             User workloads managed by ArgoCD
-clusters/         Cluster-specific overrides
 scripts/          Automation helpers
 docs/             Astro Starlight documentation
 ```
