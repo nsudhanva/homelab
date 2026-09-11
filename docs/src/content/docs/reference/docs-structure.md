@@ -70,7 +70,7 @@ flowchart LR
 
 ## Writing Guidelines
 
-- Follow [AGENTS.md](/AGENTS.md) conventions
+- Follow [AGENTS.md](https://github.com/nsudhanva/homelab/blob/master/AGENTS.md) conventions
 - Use tables instead of numbered lists for steps
 - Avoid inline YAML comments
 - Keep prose professional without marketing language
