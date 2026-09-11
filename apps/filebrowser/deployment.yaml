@@ -15,8 +15,6 @@ spec:
       labels:
         app: filebrowser
     spec:
-      nodeSelector:
-        kubernetes.io/hostname: legion
       automountServiceAccountToken: false
       securityContext:
         seccompProfile:
