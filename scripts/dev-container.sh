@@ -67,9 +67,9 @@ cmd_shell() {
 
 cmd_down() {
     if container_running; then
-        container stop "$DEV_NAME"
+        container stop "$DEV_NAME" 2>/dev/null || true
     fi
-    container delete "$DEV_NAME" 2>/dev/null || true
+    container delete --force "$DEV_NAME" 2>/dev/null || true
     log_success "Workstation removed"
 }
 
