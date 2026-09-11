@@ -1,13 +1,12 @@
 ---
-title: Install Cilium CNI with kube-proxy Replacement
-description: Install Cilium as the Container Network Interface for Kubernetes with eBPF-based kube-proxy replacement and Hubble observability enabled.
+title: Cilium CNI with kube-proxy Replacement
+description: Run Cilium as the Container Network Interface for Kubernetes with eBPF-based kube-proxy replacement and Hubble observability, deployed through ArgoCD GitOps.
 keywords:
   - cilium installation
   - cilium cni
   - kube-proxy replacement
   - ebpf kubernetes
   - hubble observability
-  - cilium cli
   - kubernetes networking
   - cilium tailscale
   - socketlb hostnamespaceonly
@@ -17,40 +16,20 @@ sidebar:
 
 # Cilium CNI
 
-Cilium provides the Container Network Interface (CNI) and replaces kube-proxy with eBPF-based load balancing.
+Cilium provides the Container Network Interface (CNI) and replaces kube-proxy with eBPF-based load balancing. Talos ships no CNI and no kube-proxy in this setup, so Cilium is the only networking dataplane.
 
-:::note
+## Step 1: Confirm the machine configuration
 
-Ansible does not install Cilium. Run these steps after the control plane is initialized.
+Talos must not deploy Flannel or kube-proxy. The repo patches in `talos/patches/` delete the Flannel configuration document and disable the kube-proxy configuration document on every render. Verify a rendered config before bootstrapping hardware or rehearsing locally.
 
-:::
+## Step 2: Review the Helm values
 
-## Step 1: Install Cilium CLI
+Cilium deploys from `infrastructure/cilium/` through the `infra-cilium` ArgoCD Application. The values in `infrastructure/cilium/values.cilium` carry the settings this stack needs:
 
-```bash
-CILIUM_CLI_VERSION=$(curl -s https://raw.githubusercontent.com/cilium/cilium-cli/main/stable.txt)
-curl -L --fail --remote-name-all \
-  https://github.com/cilium/cilium-cli/releases/download/${CILIUM_CLI_VERSION}/cilium-linux-amd64.tar.gz{,.sha256sum}
-sha256sum --check cilium-linux-amd64.tar.gz.sha256sum
-sudo tar xzvfC cilium-linux-amd64.tar.gz /usr/local/bin
-rm cilium-linux-amd64.tar.gz{,.sha256sum}
-```
-
-## Step 2: Install Cilium with kube-proxy replacement
-
-Get the version from `ansible/group_vars/all.yaml`:
-
-```bash
-CILIUM_VERSION=$(grep -E "cilium_version:" ansible/group_vars/all.yaml | head -n 1 | awk -F'"' '{print $2}')
-```
-
-Update `k8sServiceHost` in `infrastructure/cilium/values.cilium` to match the control plane IP.
-
-Install with the required settings for Tailscale compatibility:
-
-```bash
-cilium install --version $CILIUM_VERSION --values infrastructure/cilium/values.cilium
-```
+- `kubeProxyReplacement: true` moves service routing into eBPF
+- `socketLB.hostNamespaceOnly: true` keeps Tailscale operator LoadBalancer services working
+- `routingMode: tunnel` with VXLAN encapsulation for the pod network
+- `k8sServiceHost` points at the control plane endpoint
 
 :::warning
 
@@ -58,42 +37,30 @@ The `socketLB.hostNamespaceOnly=true` setting is **required** when using Tailsca
 
 :::
 
-Remove the kube-proxy DaemonSet since Cilium replaces it:
+## Step 3: Let ArgoCD deploy it
 
-```bash
-kubectl -n kube-system delete daemonset kube-proxy
-```
-
-## Step 3: Enable Hubble observability
-
-```bash
-cilium hubble enable --ui
-```
+No manual install command is used. After [ArgoCD and GitOps](./argocd.md) applies the root Application, the `infra-cilium` Application syncs the pinned chart version from `talos/versions.yaml`.
 
 ## Step 4: Verify installation
 
 ```bash
-kubectl get nodes
-cilium status
-cilium config view | grep -E "bpf-lb-sock|kubeProxyReplacement"
+kubectl -n kube-system get pods -l app.kubernetes.io/name=cilium-agent
+kubectl -n kube-system exec ds/cilium -- cilium status --brief
+kubectl -n kube-system exec ds/cilium -- cilium config view | grep -E "bpf-lb-sock|kubeProxyReplacement"
 ```
 
-Expected output should include:
+Expected output includes:
 
 ```text
 bpf-lb-sock-hostns-only    true
 kubeProxyReplacement       true
 ```
 
+Nodes move to Ready once the Cilium agents report healthy.
+
 ## Upgrading Cilium
 
-To update Cilium settings after initial installation:
-
-```bash
-cilium upgrade --version $CILIUM_VERSION --set socketLB.hostNamespaceOnly=true
-kubectl rollout restart daemonset/cilium -n kube-system
-kubectl rollout status daemonset/cilium -n kube-system
-```
+To update Cilium, bump the pinned version in `talos/versions.yaml` and in `infrastructure/cilium/cilium.yaml`, then push. ArgoCD rolls the DaemonSet.
 
 :::note
 

@@ -41,15 +41,22 @@ flowchart LR
 
 ## Step 1: Storage prerequisites for Longhorn
 
-### Install Required Packages
+Talos ships the Longhorn requirements as system extensions in the installer image. No package installation runs on the nodes.
+
+### System extensions in the schematic
+
+`talos/schematic.yaml` carries the official extensions:
+
+- `siderolabs/iscsi-tools` for iSCSI volume operations
+- `siderolabs/util-linux-tools` for filesystem maintenance
+
+Confirm the extensions are present on every storage node:
 
 ```bash
-sudo apt-get update
-sudo apt-get install -y open-iscsi nfs-common cryptsetup
-sudo systemctl enable --now iscsid
+talosctl -n <node-ip> get extensions
 ```
 
-### Create Storage Directory
+### Create the storage directory
 
 :::warning
 
@@ -57,53 +64,17 @@ Longhorn needs a storage directory to exist. Create it on your preferred disk.
 
 :::
 
-```bash
-sudo mkdir -p /var/lib/longhorn
-```
-
-:::note
-
-Update the matching path in `bootstrap/templates/longhorn.yaml` and `ansible/group_vars/all.yaml`.
-
-:::
-
-:::note
-
-The default path is `/var/lib/longhorn` to avoid user-specific home directories.
-
-:::
+The default path is `/var/lib/longhorn` to avoid user-specific home directories. Update the matching path in `bootstrap/templates/longhorn.yaml` if you use a different disk.
 
 ### Move Longhorn to a larger disk
 
 If `/` is small and `/home` is on a larger disk, move Longhorn to `/home/longhorn`.
 
-Step 1: Update the Longhorn path in Git.
+Update the Longhorn data path in Git:
 
-Set the data path in both files:
+Set the data path in `bootstrap/templates/longhorn.yaml` to `/home/longhorn`.
 
-```bash
-ansible/group_vars/all.yaml
-bootstrap/templates/longhorn.yaml
-```
-
-Use `/home/longhorn` as the path in both locations.
-
-Step 2: Create the directory on the node.
-
-```bash
-sudo mkdir -p /home/longhorn
-sudo chown root:root /home/longhorn
-sudo chmod 0755 /home/longhorn
-```
-
-Step 3: Recreate Longhorn.
-
-Delete the Longhorn app and namespace, then reapply it so the new path takes effect.
-
-Step 4: Recreate PVCs.
-
-If you already created PVCs on the old path, delete them and let ArgoCD recreate them.
-This is destructive if you have data.
+Create the directory on the node, then delete the Longhorn app and namespace and reapply so the new path takes effect. If you already created PVCs on the old path, delete them and let ArgoCD recreate them. This is destructive if you have data.
 
 :::note
 
@@ -165,7 +136,7 @@ spec:
   restartPolicy: Never
   containers:
     - name: rsync
-      image: docker.io/library/alpine:3.20
+      image: docker.io/library/alpine:3.24
       command: ["/bin/sh", "-c"]
       args:
         - apk add --no-cache rsync && rsync -aHAX --info=progress2 /old/ /new/

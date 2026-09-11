@@ -1,11 +1,12 @@
 # Homelab
 
-A self-hosted bare-metal Kubernetes cluster on Ubuntu 24.04 LTS.
+A self-hosted Talos Linux Kubernetes cluster on immutable infrastructure.
 
-- Uses Ansible for automated node provisioning with ArgoCD for GitOps-based cluster management
+- Uses declarative Talos machine configuration for zero-touch node provisioning with ArgoCD for GitOps-based cluster management
 - Traffic flows through Tailscale for secure ingress and Envoy Gateway for routing, with Vault and External Secrets handling credentials
 - Longhorn provides distributed storage with basic backup capabilities
-- A local rehearsal workflow using Multipass VMs allows validating changes before deploying to hardware
+- A local rehearsal workflow using Talos QEMU clusters validates changes before deploying to hardware
+- An Ubuntu 26.04 Apple Container workstation gives a Linux-native shell on any host
 - Additional cloud providers can follow the same pattern but are not documented yet
 
 ## Table of contents
@@ -30,7 +31,7 @@ A self-hosted bare-metal Kubernetes cluster on Ubuntu 24.04 LTS.
 
 ## Features
 
-- Multi-node bare-metal Kubernetes with kubeadm and Cilium
+- Multi-node Talos Linux Kubernetes with immutable OS and Cilium
 - GitOps-managed infrastructure and apps via ArgoCD ApplicationSets
 - Tailscale Gateway API ingress with split-horizon DNS
 - Vault + External Secrets for centralized secret management
@@ -48,15 +49,15 @@ A self-hosted bare-metal Kubernetes cluster on Ubuntu 24.04 LTS.
 ```mermaid
 flowchart LR
   subgraph Repo["Homelab Git repo"]
-    Ansible["ansible/"]
+    Talos["talos/"]
     Bootstrap["bootstrap/"]
     Infra["infrastructure/"]
     Apps["apps/"]
   end
 
-  subgraph Nodes["Ubuntu 24.04 nodes"]
-    Prep["Ansible provisioning"]
-    Kubeadm["kubeadm init/join"]
+  subgraph Nodes["Talos Linux nodes"]
+    Config["Machine configuration"]
+    API["Talos API bootstrap"]
   end
 
   subgraph Cluster["Kubernetes cluster"]
@@ -64,9 +65,9 @@ flowchart LR
     Workloads["Infra + apps"]
   end
 
-  Ansible --> Prep
-  Prep --> Kubeadm
-  Kubeadm --> Argo
+  Talos --> Config
+  Config --> API
+  API --> Argo
   Bootstrap --> Argo
   Infra --> Argo
   Apps --> Argo
@@ -134,24 +135,14 @@ Bare metal is the primary target. The local VM flow exists to rehearse changes b
 
 ### Bare metal bring-up
 
-Provision nodes, bootstrap Kubernetes, then hand off to ArgoCD.
+Flash the installer, then run one scripted flow that hands off to ArgoCD.
 
 ```bash
-nano ansible/inventory/hosts.yaml
-ansible-playbook -i ansible/inventory/hosts.yaml ansible/playbooks/provision-cpu.yaml
-
-sudo kubeadm init --pod-network-cidr=10.244.0.0/16
-mkdir -p $HOME/.kube
-sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
-sudo chown $(id -u):$(id -g) $HOME/.kube/config
-kubectl taint nodes --all node-role.kubernetes.io/control-plane-
-
-CILIUM_VERSION=$(grep -E "cilium_version:" ansible/group_vars/all.yaml | head -n 1 | awk -F'"' '{print $2}')
-cilium install --version "$CILIUM_VERSION" --values infrastructure/cilium/values.cilium
-
-kubectl apply -k bootstrap/argocd
-kubectl wait --for=condition=available --timeout=600s deployment/argocd-server -n argocd
-kubectl apply -f bootstrap/root.yaml
+./scripts/talos-baremetal.sh iso-url
+./scripts/talos-baremetal.sh up
+export KUBECONFIG=$PWD/talos/_out/kubeconfig
+kubectl get nodes
+kubectl get pods -A
 ```
 
 Guided flow: <https://docs.sudhanva.me/how-to/from-scratch> and <https://docs.sudhanva.me/tutorials>
@@ -161,20 +152,21 @@ Guided flow: <https://docs.sudhanva.me/how-to/from-scratch> and <https://docs.su
 ```mermaid
 flowchart TB
   subgraph Workstation["Workstation"]
-    Inventory["ansible/inventory/hosts.yaml"]
-    Vars["ansible/group_vars/all.yaml"]
-    Playbooks["ansible/playbooks/*"]
+    Inventory["talos/nodes.yaml"]
+    Vars["talos/versions.yaml"]
+    Patches["talos/patches/*"]
   end
 
-  subgraph Nodes["Ubuntu 24.04 nodes"]
-    OS["OS baseline + containerd"]
-    Kubelet["kubelet + kubeadm"]
+  subgraph Nodes["Talos Linux nodes"]
+    OS["Immutable OS + extensions"]
+    MachineConfig["Machine configuration"]
   end
 
   subgraph ControlPlane["Control plane"]
-    Init["kubeadm init"]
-    Kubeconfig["/etc/kubernetes/admin.conf"]
-    CNI["Cilium install"]
+    Apply["talosctl apply"]
+    Bootstrap["talosctl bootstrap"]
+    Kubeconfig["kubeconfig"]
+    CNI["Cilium via ArgoCD"]
     Argo["ArgoCD bootstrap"]
   end
 
@@ -184,12 +176,14 @@ flowchart TB
     UserApps["app-* apps"]
   end
 
-  Inventory --> Playbooks
-  Vars --> Playbooks
-  Playbooks --> OS
-  OS --> Kubelet
-  Kubelet --> Init
-  Init --> Kubeconfig
+  Inventory --> MachineConfig
+  Vars --> MachineConfig
+  Patches --> MachineConfig
+  Schematic["talos/schematic.yaml"] --> OS
+  OS --> MachineConfig
+  MachineConfig --> Apply
+  Apply --> Bootstrap
+  Bootstrap --> Kubeconfig
   Kubeconfig --> CNI
   CNI --> Argo
   Argo --> AppSets
@@ -199,22 +193,31 @@ flowchart TB
 
 ### Local rehearsal
 
-Use Multipass to validate the full flow on your workstation.
+Use Talos QEMU clusters to validate the full flow on your workstation.
 
 ```bash
-./scripts/local-cluster.sh up
+./scripts/talos-local.sh up
 ```
 
 Low-resource rehearsal:
 
 ```bash
-WORKER_COUNT=0 VM_CPUS=2 VM_MEMORY=3G VM_DISK=12G CILIUM_HUBBLE_ENABLED=false ./scripts/local-cluster.sh up
+WORKER_COUNT=0 CP_CPUS=2 CP_MEMORY=2G ./scripts/talos-local.sh up
 ```
 
 Tear down:
 
 ```bash
-./scripts/local-cluster.sh down
+./scripts/talos-local.sh down
+```
+
+### Workstation container
+
+Run an Ubuntu 26.04 shell with Docker and Kubernetes tooling on any host:
+
+```bash
+./scripts/dev-container.sh up
+./scripts/dev-container.sh shell
 ```
 
 ## Documentation
@@ -241,7 +244,7 @@ Recommended reading paths:
 ## Repository layout
 
 ```bash
-ansible/          Node provisioning
+talos/            Talos machine config, versions, schematic, inventory
 bootstrap/        ArgoCD bootstrap and ApplicationSets
 infrastructure/   Cluster components managed by ArgoCD
 apps/             User workloads managed by ArgoCD

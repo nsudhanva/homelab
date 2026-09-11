@@ -9,8 +9,8 @@ export default defineConfig({
     sitemap(),
     mermaid(),
     starlight({
-      title: 'Bare Metal Kubernetes Homelab',
-      description: 'Multi-node bare-metal Kubernetes cluster on Ubuntu 24.04 LTS, managed via GitOps with ArgoCD, Cilium CNI, and Ansible automation.',
+      title: 'Talos Linux Homelab',
+      description: 'Talos Linux Kubernetes cluster on immutable infrastructure, managed via GitOps with ArgoCD, Cilium CNI, and declarative talosctl automation.',
       social: [
         { icon: 'github', label: 'GitHub', href: 'https://github.com/nsudhanva/homelab' },
       ],
@@ -22,7 +22,7 @@ export default defineConfig({
           tag: 'meta',
           attrs: {
             name: 'keywords',
-            content: 'bare metal kubernetes, kubeadm, ubuntu 24.04, ansible kubernetes, argocd gitops, cilium cni, homelab kubernetes, longhorn storage',
+            content: 'talos linux kubernetes, talos cluster, ubuntu 26.04 containers, argocd gitops, cilium cni, homelab kubernetes, longhorn storage',
           },
         },
         {
@@ -76,7 +76,7 @@ export default defineConfig({
             '@context': 'https://schema.org',
             '@type': 'TechArticle',
             'headline': 'Bare Metal Kubernetes Homelab',
-            'description': 'Complete guide to building a bare-metal Kubernetes cluster with kubeadm, Ansible, ArgoCD, and Cilium.',
+            'description': 'Complete guide to building a Talos Linux Kubernetes cluster with declarative machine configuration, ArgoCD, and Cilium.',
             'author': {
               '@type': 'Person',
               'name': 'Sudhanva Narayana',
@@ -96,7 +96,7 @@ export default defineConfig({
           items: [
             { label: 'Overview', slug: 'index' },
             { label: 'From Scratch', slug: 'how-to/from-scratch' },
-            { label: 'Local Development', slug: 'tutorials/local-multipass-cluster' },
+            { label: 'Local Development', slug: 'tutorials/local-talos-cluster' },
           ],
         },
         {
@@ -109,18 +109,18 @@ export default defineConfig({
               collapsed: true,
               items: [
                 { label: 'Prerequisites', slug: 'tutorials/prerequisites' },
-                { label: 'System Preparation', slug: 'tutorials/system-prep' },
-                { label: 'Install Containerd', slug: 'tutorials/containerd' },
+                { label: 'Boot Media', slug: 'tutorials/system-prep' },
+                { label: 'Machine Configuration', slug: 'tutorials/containerd' },
               ],
             },
             {
               label: 'Cluster Bootstrap',
               collapsed: true,
               items: [
-                { label: 'Kubernetes Init', slug: 'tutorials/kubernetes' },
+                { label: 'Talos Bootstrap', slug: 'tutorials/kubernetes' },
                 { label: 'Cilium CNI', slug: 'tutorials/cilium' },
                 { label: 'ArgoCD GitOps', slug: 'tutorials/argocd' },
-                { label: 'Join Workers', slug: 'tutorials/join-workers' },
+                { label: 'Add Workers', slug: 'tutorials/join-workers' },
               ],
             },
           ],
@@ -180,7 +180,7 @@ export default defineConfig({
                 { label: 'GPU Support', slug: 'how-to/gpu' },
                 { label: 'Headlamp UI', slug: 'how-to/headlamp' },
                 { label: 'Scheduling Workloads', slug: 'how-to/scheduling-workloads' },
-                { label: 'Verify Ansible with Multipass', slug: 'how-to/verify-ansible-multipass' },
+                { label: 'Ubuntu Workstation', slug: 'tutorials/workstation' },
               ],
             },
           ],

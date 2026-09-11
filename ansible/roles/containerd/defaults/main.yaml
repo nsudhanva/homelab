@@ -1,5 +1,0 @@
----
-containerd_install_method: "upstream"
-containerd_version: "2.2.1"
-containerd_download_base: "https://github.com/containerd/containerd/releases/download"
-containerd_bin_path: "/usr/local/bin/containerd"

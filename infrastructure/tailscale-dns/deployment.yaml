@@ -19,7 +19,7 @@ spec:
           type: RuntimeDefault
       containers:
       - name: coredns
-        image: coredns/coredns:1.13.2
+        image: coredns/coredns:1.14.7
         args:
         - -conf
         - /etc/coredns/Corefile

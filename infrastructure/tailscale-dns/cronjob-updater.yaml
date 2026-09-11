@@ -22,7 +22,7 @@ spec:
             kubernetes.io/hostname: legion
           containers:
           - name: updater
-            image: alpine:3.21.5
+            image: alpine:3.24.1
             imagePullPolicy: IfNotPresent
             command:
             - /bin/sh

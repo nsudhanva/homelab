@@ -1,14 +1,13 @@
 ---
-title: GitOps Automation Model with Ansible and ArgoCD
-description: Understand the automation architecture where Ansible manages host provisioning and ArgoCD handles Kubernetes workloads through GitOps reconciliation.
+title: GitOps Automation Model with Talos and ArgoCD
+description: Understand the automation architecture where declarative Talos machine configuration manages nodes and ArgoCD handles Kubernetes workloads through GitOps reconciliation.
 keywords:
   - gitops automation
-  - ansible argocd
+  - talos argocd
   - infrastructure as code
   - kubernetes automation
   - gitops workflow
   - argocd applicationset
-  - ansible kubernetes
   - declarative infrastructure
 sidebar:
   order: 1
@@ -16,9 +15,9 @@ sidebar:
 
 # Automation Model
 
-This repository is designed for maximum automation. Every change should flow through one of two systems:
+This repository is designed for maximum automation. Every change flows through one of two systems:
 
-- **Ansible** for node and host configuration
+- **Talos machine configuration** for node operating system and Kubernetes bootstrap
 - **ArgoCD** for cluster and application manifests
 
 If a change does not fit into those two paths, treat it as an exception and document it.
@@ -26,14 +25,14 @@ If a change does not fit into those two paths, treat it as an exception and docu
 ```mermaid
 flowchart TB
   subgraph Git["Git repository"]
-    AnsibleRepo["ansible/"]
+    TalosRepo["talos/"]
     InfraRepo["infrastructure/"]
     AppsRepo["apps/"]
   end
 
-  subgraph Hosts["Ubuntu nodes"]
-    OS["OS, containerd, kubelet"]
-    Kubeadm["kubeadm init/join"]
+  subgraph Hosts["Talos nodes"]
+    OS["Immutable Talos Linux"]
+    API["Machine API"]
   end
 
   subgraph Cluster["Kubernetes cluster"]
@@ -42,9 +41,9 @@ flowchart TB
     Workloads["Apps + infrastructure"]
   end
 
-  AnsibleRepo -->|"Ansible playbooks"| OS
-  OS --> Kubeadm
-  Kubeadm --> Argo
+  TalosRepo -->|"talosctl apply"| OS
+  OS --> API
+  API --> Argo
   InfraRepo --> AppSets
   AppsRepo --> AppSets
   Argo --> AppSets
@@ -56,10 +55,10 @@ flowchart TB
 ```mermaid
 flowchart LR
   subgraph Repo["homelab repo"]
-    Inventory["ansible/inventory/hosts.yaml"]
-    Vars["ansible/group_vars/all.yaml"]
-    Playbooks["ansible/playbooks/*"]
-    Roles["ansible/roles/*"]
+    Nodes["talos/nodes.yaml"]
+    Versions["talos/versions.yaml"]
+    Schematic["talos/schematic.yaml"]
+    Patches["talos/patches/*"]
     Bootstrap["bootstrap/root.yaml"]
     AppSetInfra["bootstrap/templates/infra-appset.yaml"]
     AppSetApps["bootstrap/templates/apps-appset.yaml"]
@@ -67,15 +66,14 @@ flowchart LR
     AppsDir["apps/*"]
   end
 
-  subgraph Hosts["Bare metal nodes"]
-    Base["Base OS config"]
-    Containerd["containerd"]
-    Kubelet["kubelet"]
+  subgraph Hosts["Hardware nodes"]
+    Image["Installer image"]
+    MachineConfig["Machine configuration"]
   end
 
   subgraph ControlPlane["Control plane"]
-    KubeadmInit["kubeadm init"]
-    CiliumInstall["cilium install"]
+    TalosApply["talosctl apply"]
+    TalosBootstrap["talosctl bootstrap"]
     ArgoCD["ArgoCD"]
   end
 
@@ -88,15 +86,14 @@ flowchart LR
     RawManifests["Raw manifests"]
   end
 
-  Inventory --> Playbooks
-  Vars --> Playbooks
-  Roles --> Playbooks
-  Playbooks --> Base
-  Base --> Containerd
-  Base --> Kubelet
-  Kubelet --> KubeadmInit
-  KubeadmInit --> CiliumInstall
-  CiliumInstall --> ArgoCD
+  Nodes --> MachineConfig
+  Versions --> MachineConfig
+  Schematic --> Image
+  Patches --> MachineConfig
+  Image --> TalosApply
+  MachineConfig --> TalosApply
+  TalosApply --> TalosBootstrap
+  TalosBootstrap --> ArgoCD
   Bootstrap --> ArgoCD
   ArgoCD --> AppSet1
   ArgoCD --> AppSet2
@@ -109,14 +106,14 @@ flowchart LR
   UserApps --> RawManifests
 ```
 
-## What Ansible owns
+## What Talos owns
 
-Ansible is the source of truth for host provisioning and OS configuration:
+Talos machine configuration is the source of truth for nodes:
 
-- Kernel modules and sysctl
-- Container runtime configuration
-- Kubernetes package installation and pinning
-- Storage prerequisites and node services
+- Immutable OS image with storage system extensions
+- Kubernetes version and control plane settings
+- CNI and kube-proxy delegation to Cilium
+- Node labels for workload placement
 
 ## What ArgoCD owns
 
@@ -136,6 +133,6 @@ Avoid running `kubectl apply` against app or infrastructure directories. Push to
 
 :::note
 
-Avoid manual edits on nodes. Update Ansible inputs and re-run the playbooks.
+Avoid manual changes on nodes. Update the Talos inputs and re-apply through the API.
 
 :::
