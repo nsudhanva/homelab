@@ -1,140 +1,83 @@
 ---
-title: Prerequisites for Bare Metal Kubernetes
-description: Set up your workstation with Ansible, kubectl, and Helm. Configure SSH access and Ansible inventory for automated Kubernetes node provisioning on Ubuntu 24.04.
+title: Prerequisites for Talos Linux Homelab
+description: Set up your workstation with talosctl, kubectl, and Helm. Describe cluster machines in the Talos inventory and prepare the installer USB stick.
 keywords:
-  - kubernetes prerequisites
-  - ansible kubernetes setup
+  - talos prerequisites
+  - talosctl installation
   - kubectl installation
   - helm installation
-  - ssh key configuration
-  - ansible inventory
-  - bare metal kubernetes requirements
-  - ubuntu 24.04 kubernetes
+  - talos inventory
+  - talos installer usb
+  - ubuntu 26.04 workstation
 sidebar:
   order: 2
 ---
 
 # Prerequisites
 
-Use this guide before the bare metal tutorials. If you are following the local VM path, use [Local Multipass Cluster](./local-multipass-cluster.md) instead.
+Use this guide before the hardware tutorials. If you are following the local rehearsal path, use [Local Talos Cluster](./local-talos-cluster.md) instead.
 
 ## Step 1: Install workstation tooling
 
 :::note
 
-These tools are installed on your workstation. The Ansible provisioning playbooks configure the cluster nodes and do not install local tooling.
+These tools run on your workstation. Cluster machines boot Talos Linux and are managed over the Talos API. No SSH access is used anywhere in this workflow.
 
 :::
 
 ### macOS (Homebrew)
 
 ```bash
-brew install ansible kubectl helm pre-commit
+brew install qemu talosctl kubectl helm pre-commit
 ```
 
-### Ubuntu
+### Ubuntu 26.04 (APT)
 
 ```bash
-sudo apt update
-sudo add-apt-repository ppa:quentiumyt/nvtop
-sudo apt install -y curl wget git pre-commit python3 python3-dev htop nvtop dmsetup npm nodejs
-curl https://baltocdn.com/helm/signing.asc | gpg --dearmor | sudo tee /usr/share/keyrings/helm.gpg > /dev/null
-echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/helm.gpg] https://baltocdn.com/helm/stable/debian/ all main" | sudo tee /etc/apt/sources.list.d/helm-stable-debian.list
-sudo apt-get update
-sudo apt-get install -y helm
+sudo apt-get update && sudo apt-get install -y curl wget git qemu-system kubectl helm pre-commit
+curl -sSL -o /usr/local/bin/talosctl https://github.com/siderolabs/talos/releases/download/v1.14.0/talosctl-linux-amd64
+sudo chmod +x /usr/local/bin/talosctl
 ```
 
-## Step 2: Prepare Ansible inventory
+On ARM64 workstations, use the `talosctl-linux-arm64` binary instead.
 
-Update the node list and user in `ansible/inventory/hosts.yaml`, then confirm versions and paths in `ansible/group_vars/all.yaml`.
-If you are using Tailscale, set `ansible_host` to the Tailscale IP or MagicDNS hostname.
+### Ubuntu 26.04 container workstation
 
-## Step 3: Enable SSH on the nodes
-
-Ensure the SSH server is installed and running on each Ubuntu node.
+For a Linux-native shell on any host, run the repo workstation container:
 
 ```bash
-sudo apt update
-sudo apt install -y openssh-server
-sudo systemctl enable --now ssh
+./scripts/dev-container.sh up
+./scripts/dev-container.sh shell
 ```
 
-If you use UFW, allow SSH:
+The container ships with Docker and the Kubernetes tooling above preinstalled.
+
+## Step 2: Describe the machines
+
+Update the machine list in `talos/nodes.yaml` with one entry per control plane and worker. Each entry carries a hostname, a LAN IP, and the install disk. The control plane endpoint is the address clients and workloads use to reach the API.
+
+If you use Tailscale, the node IPs can be tailnet addresses once the operator is running. For the initial bootstrap, use LAN IPs.
+
+## Step 3: Flash the installer USB
+
+Print the installer ISO URL for the pinned schematic and write it to a USB stick:
 
 ```bash
-sudo ufw allow OpenSSH
+./scripts/talos-baremetal.sh iso-url
 ```
 
-## Step 4: Configure key-based SSH from the workstation
+Boot each machine from the stick. Machines start in maintenance mode and wait for configuration. No OS installation steps run by hand.
 
-Install your workstation SSH key on the node so Ansible can connect without passwords.
+## Step 4: Confirm versions
 
-```bash
-ssh-copy-id -i ~/.ssh/id_ed25519.pub sudhanva@legion
-```
-
-If you reinstalled the node and see a host key warning, remove the old entry and try again:
-
-```bash
-ssh-keygen -R legion
-ssh-copy-id -i ~/.ssh/id_ed25519.pub sudhanva@legion
-```
-
-## Step 5: Run Ansible provisioning
-
-Run this from the repository root so the relative paths resolve correctly.
-
-:::note
-
-If you are doing a fully manual setup, skip this step and follow [System Preparation](./system-prep.md) and [Install Containerd](./containerd.md) before [Kubernetes](./kubernetes.md).
-
-:::
-
-```bash
-ANSIBLE_CONFIG=ansible/ansible.cfg ansible-playbook \
-  ansible/playbooks/provision-cpu.yaml \
-  -e @ansible/group_vars/all.yaml
-```
-
-If you need GPU support, use `ansible/playbooks/provision-intel-gpu.yaml` or `ansible/playbooks/provision-nvidia-gpu.yaml`.
-
-If the node requires sudo with a password, add `-K` and enter the password when prompted:
-
-```bash
-ANSIBLE_CONFIG=ansible/ansible.cfg ansible-playbook \
-  ansible/playbooks/provision-cpu.yaml \
-  -e @ansible/group_vars/all.yaml \
-  -K
-```
-
-## Troubleshooting provisioning
-
-If APT fails with `Malformed line 1 in source list /etc/apt/sources.list.d/kubernetes.list (type)`, remove the file and rerun the playbook:
-
-```bash
-sudo rm -f /etc/apt/sources.list.d/kubernetes.list
-```
-
-If you see a warning about `multipathd` missing, it is safe to continue. The Longhorn prereq role only disables the service if it is present.
-
-## What the provisioning playbook does
-
-The provisioning playbooks run these roles on each node:
-
-- `base`: disables swap, loads kernel modules, writes sysctl and inotify settings, installs base packages
-- `containerd`: installs containerd (upstream or apt), writes `/etc/containerd/config.toml`, enables the service
-- `kubernetes`: adds the Kubernetes apt repo, installs kubeadm/kubelet/kubectl, pins versions, enables kubelet
-- `longhorn-prereqs`: installs open-iscsi, nfs-common, cryptsetup, and creates the Longhorn data path
-- `tailscale`: installs `tailscaled` and enables the service
-
-The NVIDIA playbook also runs the `nvidia-gpu` role.
+Check the pinned component versions in `talos/versions.yaml` and the full matrix in [Version Matrix](../reference/versions.md). All install and upgrade flows read from these files.
 
 ## What you still do manually
 
-After provisioning, continue with:
+After the workstation is ready, continue with:
 
-- Initialize the control plane with `kubeadm init` in [Kubernetes](./kubernetes.md).
-- Install Cilium in [Cilium CNI](./cilium.md).
+- Prepare boot media in [Boot Media](./system-prep.md).
+- Render machine configuration in [Machine Configuration](./containerd.md).
+- Bootstrap the cluster in [Talos Bootstrap](./kubernetes.md).
 - Install ArgoCD and apply the bootstrap in [ArgoCD and GitOps](./argocd.md).
-- Join workers with [Join Worker Nodes](./join-workers.md).
-- If you want node-level tailnet access, run `sudo tailscale up` as described in [Add a Worker Node](../how-to/add-worker-node.md).
+- Add workers with [Add Workers](./join-workers.md).

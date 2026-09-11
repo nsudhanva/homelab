@@ -1,15 +1,15 @@
 ---
-title: Kubernetes Cluster Maintenance and Upgrades
-description: Perform routine cluster maintenance including node upgrades, Kubernetes version upgrades, Cilium and ArgoCD updates, and node drain procedures for bare-metal clusters.
+title: Talos Cluster Maintenance and Upgrades
+description: Perform routine Talos cluster maintenance including node upgrades, Kubernetes upgrades, and component updates through GitOps for immutable infrastructure.
 keywords:
-  - kubernetes maintenance
-  - kubeadm upgrade
+  - talos maintenance
+  - talos upgrade
   - kubernetes version upgrade
   - node drain kubernetes
   - cilium upgrade
   - argocd upgrade
   - longhorn upgrade
-  - kubernetes node maintenance
+  - talos node maintenance
 sidebar:
   order: 13
 ---
@@ -18,7 +18,7 @@ sidebar:
 
 :::note
 
-These steps target bare metal clusters. For local VM testing, use [Local Multipass Cluster](../tutorials/local-multipass-cluster.md).
+These steps target hardware clusters. For local rehearsal testing, use [Local Talos Cluster](../tutorials/local-talos-cluster.md).
 
 :::
 
@@ -26,82 +26,25 @@ These steps target bare metal clusters. For local VM testing, use [Local Multipa
 
 This section covers expanding the cluster with additional worker nodes or control plane nodes.
 
-:::note
-
-You can also add nodes by updating `ansible/inventory/hosts.yaml` and rerunning `ansible-playbook ansible/playbooks/provision-cpu.yaml`.
-
-:::
-
-### Prerequisites for New Nodes
-
-Use Ansible to prepare new nodes so the baseline is consistent across the cluster.
-
-```bash
-ansible-playbook -i ansible/inventory/hosts.yaml \
-  ansible/playbooks/provision-cpu.yaml
-```
-
-### For Nodes with GPUs
-
-Use the GPU-specific playbooks to enable the runtime and device plugins:
-
-```bash
-ansible-playbook -i ansible/inventory/hosts.yaml \
-  ansible/playbooks/provision-nvidia-gpu.yaml
-```
-
-```bash
-ansible-playbook -i ansible/inventory/hosts.yaml \
-  ansible/playbooks/provision-intel-gpu.yaml
-```
-
-### Generate Join Token (On Existing Control Plane)
-
-Tokens expire after 24 hours. Run this on an existing control plane node to generate a new join command:
-
-```bash
-kubeadm token create --print-join-command
-```
-
 ### Add a Worker Node
 
-Run the join command from above on the new worker node:
+Add the machine to `workers` in `talos/nodes.yaml`, boot it into maintenance mode, and apply its configuration:
 
 ```bash
-sudo kubeadm join <control-plane-ip>:6443 --token <token> --discovery-token-ca-cert-hash sha256:<hash>
+./scripts/talos-baremetal.sh gen-config
+./scripts/talos-baremetal.sh apply --role worker --limit <worker-hostname>
 ```
 
 ### Add a Control Plane Node (HA Setup)
 
-:::warning
-
-For HA control planes, you need a load balancer in front of all control planes and must initialize the first control plane with `--control-plane-endpoint=<load-balancer-ip>:6443`.
-
-:::
-
-Generate a certificate key on an existing control plane:
+Add the machine to `controlplanes` in `talos/nodes.yaml` and make sure the control plane endpoint in the same file points at the shared address clients use. Then render and apply:
 
 ```bash
-sudo kubeadm init phase upload-certs --upload-certs
+./scripts/talos-baremetal.sh gen-config
+./scripts/talos-baremetal.sh apply --role controlplane --limit <new-hostname>
 ```
 
-Then join with the `--control-plane` flag:
-
-```bash
-sudo kubeadm join <load-balancer-ip>:6443 \
-  --token <token> \
-  --discovery-token-ca-cert-hash sha256:<hash> \
-  --control-plane \
-  --certificate-key <certificate-key>
-```
-
-After joining, configure kubectl on the new control plane:
-
-```bash
-mkdir -p $HOME/.kube
-sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
-sudo chown $(id -u):$(id -g) $HOME/.kube/config
-```
+The new control plane joins etcd with the shared secrets bundle. No certificate keys are copied by hand.
 
 ## Routine checks
 
@@ -137,7 +80,7 @@ If the app owns PVCs, plan a data migration before deleting the old claims.
 
 ## Node maintenance window
 
-Use this flow to patch or reboot a node safely.
+Use this flow to reboot a node safely.
 
 ### Step 1: Drain the node
 
@@ -145,9 +88,13 @@ Use this flow to patch or reboot a node safely.
 kubectl drain <node-name> --ignore-daemonsets --delete-emptydir-data
 ```
 
-### Step 2: Apply OS updates or reboot
+### Step 2: Reboot the node
 
-Perform the host maintenance, then confirm the node is back online.
+```bash
+talosctl -n <node-ip> reboot
+```
+
+Confirm the node is back online and Ready before continuing.
 
 ### Step 3: Uncordon the node
 
@@ -155,66 +102,44 @@ Perform the host maintenance, then confirm the node is back online.
 kubectl uncordon <node-name>
 ```
 
-## Upgrade Kubernetes (Bare Metal)
+## Upgrade Talos Linux
 
-Upgrade control plane nodes first, then upgrade workers.
-
-:::note
-
-Check the latest stable Kubernetes release before setting `k8s_version` and `TARGET_VERSION`.
-
-:::
-
-### Step 1: Update versions and packages
-
-Update `k8s_version` in `ansible/group_vars/all.yaml`, then run the provisioning playbook against all nodes.
-
-### Step 2: Upgrade the control plane
-
-Run these on each control plane node, one at a time:
+Bump the Talos version in `talos/versions.yaml`, then roll the upgrade across the cluster:
 
 ```bash
-sudo kubeadm upgrade plan
-TARGET_VERSION="v1.35.x"
-sudo kubeadm upgrade apply ${TARGET_VERSION}
-sudo apt-get install -y kubelet kubeadm kubectl
-sudo systemctl restart kubelet
+./scripts/talos-baremetal.sh upgrade-talos
 ```
 
-Replace `v1.35.x` with the target patch version after checking the latest stable release.
+The script upgrades control planes one at a time, then workers, waiting for health between nodes.
 
-### Step 3: Upgrade each worker node
+## Upgrade Kubernetes
 
-Drain, upgrade, then uncordon each worker:
+Bump the Kubernetes version in `talos/versions.yaml`, then roll the upgrade:
 
 ```bash
-kubectl drain <worker-name> --ignore-daemonsets --delete-emptydir-data
-sudo kubeadm upgrade node
-sudo apt-get install -y kubelet kubeadm kubectl
-sudo systemctl restart kubelet
-kubectl uncordon <worker-name>
+./scripts/talos-baremetal.sh upgrade-k8s
 ```
 
-### Step 4: Verify the upgrade
+### Verify the upgrade
 
 ```bash
 kubectl get nodes
 kubectl get pods -A
 ```
 
-## Version Management (Ansible + ArgoCD)
+## Version Management (Talos + ArgoCD)
 
-Use this flow to keep every node consistent while maintaining HA.
+Use this flow to keep every layer consistent.
 
-### Step 1: Update the pinned versions
+### Pinned versions
 
-Host-level versions are pinned in `ansible/group_vars/all.yaml`:
+Node-level versions are pinned in `talos/versions.yaml`:
 
-- `k8s_version` for kubeadm/kubelet/kubectl
-- `containerd_version` for the container runtime
-- `cilium_version` for the CNI
+- `talos` for the immutable OS image
+- `kubernetes` for the control plane components
+- `cilium` for the CNI chart used by ArgoCD
 
-Cluster-level components (Longhorn, Tailscale, Envoy Gateway, cert-manager, ExternalDNS, ArgoCD) are pinned in their ArgoCD templates or manifests:
+Cluster-level components (Longhorn, Tailscale, Envoy Gateway, cert-manager, ExternalDNS, ArgoCD) are pinned in their ArgoCD manifests:
 
 - `bootstrap/templates/longhorn.yaml`
 - `infrastructure/tailscale/tailscale-operator.yaml`
@@ -226,26 +151,20 @@ Cluster-level components (Longhorn, Tailscale, Envoy Gateway, cert-manager, Exte
 - `infrastructure/external-secrets-crds/`
 - `bootstrap/templates/*-appset.yaml` for repo references
 
-### Step 2: Apply the change consistently
+### Apply the change consistently
 
-- **Host packages** (Kubernetes, containerd): rerun the provisioning playbook on all nodes so every host converges to the same version.
-- **Cluster add-ons** (Cilium, Longhorn, ArgoCD): update the version in Git and let ArgoCD sync. For Cilium, use `cilium upgrade` after updating `cilium_version`.
+- **Node and Kubernetes versions**: bump `talos/versions.yaml` and run the upgrade script so every node converges to the same version.
+- **Cluster add-ons** (Cilium, Longhorn, ArgoCD): update the version in Git and let ArgoCD sync.
 
-### Step 3: Keep HA during updates
+### Keep HA during updates
 
 - Upgrade control planes one at a time, then workers.
-- Drain nodes before upgrades and uncordon after, as described in the Kubernetes upgrade steps above.
+- Drain nodes before disruptive operations and uncordon after.
 - Verify health between nodes: `kubectl get nodes` and `kubectl get pods -A`.
 
 ## Upgrade Cilium
 
-Update `cilium_version` in `ansible/group_vars/all.yaml` and `targetRevision` in `infrastructure/cilium/cilium.yaml`, then run:
-
-```bash
-CILIUM_VERSION=$(grep -E "cilium_version:" ansible/group_vars/all.yaml | head -n 1 | awk -F'\"' '{print $2}')
-cilium upgrade --version ${CILIUM_VERSION}
-cilium status --wait
-```
+Update the `cilium` pin in `talos/versions.yaml` and `targetRevision` in `infrastructure/cilium/cilium.yaml`, then push and let ArgoCD roll the DaemonSet.
 
 ## Upgrade ArgoCD
 
@@ -260,20 +179,17 @@ kubectl wait --for=condition=available --timeout=600s deployment/argocd-server -
 
 Update `targetRevision` in `bootstrap/templates/longhorn.yaml`, then let ArgoCD sync the application.
 
-## Recreate From Scratch (Ubuntu 24.04)
+## Recreate From Scratch
 
-Use this section when rebuilding a node from bare metal or VM images:
+Use this section when rebuilding a node from blank hardware:
 
-### Base setup
+Flash the installer USB from [Boot Media](../tutorials/system-prep.md), boot the machine into maintenance mode, and apply its configuration:
 
-Install Ubuntu 24.04 LTS and log in as a user with sudo. Clone this repo and review the pinned versions and paths in `ansible/group_vars/all.yaml`.
+```bash
+./scripts/talos-baremetal.sh gen-config
+./scripts/talos-baremetal.sh apply --limit <hostname>
+```
 
-### Automated setup
-
-Run the Ansible provisioning playbook, then continue at [Kubernetes](../tutorials/kubernetes.md).
-
-### Manual setup
-
-Follow the bare metal tutorial path in order, starting with [Prerequisites](../tutorials/prerequisites.md).
+Then continue at [Talos Bootstrap](../tutorials/kubernetes.md).
 
 If you are rebuilding with existing data disks for Longhorn, ensure the storage path in `bootstrap/templates/longhorn.yaml` points to the correct mount before applying `bootstrap/root.yaml`.

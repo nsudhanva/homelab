@@ -1,12 +1,12 @@
 ---
 title: GPU Support for Kubernetes Workloads
-description: Enable Intel iGPU and NVIDIA GPU support for Kubernetes workloads. Install device plugins and configure containerd for GPU container access.
+description: Enable Intel iGPU and NVIDIA GPU support for Kubernetes workloads on Talos Linux. Covers the Intel device plugin DaemonSet and the NVIDIA GPU Operator.
 keywords:
   - kubernetes gpu
   - nvidia gpu kubernetes
+  - nvidia gpu operator talos
   - intel gpu kubernetes
   - gpu device plugin
-  - nvidia container toolkit
   - kubernetes transcoding
   - jellyfin gpu
 sidebar:
@@ -15,11 +15,9 @@ sidebar:
 
 # GPU Support
 
-## Step 1: Enable GPU support
+## Step 1: Enable Intel GPU support
 
-### Intel GPU (iGPU for transcoding)
-
-No host prerequisites needed - the Intel GPU Plugin DaemonSet handles everything.
+Intel iGPU transcoding needs no host packages. The Intel GPU Plugin DaemonSet advertises the devices to the scheduler.
 
 The Intel GPU plugin manifest lives in `infrastructure/gpu/intel-plugin.yaml`.
 
@@ -29,33 +27,11 @@ Verify after deployment:
 kubectl describe node | grep gpu.intel.com/i915
 ```
 
-### NVIDIA GPU
+## Step 2: Enable NVIDIA GPU support
 
-#### Install NVIDIA Container Toolkit
+Talos has no package manager, so the driver userspace and container runtime integration come from the NVIDIA GPU Operator. The operator deploys the driver containers, the container toolkit with CDI support, and the device plugin.
 
-```bash
-curl -fsSL https://nvidia.github.io/libnvidia-container/gpgkey | \
-  sudo gpg --dearmor -o /usr/share/keyrings/nvidia-container-toolkit-keyring.gpg --yes
-curl -s -L https://nvidia.github.io/libnvidia-container/stable/deb/nvidia-container-toolkit.list | \
-  sed 's#deb https://#deb [signed-by=/usr/share/keyrings/nvidia-container-toolkit-keyring.gpg] https://#g' | \
-  sudo tee /etc/apt/sources.list.d/nvidia-container-toolkit.list
-sudo apt-get update
-sudo apt-get install -y nvidia-container-toolkit
-```
-
-#### Configure Containerd for NVIDIA
-
-:::warning
-
-These three commands are required for NVIDIA to work in Kubernetes.
-
-:::
-
-```bash
-sudo nvidia-ctk runtime configure --runtime=containerd --set-as-default --cdi.enabled
-sudo nvidia-ctk cdi generate --output=/etc/cdi/nvidia.yaml
-sudo systemctl restart containerd
-```
+The GPU Operator Application lives in `infrastructure/gpu-operator/gpu-operator.yaml` and syncs through ArgoCD like every other component.
 
 Verify after deployment:
 
@@ -63,4 +39,8 @@ Verify after deployment:
 kubectl describe node | grep nvidia.com/gpu
 ```
 
-The NVIDIA GPU plugin manifest lives in `infrastructure/gpu/nvidia-plugin.yaml`.
+The legacy NVIDIA device plugin manifest lives in `infrastructure/gpu/nvidia-plugin.yaml` for clusters where the driver stack is already present on the host.
+
+## Step 3: Request GPUs from workloads
+
+Add a GPU resource limit to the container that needs acceleration. Jellyfin uses this pattern for transcoding.

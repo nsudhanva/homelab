@@ -1,11 +1,11 @@
 ---
-title: Build Kubernetes Cluster from Scratch
-description: Complete guide to building a bare-metal Kubernetes cluster from blank Ubuntu 24.04 nodes. Covers Ansible provisioning, kubeadm initialization, Cilium CNI, ArgoCD GitOps, and Vault secrets management.
+title: Build Talos Cluster from Scratch
+description: Complete guide to building a Talos Linux Kubernetes cluster from blank hardware. Covers the installer image, declarative machine configuration, cluster bootstrap, ArgoCD GitOps, and Vault secrets management.
 keywords:
-  - bare metal kubernetes from scratch
+  - talos linux from scratch
   - build kubernetes cluster
-  - kubeadm cluster setup
-  - ansible kubernetes provisioning
+  - talos cluster setup
+  - talos machine configuration
   - argocd gitops bootstrap
   - cilium cni setup
   - kubernetes homelab
@@ -16,77 +16,57 @@ sidebar:
 
 # From Scratch
 
-Use this guide to rebuild a homelab cluster from bare metal or new VM images using this repo as the source of truth.
+Use this guide to build a homelab cluster from blank hardware using this repo as the source of truth. One scripted flow takes a fresh laptop from installer USB to a running GitOps-managed cluster.
 
 ## Step 1: Prepare the workstation
 
-Follow [Prerequisites](../tutorials/prerequisites.md) to install tooling and update the Ansible inventory.
+Follow [Prerequisites](../tutorials/prerequisites.md) to install tooling and describe your machines in `talos/nodes.yaml`.
 
-## Step 2: Provision nodes with Ansible
+## Step 2: Flash the installer image
 
-Run the provisioning playbook from the repo root:
-
-```bash
-ansible-playbook -i ansible/inventory/hosts.yaml \
-  ansible/playbooks/provision-cpu.yaml \
-  -e @ansible/group_vars/all.yaml
-```
-
-If you need GPU support, use the GPU playbooks in `ansible/playbooks/`.
-
-## Step 3: Initialize the control plane
-
-Run on the control plane node. Pick a pod CIDR that does not overlap your LAN or service CIDR. If you prefer to skip pinning a pod CIDR, omit `--pod-network-cidr` and keep the Cilium defaults.
+Get the installer ISO URL for the pinned schematic:
 
 ```bash
-sudo kubeadm init --pod-network-cidr=10.244.0.0/16
-mkdir -p $HOME/.kube
-sudo cp -i /etc/kubernetes/admin.conf $HOME/.kube/config
-sudo chown $(id -u):$(id -g) $HOME/.kube/config
-kubectl taint nodes --all node-role.kubernetes.io/control-plane-
+./scripts/talos-baremetal.sh iso-url
 ```
 
-If you want OIDC for Headlamp, follow the optional OIDC section in [Kubernetes](../tutorials/kubernetes.md) before the first `kubeadm init`.
+Write the ISO to a USB stick and boot the laptop from it. The machine starts in maintenance mode and waits for configuration over the Talos API. There is nothing to install by hand.
 
-## Step 4: Install Cilium
+## Step 3: Bring up the whole cluster
 
-Update the control plane IP in `infrastructure/cilium/values.cilium`, then install Cilium:
+Run the bootstrap from the repo root:
 
 ```bash
-CILIUM_VERSION=$(grep -E "cilium_version:" ansible/group_vars/all.yaml | head -n 1 | awk -F'"' '{print $2}')
-cilium install --version $CILIUM_VERSION --values infrastructure/cilium/values.cilium
+./scripts/talos-baremetal.sh up
 ```
 
-## Step 5: Install ArgoCD and bootstrap GitOps
+The script generates secrets on first run, renders machine configuration from `talos/nodes.yaml` and the patches in `talos/patches/`, applies it to every machine, bootstraps etcd, fetches kubeconfig, installs ArgoCD, and applies the root Application. Re-running it is safe: it converges instead of duplicating work.
 
-```bash
-kubectl apply -k bootstrap/argocd
-kubectl wait --for=condition=available --timeout=600s deployment/argocd-server -n argocd
-kubectl apply -f bootstrap/root.yaml
-```
+If you need GPU support, add the worker to `talos/nodes.yaml` and follow [GPU Support](../how-to/gpu.md) after bootstrap.
 
-## Step 6: Configure Vault and External Secrets
+## Step 4: Configure Vault and External Secrets
 
 Follow [Vault](../how-to/vault.md) to initialize Vault and create the required secrets for ExternalDNS, cert-manager, and the Tailscale operator.
 
-## Step 7: Validate the cluster
+## Step 5: Validate the cluster
 
 ```bash
+talosctl -n <control-plane-ip> get members
 kubectl get nodes
 kubectl get pods -A
 kubectl get apps -n argocd
 ```
 
-## Local rehearsal (Multipass)
+## Local rehearsal
 
-Use this for a local dry run before touching hardware. To keep resources low, set a single-node cluster and smaller VM sizing. If resources are tight, disable Hubble UI and Relay for the rehearsal:
+Use this for a local dry run before touching hardware. It creates a Talos QEMU cluster with the same machine configuration shape:
 
 ```bash
-WORKER_COUNT=0 VM_CPUS=2 VM_MEMORY=3G VM_DISK=12G CILIUM_HUBBLE_ENABLED=false ./scripts/local-cluster.sh up
+./scripts/talos-local.sh up
 ```
 
 Destroy the rehearsal cluster when done:
 
 ```bash
-./scripts/local-cluster.sh down
+./scripts/talos-local.sh down
 ```
