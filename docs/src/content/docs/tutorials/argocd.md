@@ -16,11 +16,7 @@ sidebar:
 
 # ArgoCD and GitOps
 
-:::note
-
-Ansible does not install ArgoCD or apply the GitOps bootstrap. Run these steps after Cilium is ready.
-
-:::
+Run these steps after the cluster is bootstrapped and Cilium is syncing.
 
 ## Step 1: Install ArgoCD
 
@@ -47,13 +43,7 @@ Update these files if you fork the repo. The default references point to `nsudha
 - `bootstrap/templates/apps-appset.yaml`
 - `infrastructure/cilium/cilium.yaml`
 
-Confirm the Longhorn data path in `bootstrap/templates/longhorn.yaml` matches your host.
-
-:::note
-
-If you deploy the docs app, also update the image in `apps/docs/deployment.yaml` and the repository links in `docs/docusaurus.config.ts`.
-
-:::
+Confirm the Longhorn data path in `bootstrap/templates/longhorn.yaml` matches your storage layout.
 
 ```mermaid
 flowchart TD

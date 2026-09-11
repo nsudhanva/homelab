@@ -165,22 +165,9 @@ kubectl -n vault exec -it vault-0 -- vault kv put kv/headlamp/oidc \
 
 ### Step 4: Configure Kubernetes API server OIDC
 
-Update your kubeadm config to include OIDC settings. Use the `client_id` returned by Vault.
+Add the OIDC settings to the API server configuration in the control plane machine configuration. Use the `client_id` returned by Vault.
 
-```yaml
-apiServer:
-  extraArgs:
-    oidc-issuer-url: https://vault.sudhanva.me/v1/identity/oidc/provider/headlamp
-    oidc-client-id: REPLACE_WITH_VAULT_CLIENT_ID
-    oidc-username-claim: sub
-    oidc-groups-claim: groups
-    oidc-username-prefix: "oidc:"
-    oidc-groups-prefix: "oidc:"
-```
-
-Apply the change using your kubeadm workflow and restart the API server. This is a control plane change and should be done directly on the control plane node.
-
-If you edit the static manifest directly, keep the `oidc:` prefixes quoted to avoid YAML parsing errors.
+Apply the change with `./scripts/talos-baremetal.sh apply` and the API server rolls with the new flags. This is a control plane change and should go through the machine configuration in Git.
 
 ### Step 4a: Ensure cluster DNS resolves Vault
 
@@ -269,7 +256,7 @@ kubectl -n kube-system get pods -l component=kube-apiserver \
   -o jsonpath='{.items[0].spec.containers[0].command}' | tr ' ' '\n' | rg oidc
 ```
 
-If no OIDC flags are present, add them via your kubeadm config and restart the API server as described in Step 4.
+If no OIDC flags are present, add them to the control plane machine configuration and re-apply as described in Step 4.
 
 ## Repo Wiring For OIDC
 

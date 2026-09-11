@@ -1,0 +1,7 @@
+clusterName: homelab
+controlPlaneEndpoint: https://192.168.0.133:6443
+controlplanes:
+  - hostname: legion
+    ip: 192.168.0.133
+    installDisk: /dev/nvme0n0
+workers: []

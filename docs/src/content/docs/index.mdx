@@ -1,29 +1,28 @@
 ---
-title: Bare Metal Kubernetes Homelab - Complete Setup Guide
-description: Build a production-ready bare-metal Kubernetes cluster on Ubuntu 24.04 using kubeadm, Ansible automation, ArgoCD GitOps, Cilium CNI, Tailscale ingress, Vault secrets, and Longhorn storage. Complete guide from scratch with local development workflow.
+title: Talos Linux Homelab - Complete Setup Guide
+description: Build a production-ready Talos Linux Kubernetes cluster using immutable infrastructure, ArgoCD GitOps, Cilium CNI, Tailscale ingress, Vault secrets, and Longhorn storage. Complete guide from scratch with local development workflow on Ubuntu 26.04.
 keywords:
-  - bare metal kubernetes
+  - talos linux homelab
   - kubernetes homelab
-  - kubeadm cluster
-  - ansible kubernetes
+  - talos kubernetes
   - argocd gitops
   - cilium cni
   - tailscale kubernetes
   - longhorn storage
   - vault secrets kubernetes
-  - ubuntu 24.04 kubernetes
+  - ubuntu 26.04 containers
   - kubernetes from scratch
   - production kubernetes cluster
 template: splash
 hero:
-  tagline: Production-ready Kubernetes on bare metal with GitOps automation. Go from blank Ubuntu nodes to a fully operational cluster with one streamlined workflow.
+  tagline: Production-ready Kubernetes on immutable Talos Linux with GitOps automation. Go from a blank laptop to a fully operational cluster with one scripted workflow.
   actions:
     - text: Start from Scratch
       link: /how-to/from-scratch/
       icon: right-arrow
       variant: primary
     - text: Local Development
-      link: /tutorials/local-multipass-cluster/
+      link: /tutorials/local-talos-cluster/
       icon: external
     - text: Architecture
       link: /explanation/automation-model/
@@ -51,12 +50,12 @@ A production-ready Kubernetes cluster with these services accessible via HTTPS o
 
 ```mermaid
 flowchart TB
-    subgraph Workstation["Your Workstation"]
-        Ansible["Ansible Playbooks"]
+    subgraph Workstation["Ubuntu 26.04 Workstation"]
+        Talosctl["talosctl + Talos configs"]
         Git["Git Push"]
     end
 
-    subgraph Nodes["Ubuntu 24.04 Nodes"]
+    subgraph Nodes["Talos Linux Nodes"]
         CP["Control Plane"]
         W1["Worker 1"]
         W2["Worker N"]
@@ -77,7 +76,7 @@ flowchart TB
         B2["Backblaze Backup"]
     end
 
-    Ansible -->|provision| Nodes
+    Talosctl -->|declarative API| Nodes
     Git -->|GitOps| ArgoCD
     ArgoCD -->|deploys| Cluster
     Envoy -->|ingress via| TS
@@ -89,9 +88,10 @@ flowchart TB
 
 <Tabs>
   <TabItem label="Hardware">
-    - **1+ Ubuntu 24.04 nodes** (bare metal or VMs)
+    - **1+ x86_64 or ARM64 machines** (laptop, mini PC, or VM)
     - Minimum 2 CPU, 4GB RAM, 20GB disk per node
     - Nodes can reach each other over the network
+    - USB stick for the Talos installer image
     - Optional: GPU for transcoding (Intel iGPU or NVIDIA)
   </TabItem>
   <TabItem label="Accounts">
@@ -101,9 +101,9 @@ flowchart TB
     - **GitHub** - For ArgoCD Image Updater write-back
   </TabItem>
   <TabItem label="Workstation">
-    - macOS, Linux, or WSL2
-    - Ansible, kubectl, Helm, Cilium CLI installed
-    - SSH access to all nodes
+    - macOS with Apple Containers, or Ubuntu 26.04
+    - talosctl, kubectl, Helm installed
+    - No SSH needed: Talos is managed over a mutually-authenticated API
   </TabItem>
 </Tabs>
 
@@ -117,8 +117,8 @@ flowchart TB
   />
   <LinkCard
     title="Local Development"
-    href="/tutorials/local-multipass-cluster/"
-    description="Test everything locally with Multipass VMs before touching hardware."
+    href="/tutorials/local-talos-cluster/"
+    description="Test everything locally with a Talos QEMU cluster before touching hardware."
   />
 </CardGrid>
 
@@ -128,8 +128,8 @@ flowchart TB
   <Card title="GitOps with ArgoCD" icon="github">
     Declarative cluster management. Push to Git, ArgoCD deploys.
   </Card>
-  <Card title="Ansible Automation" icon="rocket">
-    One-command node provisioning. Reproducible and version controlled.
+  <Card title="Talos Linux" icon="rocket">
+    Immutable, minimal OS managed by API. No SSH, no drift, atomic upgrades.
   </Card>
   <Card title="Cilium CNI" icon="seti:graphql">
     eBPF networking with Gateway API via Envoy Gateway.
@@ -149,7 +149,7 @@ flowchart TB
 
 | Layer | Components |
 |-------|------------|
-| **Bootstrap** | kubeadm, Ansible playbooks |
+| **Bootstrap** | Talos Linux, Image Factory schematics |
 | **Networking** | Cilium, Envoy Gateway, Tailscale Operator |
 | **GitOps** | ArgoCD, ApplicationSets, Image Updater |
 | **Secrets** | Vault, External Secrets Operator |

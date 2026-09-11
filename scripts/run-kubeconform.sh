@@ -44,4 +44,4 @@ if [[ ! -x "$BIN" ]]; then
 fi
 
 find apps infrastructure bootstrap -name "*.yaml" ! -name "app.yaml" ! -name ".argocd-source-*.yaml" -print0 \
-  | xargs -0 "$BIN" -kubernetes-version 1.35.0 -strict -ignore-missing-schemas -summary
+  | xargs -0 "$BIN" -kubernetes-version 1.37.0 -strict -ignore-missing-schemas -summary

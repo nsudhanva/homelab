@@ -12,10 +12,10 @@
 .DS_Store
 *.log
 
-# Ansible
-ansible/.ansible_cache
-ansible/.keys/
-ansible/inventory/local-cluster.yaml
+# Talos
+talos/_out/
+talos/.rehearsal/
+talos/secrets.yaml
 
 # Node / Docusaurus
 node_modules/

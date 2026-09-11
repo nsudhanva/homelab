@@ -1,77 +1,49 @@
 ---
-title: System Preparation for Kubernetes Nodes
-description: Configure Ubuntu 24.04 for Kubernetes by disabling swap, loading kernel modules, and setting sysctl parameters for container networking.
+title: Talos Boot Media and Installer Image
+description: Build the Talos installer image from the repo schematic with Longhorn storage extensions. Flash the ISO to USB and boot machines into maintenance mode.
 keywords:
-  - kubernetes system preparation
-  - disable swap kubernetes
-  - br_netfilter module
-  - overlay module
-  - sysctl kubernetes settings
-  - inotify limits
-  - ubuntu kubernetes prerequisites
-  - containerd prerequisites
+  - talos installer image
+  - talos image factory
+  - talos schematic
+  - talos system extensions
+  - talos maintenance mode
+  - talos iso usb
+  - longhorn iscsi talos
 sidebar:
   order: 3
 ---
 
-# System Preparation
+# Boot Media
 
-:::note
+Talos machines boot from an installer image built for this repo. The image carries the system extensions Longhorn needs, so storage works from the first boot with no follow-up package installation.
 
-The `provision-*.yaml` playbooks run the `base` role, which disables swap, loads kernel modules, writes sysctl and inotify settings, and installs base packages. Use this only if you are doing a manual setup.
+## Step 1: Review the schematic
 
-:::
+The schematic lives in `talos/schematic.yaml` and pins the official extensions:
 
-## Disable Swap (Permanently)
+- `siderolabs/iscsi-tools` provides the iSCSI daemon and tools for persistent volume operations
+- `siderolabs/util-linux-tools` provides trimming tools for volume maintenance
 
-:::warning
+Bump extensions only by editing this file. The bootstrap script resolves the schematic to an installer image automatically.
 
-Kubernetes requires swap to be disabled. If swap re-enables after reboot, kubelet will fail to start.
-
-:::
-
-```bash
-sudo swapoff -a
-sudo sed -i '/\sswap\s/ s/^/#/' /etc/fstab
-cat /etc/fstab | grep swap
-free -h
-```
-
-## Load Kernel Modules
+## Step 2: Print the installer URLs
 
 ```bash
-cat <<EOF | sudo tee /etc/modules-load.d/k8s.conf
-overlay
-br_netfilter
-EOF
-
-sudo modprobe overlay
-sudo modprobe br_netfilter
+./scripts/talos-baremetal.sh iso-url
 ```
 
-## Configure Sysctl
+The script posts the schematic to the Image Factory and prints the installer container image and the bootable ISO URL for Talos `v1.14.0`. Both artifacts are deterministic for the pinned schematic and Talos version.
+
+## Step 3: Flash the USB stick
+
+Write the ISO to a USB stick with your usual flashing tool, then boot each machine from it.
+
+## Step 4: Confirm maintenance mode
+
+Each machine prints its IP addresses on the console and waits. From the workstation, confirm the machine answers over the API without credentials:
 
 ```bash
-cat <<EOF | sudo tee /etc/sysctl.d/k8s.conf
-net.bridge.bridge-nf-call-iptables  = 1
-net.bridge.bridge-nf-call-ip6tables = 1
-net.ipv4.ip_forward                 = 1
-EOF
-
-sudo sysctl --system
+talosctl -n <machine-ip> version --insecure
 ```
 
-## Increase Inotify Limits
-
-:::note
-
-Many containers (Jellyfin, Longhorn, etc.) require higher inotify limits. Without this, containers crash with "too many open files" errors.
-
-:::
-
-```bash
-sudo sysctl -w fs.inotify.max_user_instances=512
-sudo sysctl -w fs.inotify.max_user_watches=524288
-echo "fs.inotify.max_user_instances=512" | sudo tee /etc/sysctl.d/99-inotify.conf
-echo "fs.inotify.max_user_watches=524288" | sudo tee -a /etc/sysctl.d/99-inotify.conf
-```
+If the machine is reachable, it is ready to receive its machine configuration in [Machine Configuration](./containerd.md).

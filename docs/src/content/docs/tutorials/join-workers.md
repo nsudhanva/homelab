@@ -1,53 +1,40 @@
 ---
-title: Join Worker Nodes to Kubernetes Cluster
-description: Generate a kubeadm join command and add Ubuntu worker nodes to an existing Kubernetes control plane for a multi-node bare-metal cluster.
+title: Add Worker Nodes to Talos Cluster
+description: Add Talos Linux worker machines to an existing cluster by extending the inventory, rendering worker configuration, and applying it over the Talos API.
 keywords:
-  - kubeadm join
-  - kubernetes worker node
+  - talos worker node
   - add node to cluster
-  - kubeadm token
-  - discovery-token-ca-cert-hash
-  - multi-node kubernetes
+  - talos apply-config
   - kubernetes cluster expansion
+  - multi-node talos
 sidebar:
   order: 8
 ---
 
-# Join Worker Nodes
+# Add Workers
 
-Use this after the control plane is initialized to add worker nodes to the cluster.
-If you are adding a brand new node that has not been provisioned, start with [Add a Worker Node](../how-to/add-worker-node.md).
+Use this after the control plane is bootstrapped to add worker machines to the cluster. If you are adding brand new hardware, start with [Add a Worker Node](../how-to/add-worker-node.md).
 
-:::note
+## Step 1: Render the worker configuration
 
-The Ansible provisioning playbook installs the required packages but does not run `kubeadm join`. Use this page after provisioning the worker.
-
-:::
-
-## Step 1: Generate a join command
-
-Run this on the control plane:
+Workers share the cluster secrets and the common patches, plus the worker role patch:
 
 ```bash
-kubeadm token create --print-join-command
+./scripts/talos-baremetal.sh gen-config
 ```
 
-:::note
+## Step 2: Apply configuration to each worker
 
-The join command includes a short-lived token. Do not commit it to git or share it in public logs.
-
-:::
-
-## Step 2: Join each worker
-
-Run the generated command on each worker node:
+Push the rendered worker file to machines waiting in maintenance mode:
 
 ```bash
-sudo kubeadm join <control-plane-ip>:6443 --token <token> --discovery-token-ca-cert-hash sha256:<hash>
+./scripts/talos-baremetal.sh apply --role worker
 ```
+
+Workers install Talos, reboot, and join the cluster with the shared PKI. No join tokens are created or copied by hand.
 
 ## Step 3: Verify the nodes
 
 ```bash
-kubectl get nodes
+kubectl get nodes -o wide
 ```
