@@ -179,6 +179,12 @@ kubectl wait --for=condition=available --timeout=600s deployment/argocd-server -
 
 Update `targetRevision` in `bootstrap/templates/longhorn.yaml`, then let ArgoCD sync the application.
 
+:::warning
+
+Longhorn enforces consecutive minor upgrades. Step one minor at a time (for example 1.11.x to 1.12.x). Skipping minors fails the pre-upgrade check and blocks the sync while leaving the running version intact.
+
+:::
+
 ## Recreate From Scratch
 
 Use this section when rebuilding a node from blank hardware:
