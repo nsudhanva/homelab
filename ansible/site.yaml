@@ -1,0 +1,8 @@
+- name: Provision Homelab K3s Bare Metal Cluster
+  hosts: k3s_servers
+  become: true
+  roles:
+    - common
+    - nvidia
+    - k3s_server
+    - argocd

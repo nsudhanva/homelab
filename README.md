@@ -1,13 +1,12 @@
 # Homelab
 
-A self-hosted Talos Linux Kubernetes cluster on immutable infrastructure.
+A self-hosted bare-metal Kubernetes cluster on Ubuntu 26.04 LTS powered by K3s and managed 100% via GitOps with ArgoCD.
 
-- Uses declarative Talos machine configuration for zero-touch node provisioning with ArgoCD for GitOps-based cluster management
+- Provisioned from scratch using automated Ansible playbooks for zero-touch bare-metal bring-up
 - Traffic flows through Tailscale for secure ingress and Envoy Gateway for routing, with Vault and External Secrets handling credentials
-- Longhorn provides distributed storage with basic backup capabilities
-- A local rehearsal workflow using Talos QEMU clusters validates changes before deploying to hardware
-- An Ubuntu 26.04 Apple Container workstation gives a Linux-native shell on any host
-- Additional cloud providers can follow the same pattern but are not documented yet
+- High-performance local NVMe/SSD storage backed by K3s Local-Path Provisioner on dedicated solid-state drives
+- Full hardware GPU acceleration with NVIDIA GTX 1050 Ti passed through to Kubernetes workloads via NVIDIA Container Toolkit and K8s Device Plugin
+- Immutable GitOps operations where ArgoCD reconciles all infrastructure and user applications from this repository
 
 ## Table of contents
 
@@ -17,30 +16,28 @@ A self-hosted Talos Linux Kubernetes cluster on immutable infrastructure.
   - [Platform services map](#platform-services-map)
   - [Network topology](#network-topology)
 - [Quick start](#quick-start)
-  - [Bare metal bring-up](#bare-metal-bring-up)
+  - [Automated bare metal bring-up](#automated-bare-metal-bring-up)
   - [From scratch flow](#from-scratch-flow)
-  - [Local rehearsal](#local-rehearsal)
 - [Documentation](#documentation)
 - [Repository layout](#repository-layout)
 - [Applications](#applications)
 - [GitOps model](#gitops-model)
 - [Operations](#operations)
-- [Conventions](#conventions)
-- [Monitoring topology](#monitoring-topology)
 - [Maintainers](#maintainers)
 
 ## Features
 
-- Multi-node Talos Linux Kubernetes with immutable OS and Cilium
+- Single-node / multi-node bare-metal K3s Kubernetes with Flannel CNI
+- Automated Ansible playbooks for host preparation, runtime configuration, and cluster bootstrap
+- Full NVIDIA GPU hardware acceleration for AI and media transcoding
 - GitOps-managed infrastructure and apps via ArgoCD ApplicationSets
 - Tailscale Gateway API ingress with split-horizon DNS
-- Vault + External Secrets for centralized secret management
-- Longhorn storage, Prometheus monitoring, and optional GPU plugins
-- Automated image updates with ArgoCD Image Updater
-- Metrics Server for resource usage in Headlamp
-- ExternalDNS automation for Gateway API routes
-- Envoy Gateway data plane for Gateway API
-- Kubescape operator for cluster security scanning
+- Vault + External Secrets Operator for centralized secret management
+- Native high-speed SSD storage via Local-Path Provisioner
+- Prometheus monitoring stack with Alertmanager and Grafana
+- Automated container image updates with ArgoCD Image Updater
+- Envoy Gateway data plane for Kubernetes Gateway API
+- Kubescape operator for automated cluster security scanning
 
 ## Architecture
 
@@ -49,25 +46,26 @@ A self-hosted Talos Linux Kubernetes cluster on immutable infrastructure.
 ```mermaid
 flowchart LR
   subgraph Repo["Homelab Git repo"]
-    Talos["talos/"]
+    Ansible["ansible/"]
     Bootstrap["bootstrap/"]
     Infra["infrastructure/"]
     Apps["apps/"]
   end
 
-  subgraph Nodes["Talos Linux nodes"]
-    Config["Machine configuration"]
-    API["Talos API bootstrap"]
+  subgraph Host["Bare-Metal Linux Nodes"]
+    OS["Ubuntu 26.04 LTS"]
+    GPU["NVIDIA GPU Driver + Toolkit"]
+    K3s["K3s Server & Agent"]
   end
 
-  subgraph Cluster["Kubernetes cluster"]
+  subgraph Cluster["Kubernetes Cluster"]
     Argo["ArgoCD + ApplicationSets"]
-    Workloads["Infra + apps"]
+    Workloads["Infra + Apps"]
   end
 
-  Talos --> Config
-  Config --> API
-  API --> Argo
+  Ansible --> Host
+  Host --> K3s
+  K3s --> Argo
   Bootstrap --> Argo
   Infra --> Argo
   Apps --> Argo
@@ -78,20 +76,21 @@ flowchart LR
 
 ```mermaid
 flowchart TB
-  subgraph Edge["Edge & ingress"]
+  subgraph Edge["Edge & Ingress"]
     Tailscale["Tailscale Gateway API"]
     Envoy["Envoy Gateway"]
-    DNS["ExternalDNS + split-horizon CoreDNS"]
+    DNS["ExternalDNS + Split-Horizon CoreDNS"]
   end
 
-  subgraph Platform["Platform services"]
+  subgraph Platform["Platform Services"]
     Vault["Vault"]
     ESO["External Secrets"]
-    Longhorn["Longhorn"]
+    Storage["Local-Path SSD Storage"]
     Metrics["Prometheus + Grafana"]
+    NVIDIA["NVIDIA Device Plugin"]
   end
 
-  subgraph Apps["User apps"]
+  subgraph Apps["User Apps"]
     Headlamp["Headlamp"]
     Docs["Docs"]
     Homer["Homer"]
@@ -103,8 +102,9 @@ flowchart TB
   Envoy --> Apps
   Vault --> ESO
   ESO --> Apps
-  Longhorn --> Apps
+  Storage --> Apps
   Metrics --> Apps
+  NVIDIA --> Media
 ```
 
 ### Network topology
@@ -112,13 +112,13 @@ flowchart TB
 ```mermaid
 flowchart LR
   Public["Public DNS"]
-  Tailnet["Tailscale tailnet"]
+  Tailnet["Tailscale Tailnet"]
   ExternalDNS["ExternalDNS"]
   Gateway["Tailscale Gateway API"]
   Envoy["Envoy Gateway"]
   Routes["HTTPRoutes"]
   Services["Cluster Services"]
-  CoreDNS["CoreDNS rewrite"]
+  CoreDNS["CoreDNS Rewrite"]
 
   ExternalDNS --> Public
   Public --> Gateway
@@ -131,100 +131,69 @@ flowchart LR
 
 ## Quick start
 
-Bare metal is the primary target. The local VM flow exists to rehearse changes before touching hardware.
+### Automated bare metal bring-up
 
-### Bare metal bring-up
-
-Flash the installer, then run one scripted flow that hands off to ArgoCD.
+Ensure your target machine is running Ubuntu with SSH and sudo access configured, then run one command from your workstation:
 
 ```bash
-./scripts/talos-baremetal.sh iso-url
-./scripts/talos-baremetal.sh up
-export KUBECONFIG=$PWD/talos/_out/kubeconfig
-kubectl get nodes
-kubectl get pods -A
+./scripts/provision.sh
 ```
 
-Guided flow: <https://docs.sudhanva.me/how-to/from-scratch> and <https://docs.sudhanva.me/tutorials>
+To interact with the newly provisioned cluster:
+
+```bash
+export KUBECONFIG=$PWD/k3s.kubeconfig
+kubectl get nodes -o wide
+kubectl get pods -A
+kubectl get apps -n argocd
+```
 
 ### From scratch flow
 
 ```mermaid
 flowchart TB
   subgraph Workstation["Workstation"]
-    Inventory["talos/nodes.yaml"]
-    Vars["talos/versions.yaml"]
-    Patches["talos/patches/*"]
+    Inventory["ansible/inventory/hosts.yaml"]
+    Vars["ansible/group_vars/all.yaml"]
+    Playbook["ansible/site.yaml"]
   end
 
-  subgraph Nodes["Talos Linux nodes"]
-    OS["Immutable OS + extensions"]
-    MachineConfig["Machine configuration"]
+  subgraph Target["Bare-Metal Host"]
+    Prep["Host Prep & Modules"]
+    NvidiaSetup["NVIDIA Toolkit & CDI"]
+    K3sInstall["K3s Server Install"]
+    SSD["SSD Storage Config"]
   end
 
-  subgraph ControlPlane["Control plane"]
-    Apply["talosctl apply"]
-    Bootstrap["talosctl bootstrap"]
-    Kubeconfig["kubeconfig"]
-    CNI["Cilium via ArgoCD"]
-    Argo["ArgoCD bootstrap"]
+  subgraph Bootstrap["GitOps Bootstrap"]
+    Kubeconfig["Fetch Kubeconfig"]
+    ArgoApply["ArgoCD Server-Side Apply"]
+    RootApp["Apply bootstrap/root.yaml"]
   end
 
-  subgraph GitOps["GitOps reconciliation"]
-    AppSets["ApplicationSets"]
-    InfraApps["infra-* apps"]
-    UserApps["app-* apps"]
+  subgraph Sync["ArgoCD Reconcile"]
+    Infra["infra-* ApplicationSet"]
+    Apps["app-* ApplicationSet"]
   end
 
-  Inventory --> MachineConfig
-  Vars --> MachineConfig
-  Patches --> MachineConfig
-  Schematic["talos/schematic.yaml"] --> OS
-  OS --> MachineConfig
-  MachineConfig --> Apply
-  Apply --> Bootstrap
-  Bootstrap --> Kubeconfig
-  Kubeconfig --> CNI
-  CNI --> Argo
-  Argo --> AppSets
-  AppSets --> InfraApps
-  AppSets --> UserApps
-```
-
-### Local rehearsal
-
-Use Talos QEMU clusters to validate the full flow on your workstation.
-
-```bash
-./scripts/talos-local.sh up
-```
-
-Low-resource rehearsal:
-
-```bash
-WORKER_COUNT=0 CP_CPUS=2 CP_MEMORY=2G ./scripts/talos-local.sh up
-```
-
-Tear down:
-
-```bash
-./scripts/talos-local.sh down
-```
-
-### Workstation container
-
-Run an Ubuntu 26.04 shell with Docker and Kubernetes tooling on any host:
-
-```bash
-./scripts/dev-container.sh up
-./scripts/dev-container.sh shell
+  Inventory --> Playbook
+  Vars --> Playbook
+  Playbook --> Prep
+  Prep --> NvidiaSetup
+  NvidiaSetup --> SSD
+  SSD --> K3sInstall
+  K3sInstall --> Kubeconfig
+  Kubeconfig --> ArgoApply
+  ArgoApply --> RootApp
+  RootApp --> Infra
+  RootApp --> Apps
 ```
 
 ## Documentation
 
-Docs site: <https://docs.sudhanva.me>
+Documentation is maintained under `docs/` using Astro Starlight.
 
-Build locally:
+Build documentation locally:
 
 ```bash
 cd docs
@@ -232,23 +201,20 @@ bun install
 bun dev
 ```
 
-Recommended reading paths:
+Key reference guides:
 
-- Start from scratch: <https://docs.sudhanva.me/how-to/from-scratch>
-- Add a worker node: <https://docs.sudhanva.me/how-to/add-worker-node>
-- Prereqs and system prep: <https://docs.sudhanva.me/tutorials/prerequisites>
-- GitOps model: <https://docs.sudhanva.me/explanation/automation-model>
-- Infra catalog: <https://docs.sudhanva.me/reference/infrastructure-components>
-- App catalog: <https://docs.sudhanva.me/reference/applications>
+- From scratch installation: [Build K3s Cluster from Scratch](docs/src/content/docs/how-to/from-scratch.md)
+- Secrets management: [HashiCorp Vault Secrets Management](docs/src/content/docs/how-to/vault.md)
+- Version matrix: [Component Version Matrix](docs/src/content/docs/reference/versions.md)
 
 ## Repository layout
 
 ```bash
-talos/            Talos machine config, versions, schematic, inventory
-bootstrap/        ArgoCD bootstrap and ApplicationSets
-infrastructure/   Cluster components managed by ArgoCD
+ansible/          Ansible playbooks, roles, and inventory for bare-metal setup
+bootstrap/        ArgoCD bootstrap and ApplicationSet definitions
+infrastructure/   Platform components managed by ArgoCD
 apps/             User workloads managed by ArgoCD
-scripts/          Automation helpers
+scripts/          Automation and verification scripts
 docs/             Astro Starlight documentation
 ```
 
@@ -259,84 +225,39 @@ docs/             Astro Starlight documentation
 | Docs | Documentation site for cluster guides | `docs.sudhanva.me` |
 | Headlamp | Kubernetes UI with OIDC support and metrics integration | `headlamp.sudhanva.me` |
 | Homer | Home dashboard with service shortcuts | `home.sudhanva.me` |
-| Jellyfin | Media streaming with GPU acceleration when available | `jellyfin.sudhanva.me` |
-| Filebrowser | File manager for the media volume | `filebrowser.sudhanva.me` |
+| Jellyfin | Media streaming with NVIDIA GPU acceleration | `jellyfin.sudhanva.me` |
+| Filebrowser | File manager for persistent media volumes | `filebrowser.sudhanva.me` |
 | ArgoCD | GitOps control plane UI | `argocd.sudhanva.me` |
-| Longhorn | Storage UI | `longhorn.sudhanva.me` |
-| Vault | Secrets UI | `vault.sudhanva.me` |
-| Hubble UI | Cilium network visibility | `hubble.sudhanva.me` |
+| Vault | Centralized secrets management | `vault.sudhanva.me` |
 | Grafana | Metrics dashboards | `grafana.sudhanva.me` |
-| Prometheus | Metrics queries | `prometheus.sudhanva.me` |
-| Alertmanager | Alerting UI | `alertmanager.sudhanva.me` |
+| Prometheus | Metrics collector and query engine | `prometheus.sudhanva.me` |
+| Alertmanager | Alert routing and notifications | `alertmanager.sudhanva.me` |
 
 ## GitOps model
 
-ArgoCD reconciles everything under `infrastructure/` and `apps/` using ApplicationSets. Manual `kubectl apply` is discouraged after bootstrap.
+ArgoCD reconciles everything under `infrastructure/` and `apps/` using ApplicationSets. Manual `kubectl apply` is discouraged after initial bootstrap.
 
 Adding apps:
 
-- Create `apps/<app>/app.yaml` to define the ArgoCD app name/path/namespace
-- Add Kubernetes manifests in the same folder
-- Add `kustomization.yaml` if you want Image Updater to write overrides
-
-Image updates:
-
-- ArgoCD Image Updater writes `.argocd-source-<app>.yaml` files into app folders
-- These files are not Kubernetes resources and are ignored by kubeconform
+- Step 1: Create `apps/<app>/app.yaml` to define the ArgoCD app name, path, and namespace
+- Step 2: Add Kubernetes manifests in the same folder
+- Step 3: Add `kustomization.yaml` if you want Image Updater to write overrides
 
 ## Operations
 
-Routine checks:
+Routine cluster health checks:
 
 ```bash
-kubectl get nodes
+export KUBECONFIG=$PWD/k3s.kubeconfig
+kubectl get nodes -o wide
 kubectl get pods -A
 kubectl get apps -n argocd
 ```
 
-Before pushing:
+Before pushing code changes:
 
 ```bash
 pre-commit run --all-files
-```
-
-## Conventions
-
-- ApplicationSets generate `infra-*` and `app-*` ArgoCD applications from folders
-- App folders use `app.yaml` for app metadata and manifests in the same directory
-- `kustomization.yaml` enables Image Updater overrides per app
-- Image updates write `.argocd-source-<app>.yaml` files into app folders
-
-## Monitoring topology
-
-```mermaid
-flowchart TB
-  subgraph CRDs["Prometheus Operator CRDs"]
-    CRD["monitoring.coreos.com/*"]
-  end
-
-  subgraph Stack["Monitoring stack"]
-    Prometheus["Prometheus"]
-    Alertmanager["Alertmanager"]
-    Grafana["Grafana"]
-  end
-
-  subgraph Sources["Metrics sources"]
-    ServiceMonitors["ServiceMonitors"]
-    NodeExporter["node-exporter"]
-    KSM["kube-state-metrics"]
-    Apps["App metrics"]
-  end
-
-  CRD --> Prometheus
-  CRD --> Alertmanager
-  CRD --> Grafana
-  ServiceMonitors --> Prometheus
-  NodeExporter --> Prometheus
-  KSM --> Prometheus
-  Apps --> ServiceMonitors
-  Prometheus --> Alertmanager
-  Prometheus --> Grafana
 ```
 
 ## Maintainers

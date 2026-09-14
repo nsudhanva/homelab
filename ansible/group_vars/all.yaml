@@ -1,0 +1,9 @@
+k3s_version: "v1.36.4+k3s1"
+cluster_name: "homelab"
+local_storage_path: "/home/k3s-storage"
+kubeconfig_local_dest: "{{ playbook_dir }}/../k3s.kubeconfig"
+tls_sans:
+  - "100.66.139.118"
+  - "10.0.0.133"
+  - "legion"
+  - "legion.ainu-herring.ts.net"

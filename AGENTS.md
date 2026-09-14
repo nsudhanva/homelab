@@ -4,7 +4,7 @@ Instructions for AI coding assistants working on this repository.
 
 ## Project Overview
 
-Multi-node bare-metal Kubernetes cluster on Ubuntu 24.04 LTS, managed via GitOps with ArgoCD.
+Multi-node bare-metal Kubernetes cluster on Ubuntu 26.04 LTS using K3s, managed via GitOps with ArgoCD.
 
 ## Dos
 
@@ -43,8 +43,8 @@ homelab/
 │   └── root.yaml            # Entrypoint
 ├── infrastructure/          # Cluster components (storage, networking, etc.)
 ├── apps/                    # User workloads
-├── talos/                   # Talos machine config, versions, inventory
-├── scripts/                 # Setup scripts (referenced by README)
+├── ansible/                # Ansible automation playbooks, roles, and inventory
+├── scripts/                # Setup scripts (referenced by README)
 └── README.md                # Single source of truth for setup
 ```
 

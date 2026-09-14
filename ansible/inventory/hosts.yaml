@@ -1,0 +1,12 @@
+all:
+  children:
+    k3s_cluster:
+      children:
+        k3s_servers:
+          hosts:
+            legion:
+              ansible_host: 100.66.139.118
+              ansible_user: sudhanva
+              ansible_ssh_common_args: "-o StrictHostKeyChecking=accept-new"
+              k3s_node_ip: "10.0.0.133"
+              k3s_external_ip: "100.66.139.118"

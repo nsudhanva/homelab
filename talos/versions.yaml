@@ -1,6 +1,0 @@
-talos: v1.14.0
-kubernetes: v1.37.0
-cilium: 1.20.1
-containerd: 2.3.4
-talosctl: v1.14.0
-ubuntuWorkstation: "26.04"

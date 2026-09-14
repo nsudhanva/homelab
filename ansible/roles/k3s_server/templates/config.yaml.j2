@@ -1,0 +1,15 @@
+write-kubeconfig-mode: "0644"
+tls-san:
+{% for san in tls_sans %}
+  - "{{ san }}"
+{% endfor %}
+node-ip: "{{ k3s_node_ip }}"
+node-external-ip: "{{ k3s_external_ip }}"
+bind-address: "0.0.0.0"
+disable:
+  - traefik
+  - servicelb
+default-local-storage-path: "{{ local_storage_path }}"
+node-label:
+  - "gpu.nvidia.com/present=true"
+  - "node.homelab/role=controlplane"

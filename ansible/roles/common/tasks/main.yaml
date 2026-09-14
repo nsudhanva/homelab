@@ -1,0 +1,48 @@
+- name: Ensure required packages are installed
+  ansible.builtin.apt:
+    name:
+      - curl
+      - ca-certificates
+      - gnupg
+      - jq
+      - open-iscsi
+      - nfs-common
+      - iptables
+    state: present
+    update_cache: true
+
+- name: Load required kernel modules
+  community.general.modprobe:
+    name: "{{ item }}"
+    state: present
+  loop:
+    - overlay
+    - br_netfilter
+
+- name: Persist kernel modules across reboots
+  ansible.builtin.copy:
+    content: |
+      overlay
+      br_netfilter
+    dest: /etc/modules-load.d/k8s.conf
+    mode: "0644"
+
+- name: Configure sysctl settings for Kubernetes
+  ansible.posix.sysctl:
+    name: "{{ item.key }}"
+    value: "{{ item.value }}"
+    sysctl_set: true
+    state: present
+    reload: true
+  loop:
+    - { key: "net.bridge.bridge-nf-call-iptables", value: "1" }
+    - { key: "net.bridge.bridge-nf-call-ip6tables", value: "1" }
+    - { key: "net.ipv4.ip_forward", value: "1" }
+
+- name: Ensure k3s local storage directory exists
+  ansible.builtin.file:
+    path: "{{ local_storage_path }}"
+    state: directory
+    mode: "0777"
+    owner: root
+    group: root
