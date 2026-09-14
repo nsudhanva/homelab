@@ -37,3 +37,4 @@ terraform/**/.terraform/
 terraform/**/terraform.tfstate*
 terraform/**/terraform.tfvars
 terraform/**/terraform.tfvars.json
+vault-keys.json
