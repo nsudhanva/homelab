@@ -1,0 +1,39 @@
+name: Ansible Provision
+
+on:
+  push:
+    branches:
+      - master
+    paths:
+      - "ansible/**"
+      - ".github/workflows/provision.yaml"
+  workflow_dispatch:
+
+jobs:
+  ansible:
+    name: Run Ansible Playbook
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Connect to Tailscale
+        uses: tailscale/github-action@v3
+        with:
+          authkey: ${{ secrets.TAILSCALE_AUTHKEY }}
+
+      - name: Set up SSH key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          ssh-keyscan -H 100.66.139.118 >> ~/.ssh/known_hosts
+
+      - name: Install Ansible
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ansible
+
+      - name: Run Playbook
+        run: |
+          ansible-playbook -i ansible/inventory.yaml ansible/playbook.yaml

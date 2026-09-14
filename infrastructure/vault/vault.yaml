@@ -27,7 +27,7 @@ spec:
           dataStorage:
             enabled: true
             size: 20Gi
-            storageClass: longhorn
+            storageClass: local-path
           resources:
             requests:
               cpu: 100m

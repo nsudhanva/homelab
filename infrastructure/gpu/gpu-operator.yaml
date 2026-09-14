@@ -1,0 +1,34 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: gpu-operator
+  namespace: argocd
+spec:
+  project: default
+  source:
+    chart: gpu-operator
+    repoURL: https://helm.ngc.nvidia.com/nvidia
+    targetRevision: v26.7.0
+    helm:
+      values: |
+        driver:
+          enabled: false
+        toolkit:
+          enabled: false
+        validator:
+          plugin:
+            env:
+              - name: DISABLE_CUDA_VALIDATION
+                value: "true"
+        cdi:
+          enabled: true
+          default: true
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: gpu-operator
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

@@ -1,287 +1,108 @@
 ---
-title: Longhorn Distributed Storage for Kubernetes
-description: Configure Longhorn distributed block storage for Kubernetes. Set up storage prerequisites, manage PVCs, configure Backblaze B2 backups, and restore volumes from backup.
+title: Persistent Storage with K3s Local-Path Provisioner
+description: Configure and manage persistent storage in the homelab cluster using K3s native local-path provisioner on the dedicated SSD partition.
 keywords:
-  - longhorn kubernetes
-  - kubernetes distributed storage
-  - longhorn backup
-  - backblaze b2 kubernetes
+  - k3s storage
+  - local-path provisioner
   - kubernetes pvc
-  - longhorn volume restore
   - kubernetes storage class
-  - iscsi kubernetes
+  - bare metal storage
 sidebar:
   order: 7
 ---
 
-# Storage (Longhorn)
+# Persistent Storage (Local-Path Provisioner)
+
+The cluster utilizes K3s's built-in `local-path-provisioner` to dynamically allocate persistent storage directly onto the high-speed NVMe/SSD drive mounted at `/home/k3s-storage`.
 
 ```mermaid
 flowchart LR
-  App["App Pod"] --> PVC["PVC"]
-  PVC --> Longhorn["Longhorn volume"]
-  Longhorn --> Disk["Node disk (/home/longhorn)"]
+  App["App Pod"] --> PVC["PVC (storageClassName: local-path)"]
+  PVC --> PV["PV (HostPath)"]
+  PV --> Disk["Node SSD (/home/k3s-storage)"]
 ```
 
-## Detailed Volume Path
+## Storage Architecture
 
-```mermaid
-flowchart LR
-  Pod["Pod mounts /srv or /media"] --> Kubelet["kubelet"]
-  Kubelet --> CSI["Longhorn CSI driver"]
-  CSI --> Volume["Longhorn Volume"]
-  Volume --> Engine["Longhorn Engine"]
-  Engine --> Replica1["Replica A"]
-  Engine --> Replica2["Replica B"]
-  Engine --> Replica3["Replica C"]
-  Replica1 --> Disk1["Node disk"]
-  Replica2 --> Disk2["Node disk"]
-  Replica3 --> Disk3["Node disk"]
-```
-
-## Step 1: Storage prerequisites for Longhorn
-
-Talos ships the Longhorn requirements as system extensions in the installer image. No package installation runs on the nodes.
-
-### System extensions in the schematic
-
-`talos/schematic.yaml` carries the official extensions:
-
-- `siderolabs/iscsi-tools` for iSCSI volume operations
-- `siderolabs/util-linux-tools` for filesystem maintenance
-
-Confirm the extensions are present on every storage node:
+The local-path provisioner creates hostPath-backed persistent volumes on demand. Each PVC gets its own dedicated directory on the host under `/home/k3s-storage/` named after the PVC and its UUID:
 
 ```bash
-talosctl -n <node-ip> get extensions
+/home/k3s-storage/pvc-<uuid>_<namespace>_<pvc-name>/
 ```
 
-### Create the storage directory
+### Storage Configuration in K3s
 
-:::warning
-
-Longhorn needs a storage directory to exist. Create it on your preferred disk.
-
-:::
-
-The default path is `/var/lib/longhorn` to avoid user-specific home directories. Update the matching path in `bootstrap/templates/longhorn.yaml` if you use a different disk.
-
-### Move Longhorn to a larger disk
-
-If `/` is small and `/home` is on a larger disk, move Longhorn to `/home/longhorn`.
-
-Update the Longhorn data path in Git:
-
-Set the data path in `bootstrap/templates/longhorn.yaml` to `/home/longhorn`.
-
-Create the directory on the node, then delete the Longhorn app and namespace and reapply so the new path takes effect. If you already created PVCs on the old path, delete them and let ArgoCD recreate them. This is destructive if you have data.
-
-:::note
-
-Longhorn uses the `longhorn-critical` PriorityClass. This repo applies it from `infrastructure/longhorn/priorityclass.yaml`.
-
-:::
-
-### Add Node Label for Longhorn Disk
-
-:::note
-
-With `createDefaultDiskLabeledNodes: true`, Longhorn only creates disks on nodes with this label.
-
-:::
-
-:::note
-
-For single-node clusters, set `defaultReplicaCount: 1` in `bootstrap/templates/longhorn.yaml` to avoid degraded volumes.
-
-:::
-
-:::note
-
-If Longhorn volumes stay `detached` or PVCs remain Pending on small disks, reduce PVC sizes in Git so total requested storage fits on the node.
-
-:::
-
-```bash
-kubectl label node $(hostname) node.longhorn.io/create-default-disk=true --overwrite
-```
-
-## Step 2: Resize PVCs safely
-
-Longhorn supports volume expansion, but Kubernetes does not allow shrinking PVCs in place.
-
-### Expanding a PVC
-
-Update the PVC size in Git and let ArgoCD sync. Longhorn will expand the volume and filesystem.
-
-### Reducing a PVC size (migration required)
-
-To reduce a volume size without data loss, create a new PVC at the smaller size and copy data across.
-
-- Create a new PVC with the target size (for example `jellyfin-media-200`).
-- Create a temporary Pod that mounts both the old and new PVCs.
-- Copy data across and verify checksums.
-- Update the Deployment to use the new PVC.
-- Remove the old PVC once validated.
-
-Example copy pod (replace names and namespaces):
+The storage root path is defined in `/etc/rancher/k3s/config.yaml` during host provisioning via Ansible:
 
 ```yaml
-apiVersion: v1
-kind: Pod
-metadata:
-  name: pvc-migration
-  namespace: media
-spec:
-  restartPolicy: Never
-  containers:
-    - name: rsync
-      image: docker.io/library/alpine:3.24
-      command: ["/bin/sh", "-c"]
-      args:
-        - apk add --no-cache rsync && rsync -aHAX --info=progress2 /old/ /new/
-      volumeMounts:
-        - name: old
-          mountPath: /old
-        - name: new
-          mountPath: /new
-  volumes:
-    - name: old
-      persistentVolumeClaim:
-        claimName: jellyfin-media
-    - name: new
-      persistentVolumeClaim:
-        claimName: jellyfin-media-200
+default-local-storage-path: "/home/k3s-storage"
 ```
 
-## Step 3: Import media data into Longhorn
+## Step 1: Verify the StorageClass
 
-For large datasets, use `rsync` to copy from your workstation to the node, then move the data into the PVC mount. This avoids `kubectl cp` timeouts and supports resume.
-
-### Step 1: Copy into the PVC using the running Jellyfin pod
-
-This is the default approach and avoids touching the node filesystem directly.
+The `local-path` StorageClass is set as the default storage class on the cluster:
 
 ```bash
-POD=$(kubectl -n media get pod -l app=jellyfin -o jsonpath='{.items[0].metadata.name}')
-kubectl -n media exec "$POD" -- mkdir -p /media/Videos
-tar -C "/path/to" -cf - "Videos" | kubectl -n media exec -i "$POD" -- tar -C /media/Videos -xf -
+kubectl get storageclass
 ```
 
-After the copy, Jellyfin should see the media under `/media/Videos/`.
+Expected output:
 
-## Step 4: Configure Backblaze B2 backups
-
-Step 1: Create a Backblaze B2 bucket and an S3-compatible key.
-
-Step 2: Store the credentials in Vault.
-
-```bash
-kubectl -n vault exec -it vault-0 -- vault kv put kv/longhorn/b2 \
-  access_key_id="REPLACE_ME" \
-  application_key="REPLACE_ME" \
-  endpoint="REPLACE_ME"
+```text
+NAME                   PROVISIONER             RECLAIMPOLICY   VOLUMEBINDINGMODE      ALLOWVOLUMEEXPANSION   AGE
+local-path (default)   rancher.io/local-path   Delete          WaitForFirstConsumer   false                  1h
 ```
 
-Step 3: Ensure the Longhorn backup resources are in Git and let ArgoCD sync them.
+Because the volume binding mode is `WaitForFirstConsumer`, the persistent volume is only allocated once the pod using the claim is scheduled to a node.
 
-- `infrastructure/external-secrets/external-secret-longhorn-backblaze.yaml`
-- `infrastructure/longhorn/backup-target.yaml`
-- `infrastructure/longhorn/backup-target-credential-secret.yaml`
-- `infrastructure/longhorn/recurringjob-monthly-backup.yaml`
+## Step 2: Requesting Storage in Applications
 
-The recurring job targets the `default` group and keeps three monthly backups per volume.
-
-:::note
-
-The backup target URL must end with `/` (for example `s3://bucket@region/`).
-
-:::
-
-## Step 5: Restore from Backblaze B2
-
-Step 1: Reapply the repo so Longhorn, External Secrets, and the backup target settings are live.
-
-Step 2: Open the Longhorn UI and confirm the backup target shows your backups.
-
-Step 3: Restore a backup to a new volume from the Longhorn UI.
-
-Step 4: Create a PVC that restores from the backup (example).
+To request storage for an application, declare a standard `PersistentVolumeClaim` manifest referencing `local-path`:
 
 ```yaml
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: jellyfin-media-restore
-  namespace: media
-  annotations:
-    longhorn.io/volume-from-backup: "REPLACE_ME"
+  name: app-data
+  namespace: default
 spec:
   accessModes:
     - ReadWriteOnce
-  storageClassName: longhorn
+  storageClassName: local-path
   resources:
     requests:
-      storage: 100Gi
+      storage: 10Gi
 ```
 
-## Step 6: Reconnect restored volumes to workloads
+Attach the volume in the pod specification:
 
-Step 1: Find the backup URL.
+```yaml
+spec:
+  containers:
+    - name: app
+      image: alpine:latest
+      volumeMounts:
+        - name: data
+          mountPath: /data
+  volumes:
+    - name: data
+      persistentVolumeClaim:
+        claimName: app-data
+```
+
+## Step 3: Inspecting Volumes on the Host
+
+To inspect the underlying storage directly on the host machine:
 
 ```bash
-kubectl -n longhorn-system get backups.longhorn.io -o jsonpath='{range .items[*]}{.metadata.name}{" "}{.status.url}{"\n"}{end}'
+ssh sudhanva@100.66.139.118 "sudo ls -la /home/k3s-storage"
 ```
 
-Step 2: Restore and reconnect a Deployment (example: Jellyfin).
+Each persistent volume directory is owned by `root:root` with standard container permissions (`0777` or user-defined UID).
 
-- Create a new PVC in Git with `longhorn.io/volume-from-backup`.
-- Update the Deployment to mount the new PVC.
-- Let ArgoCD sync the app.
+## Step 4: Backup and Disaster Recovery
 
-Step 3: Restore and reconnect a StatefulSet (example: Vault).
+Because all volumes reside within `/home/k3s-storage`, creating backups is straightforward and non-disruptive:
 
-- Scale the StatefulSet to 0.
-- Delete the existing PVC (destructive).
-- Add a `longhorn.io/volume-from-backup` annotation to `server.dataStorage` in `infrastructure/vault/vault.yaml`.
-- Let ArgoCD sync so the PVC is recreated from the backup.
-- Scale the StatefulSet back to 1.
-- Unseal Vault and verify the service.
-
-:::warning
-
-Deleting a PVC permanently removes the on-disk data. Only do this when you are restoring from a known-good backup.
-
-:::
-
-## Step 7: Trigger a manual backup
-
-Step 1: Resolve the Longhorn volume name for the PVC.
-
-```bash
-VOL=$(kubectl -n media get pvc jellyfin-media -o jsonpath='{.spec.volumeName}')
-POD=$(kubectl -n longhorn-system get pods -l app=longhorn-manager -o jsonpath='{.items[0].metadata.name}')
-```
-
-Step 2: Create a snapshot.
-
-```bash
-SNAP=manual-backup-$(date +%Y%m%d%H%M%S)
-kubectl -n longhorn-system exec "$POD" -- /bin/sh -c \
-  "curl -s -X POST -H 'Content-Type: application/json' -d '{\"name\":\"$SNAP\"}' \
-  http://longhorn-backend.longhorn-system:9500/v1/volumes/$VOL?action=snapshotCreate"
-```
-
-Step 3: Start the backup from that snapshot.
-
-```bash
-kubectl -n longhorn-system exec "$POD" -- /bin/sh -c \
-  "curl -s -X POST -H 'Content-Type: application/json' -d '{\"name\":\"$SNAP\"}' \
-  http://longhorn-backend.longhorn-system:9500/v1/volumes/$VOL?action=snapshotBackup"
-```
-
-Step 4: Watch for completion.
-
-```bash
-kubectl -n longhorn-system get backups.longhorn.io
-```
+- **Restic / Borg**: Point your backup client directly to `/home/k3s-storage` to take deduplicated, encrypted snapshots.
+- **Rsync**: Mirror the directory to remote network-attached storage or an external drive.
