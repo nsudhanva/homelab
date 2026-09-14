@@ -1,72 +1,67 @@
 ---
-title: Build Talos Cluster from Scratch
-description: Complete guide to building a Talos Linux Kubernetes cluster from blank hardware. Covers the installer image, declarative machine configuration, cluster bootstrap, ArgoCD GitOps, and Vault secrets management.
+title: Build K3s Cluster from Scratch
+description: Complete guide to provisioning a bare-metal Kubernetes cluster on Ubuntu 26.04 using K3s, automated Ansible provisioning, ArgoCD GitOps, and Vault secrets management.
 keywords:
-  - talos linux from scratch
+  - k3s from scratch
   - build kubernetes cluster
-  - talos cluster setup
-  - talos machine configuration
+  - k3s cluster setup
+  - ansible k3s automation
   - argocd gitops bootstrap
-  - cilium cni setup
   - kubernetes homelab
-  - production kubernetes cluster
 sidebar:
   order: 1
 ---
 
 # From Scratch
 
-Use this guide to build a homelab cluster from blank hardware using this repo as the source of truth. One scripted flow takes a fresh laptop from installer USB to a running GitOps-managed cluster.
+Use this guide to provision a bare-metal Kubernetes cluster on Ubuntu 26.04 using Ansible and K3s with this repo as the single source of truth. One command takes a machine from base OS to a running GitOps-managed cluster.
 
-## Step 1: Prepare the workstation
+## Step 1: Configure Inventory
 
-Follow [Prerequisites](../tutorials/prerequisites.md) to install tooling and describe your machines in `talos/nodes.yaml`.
+Review the host target in `ansible/inventory/hosts.yaml` and cluster settings in `ansible/group_vars/all.yaml`. Ensure SSH access and sudo privileges are active on the target machine.
 
-## Step 2: Flash the installer image
-
-Get the installer ISO URL for the pinned schematic:
-
-```bash
-./scripts/talos-baremetal.sh iso-url
+```yaml
+all:
+  children:
+    k3s_cluster:
+      children:
+        k3s_servers:
+          hosts:
+            legion:
+              ansible_host: 100.66.139.118
+              ansible_user: sudhanva
+              ansible_ssh_common_args: "-o StrictHostKeyChecking=accept-new"
+              k3s_node_ip: "10.0.0.133"
+              k3s_external_ip: "100.66.139.118"
 ```
 
-Write the ISO to a USB stick and boot the laptop from it. The machine starts in maintenance mode and waits for configuration over the Talos API. There is nothing to install by hand.
+## Step 2: Run Automated Provisioning
 
-## Step 3: Bring up the whole cluster
-
-Run the bootstrap from the repo root:
+Run the automated provisioning script from the repository root:
 
 ```bash
-./scripts/talos-baremetal.sh up
+./scripts/provision.sh
 ```
 
-The script generates secrets on first run, renders machine configuration from `talos/nodes.yaml` and the patches in `talos/patches/`, applies it to every machine, bootstraps etcd, fetches kubeconfig, installs ArgoCD, and applies the root Application. Re-running it is safe: it converges instead of duplicating work.
+The script executes the Ansible playbook `ansible/site.yaml` which handles:
 
-If you need GPU support, add the worker to `talos/nodes.yaml` and follow [GPU Support](../how-to/gpu.md) after bootstrap.
+- Host prerequisites: Kernel modules (`overlay`, `br_netfilter`), sysctls, and storage path creation on the dedicated SSD (`/home/k3s-storage`).
+- NVIDIA integration: Installs NVIDIA Container Toolkit, generates CDI specifications, and configures containerd GPU runtime.
+- K3s Server: Installs K3s, disables Traefik and ServiceLB, attaches to Tailscale and LAN IPs, and starts the systemd service.
+- Kubeconfig: Fetches the cluster credentials and configures the Tailscale endpoint.
+- GitOps bootstrap: Deploys ArgoCD with server-side apply and applies the root Application (`bootstrap/root.yaml`).
 
-## Step 4: Configure Vault and External Secrets
+## Step 3: Validate the Cluster
 
-Follow [Vault](../how-to/vault.md) to initialize Vault and create the required secrets for ExternalDNS, cert-manager, and the Tailscale operator.
-
-## Step 5: Validate the cluster
+Confirm the node is ready and pods are running:
 
 ```bash
-talosctl -n <control-plane-ip> get members
-kubectl get nodes
+export KUBECONFIG="./k3s.kubeconfig"
+kubectl get nodes -o wide
 kubectl get pods -A
 kubectl get apps -n argocd
 ```
 
-## Local rehearsal
+## Step 4: Configure Vault and External Secrets
 
-Use this for a local dry run before touching hardware. It creates a Talos QEMU cluster with the same machine configuration shape:
-
-```bash
-./scripts/talos-local.sh up
-```
-
-Destroy the rehearsal cluster when done:
-
-```bash
-./scripts/talos-local.sh down
-```
+Follow [Vault](../how-to/vault.md) to initialize Vault and sync the required secrets for ExternalDNS, cert-manager, and the Tailscale operator.

@@ -1,8 +1,0 @@
-apiVersion: v1alpha1
-kind: KubeProxyConfig
-enabled: false
----
-apiVersion: v1alpha1
-kind: KubeNodeConfig
-taints:
-  $patch: delete

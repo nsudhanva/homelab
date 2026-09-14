@@ -1,0 +1,22 @@
+- name: Apply ArgoCD bootstrap manifests
+  delegate_to: localhost
+  become: false
+  ansible.builtin.command: >
+    kubectl --kubeconfig {{ kubeconfig_local_dest }} apply --server-side --force-conflicts -k {{ playbook_dir }}/../bootstrap/argocd
+  register: argocd_install
+  changed_when: "'created' in argocd_install.stdout or 'configured' in argocd_install.stdout"
+
+- name: Wait for ArgoCD server deployment to be available
+  delegate_to: localhost
+  become: false
+  ansible.builtin.command: >
+    kubectl --kubeconfig {{ kubeconfig_local_dest }} wait --for=condition=available --timeout=600s deployment/argocd-server -n argocd
+  changed_when: false
+
+- name: Apply root GitOps Application
+  delegate_to: localhost
+  become: false
+  ansible.builtin.command: >
+    kubectl --kubeconfig {{ kubeconfig_local_dest }} apply -f {{ playbook_dir }}/../bootstrap/root.yaml
+  register: root_app
+  changed_when: "'created' in root_app.stdout or 'configured' in root_app.stdout"

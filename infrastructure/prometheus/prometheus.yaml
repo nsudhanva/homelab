@@ -42,7 +42,7 @@ spec:
             storageSpec:
               volumeClaimTemplate:
                 spec:
-                  storageClassName: longhorn
+                  storageClassName: local-path
                   accessModes:
                   - ReadWriteOnce
                   resources:
@@ -60,7 +60,7 @@ spec:
             storage:
               volumeClaimTemplate:
                 spec:
-                  storageClassName: longhorn
+                  storageClassName: local-path
                   accessModes:
                   - ReadWriteOnce
                   resources:
@@ -100,7 +100,7 @@ spec:
           persistence:
             enabled: true
             type: pvc
-            storageClassName: longhorn
+            storageClassName: local-path
             accessModes:
             - ReadWriteOnce
             size: 2Gi
