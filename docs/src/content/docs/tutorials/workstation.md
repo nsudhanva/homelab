@@ -1,19 +1,19 @@
 ---
 title: Ubuntu Workstation Container
-description: Run an Ubuntu 26.04 workstation in Apple Containers with Docker and Kubernetes tooling preinstalled. Use it as a Linux-native shell for Talos and cluster workflows on any host.
+description: Run an Ubuntu 26.04 workstation in Apple Containers with Docker, Ansible, and Kubernetes tooling preinstalled for cluster administration.
 keywords:
   - ubuntu workstation container
   - apple containers ubuntu
   - linux dev container
   - docker in apple container
-  - talos workstation
+  - ansible workstation
 sidebar:
   order: 10
 ---
 
 # Ubuntu Workstation
 
-The workstation container gives you an Ubuntu 26.04 shell with Docker, talosctl, kubectl, and Helm on any host that runs Apple Containers. Use it whenever a workflow expects Linux tooling.
+The workstation container gives you an Ubuntu 26.04 shell with Docker, Ansible, kubectl, and Helm on any host that runs Apple Containers. Use it whenever a workflow expects Linux tooling.
 
 ## Step 1: Start the container
 
@@ -33,14 +33,14 @@ The script pulls `ubuntu:26.04`, allocates CPUs and memory, and prepares the con
 
 ```bash
 docker info --format '{{.ServerVersion}}'
-talosctl version --client
+ansible --version
 kubectl version --client
 helm version
 ```
 
 ## Step 4: Work on the repo from inside
 
-The repo root is mounted into the container, so edits apply directly to your checkout. Run Talos and cluster scripts from the mounted path.
+The repo root is mounted into the container, so edits apply directly to your checkout. Run Ansible playbooks and cluster scripts from the mounted path.
 
 ## Step 5: Stop the container
 

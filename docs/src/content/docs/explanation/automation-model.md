@@ -1,138 +1,93 @@
 ---
-title: GitOps Automation Model with Talos and ArgoCD
-description: Understand the automation architecture where declarative Talos machine configuration manages nodes and ArgoCD handles Kubernetes workloads through GitOps reconciliation.
+title: GitOps and Automation Model with Ansible and ArgoCD
+description: Comprehensive guide to the repository automation model combining Ansible host provisioning, ArgoCD declarative GitOps, System Upgrade Controller, and Image Updater.
 keywords:
   - gitops automation
-  - talos argocd
+  - ansible k3s
   - infrastructure as code
   - kubernetes automation
   - gitops workflow
   - argocd applicationset
-  - declarative infrastructure
+  - system upgrade controller
 sidebar:
   order: 1
 ---
 
 # Automation Model
 
-This repository is designed for maximum automation. Every change flows through one of two systems:
+This repository is built for 100% infrastructure-as-code and GitOps automation. Every layer of the homelab is declarative and automated through defined control loops:
 
-- **Talos machine configuration** for node operating system and Kubernetes bootstrap
-- **ArgoCD** for cluster and application manifests
-
-If a change does not fit into those two paths, treat it as an exception and document it.
+- **Ansible Automation (`ansible/`)**: Provisions bare-metal Ubuntu hosts, kernel parameters, container runtime with NVIDIA CDI, and initial K3s bootstrap.
+- **ArgoCD GitOps Engine (`bootstrap/`, `infrastructure/`, `apps/`)**: Continuously reconciles all cluster infrastructure and user applications against git HEAD.
+- **Rancher System Upgrade Controller (`infrastructure/system-upgrade-controller/`)**: Declaratively orchestrates rolling K3s upgrades via Kubernetes Custom Resources (`Plan`).
+- **ArgoCD Image Updater (`infrastructure/argocd-image-updater/`)**: Scans container registries and automatically commits updated image tags back to git.
 
 ```mermaid
 flowchart TB
-  subgraph Git["Git repository"]
-    TalosRepo["talos/"]
+  subgraph Git["Git repository (github.com/nsudhanva/homelab)"]
+    AnsibleRepo["ansible/"]
     InfraRepo["infrastructure/"]
     AppsRepo["apps/"]
+    BootRepo["bootstrap/"]
   end
 
-  subgraph Hosts["Talos nodes"]
-    OS["Immutable Talos Linux"]
-    API["Machine API"]
+  subgraph HostLayer["Bare-Metal Host: legion (Ubuntu 26.04)"]
+    Ansible["Ansible Engine (SSH)"]
+    Host["Kernel + NVIDIA CDI + Containerd"]
+    K3s["K3s Server Daemon"]
   end
 
-  subgraph Cluster["Kubernetes cluster"]
+  subgraph GitOpsLayer["Kubernetes GitOps & Control Plane"]
     Argo["ArgoCD"]
-    AppSets["ApplicationSets"]
-    Workloads["Apps + infrastructure"]
+    AppSets["ApplicationSets (infra & apps)"]
+    SUC["System Upgrade Controller"]
+    ImgUpdater["ArgoCD Image Updater"]
   end
 
-  TalosRepo -->|"talosctl apply"| OS
-  OS --> API
-  API --> Argo
+  subgraph Workloads["Active Platform & Workloads"]
+    Infra["Envoy Gateway, Vault, Monitoring, Tailscale"]
+    Apps["Jellyfin, Filebrowser, Homer, Headlamp, Docs"]
+  end
+
+  AnsibleRepo --> Ansible
+  Ansible --> Host
+  Host --> K3s
+  BootRepo --> Argo
   InfraRepo --> AppSets
   AppsRepo --> AppSets
   Argo --> AppSets
-  AppSets --> Workloads
+  AppSets --> Infra
+  AppSets --> Apps
+  SUC -->|Automated node drains & upgrades| K3s
+  ImgUpdater -->|Git commit write-back| AppsRepo
 ```
 
-## Detailed Automation Flow
+## Layer 1: Host and Control Plane Automation (Ansible)
 
-```mermaid
-flowchart LR
-  subgraph Repo["homelab repo"]
-    Nodes["talos/nodes.yaml"]
-    Versions["talos/versions.yaml"]
-    Schematic["talos/schematic.yaml"]
-    Patches["talos/patches/*"]
-    Bootstrap["bootstrap/root.yaml"]
-    AppSetInfra["bootstrap/templates/infra-appset.yaml"]
-    AppSetApps["bootstrap/templates/apps-appset.yaml"]
-    InfraDir["infrastructure/*"]
-    AppsDir["apps/*"]
-  end
+Host configuration is completely reproducible via Ansible roles:
 
-  subgraph Hosts["Hardware nodes"]
-    Image["Installer image"]
-    MachineConfig["Machine configuration"]
-  end
+- `ansible/roles/common/`: Installs OS packages, loads kernel modules (`overlay`, `br_netfilter`), tunes sysctl networking, and prepares `/home/k3s-storage`.
+- `ansible/roles/nvidia/`: Configures the NVIDIA Container Toolkit and generates CDI specifications (`/etc/cdi/nvidia.yaml`).
+- `ansible/roles/k3s_server/`: Deploys K3s server with configured flags (`default-runtime: "nvidia"`, `default-local-storage-path: "/home/k3s-storage"`).
+- `ansible/roles/argocd/`: Bootstraps the ArgoCD control plane and applies `bootstrap/root.yaml`.
 
-  subgraph ControlPlane["Control plane"]
-    TalosApply["talosctl apply"]
-    TalosBootstrap["talosctl bootstrap"]
-    ArgoCD["ArgoCD"]
-  end
+## Layer 2: In-Cluster Declarative GitOps (ArgoCD)
 
-  subgraph Cluster["Cluster objects"]
-    AppSet1["ApplicationSet: infra"]
-    AppSet2["ApplicationSet: apps"]
-    InfraApps["infra-* Applications"]
-    UserApps["app-* Applications"]
-    HelmCharts["Helm chart releases"]
-    RawManifests["Raw manifests"]
-  end
+ArgoCD acts as the primary reconcile loop. The single root application `bootstrap/root.yaml` creates two core ApplicationSets:
 
-  Nodes --> MachineConfig
-  Versions --> MachineConfig
-  Schematic --> Image
-  Patches --> MachineConfig
-  Image --> TalosApply
-  MachineConfig --> TalosApply
-  TalosApply --> TalosBootstrap
-  TalosBootstrap --> ArgoCD
-  Bootstrap --> ArgoCD
-  ArgoCD --> AppSet1
-  ArgoCD --> AppSet2
-  AppSetInfra --> InfraApps
-  AppSetApps --> UserApps
-  InfraDir --> InfraApps
-  AppsDir --> UserApps
-  InfraApps --> HelmCharts
-  InfraApps --> RawManifests
-  UserApps --> RawManifests
+- `infra-appset.yaml`: Watches every directory in `infrastructure/*` and generates individual `infra-<component>` applications.
+- `apps-appset.yaml`: Discovers application definitions in `apps/*/app.yaml` and provisions workloads into their target namespaces.
+
+Both ApplicationSets enforce automated pruning and self-healing:
+
+```yaml
+syncPolicy:
+  automated:
+    prune: true
+    selfHeal: true
 ```
 
-## What Talos owns
+## Layer 3: Automated Lifecycle & Image Updates
 
-Talos machine configuration is the source of truth for nodes:
-
-- Immutable OS image with storage system extensions
-- Kubernetes version and control plane settings
-- CNI and kube-proxy delegation to Cilium
-- Node labels for workload placement
-
-## What ArgoCD owns
-
-ArgoCD is the source of truth for everything that runs inside the cluster:
-
-- Infrastructure from `infrastructure/`
-- Applications from `apps/`
-- Helm-based components like Longhorn
-
-## Automation guardrails
-
-:::note
-
-Avoid running `kubectl apply` against app or infrastructure directories. Push to Git and let ArgoCD reconcile.
-
-:::
-
-:::note
-
-Avoid manual changes on nodes. Update the Talos inputs and re-apply through the API.
-
-:::
+- **System Upgrade Controller**: Eliminates manual node patching. When a new K3s version tag is set in `k3s-upgrade-plan.yaml`, the controller orchestrates node cordon, drain, in-place binary upgrade, and uncordon.
+- **Image Updater**: Tracks upstream semantic tags or digests, testing container registries on a schedule and pushing Git commits back to `master`.

@@ -26,8 +26,8 @@ Multi-node bare-metal Kubernetes cluster on Ubuntu 26.04 LTS using K3s, managed 
 ## Don'ts
 
 - Do not add inline comments to YAML files
-- Do make changes as your please as this repository is directly connected to the cluster
-- Do not use numeric bullet points in any documentation .md files. Use something like "Step 1", "Step 2", etc. instead. Use headers or docusaurus provided syntax features
+- Do not make unapproved changes as this repository is directly connected to the cluster
+- Do not use numeric bullet points in any documentation .md files. Use something like "Step 1", "Step 2", etc. instead. Use headers or Astro Starlight provided syntax features
 - Do not use `helm install` manually; let ArgoCD handle Helm charts
 - Do not hardcode versions without researching the latest stable release
 - Do not modify `/etc/fstab` or system files without explicit user approval
@@ -62,13 +62,13 @@ kubectl get pods -A
 
 ### Adding a New App
 
-1. Create `apps/{app-name}/` directory
-2. Add Kubernetes manifests (Deployment, Service, Ingress, PVC)
-3. Push to Git; ArgoCD auto-deploys via ApplicationSet
+- Step 1: Create `apps/{app-name}/` directory
+- Step 2: Add Kubernetes manifests (Deployment, Service, HTTPRoute, PVC, app.yaml, kustomization.yaml)
+- Step 3: Push to Git; ArgoCD auto-deploys via ApplicationSet
 
 ### Adding Infrastructure
 
-1. Create `infrastructure/{component}/` directory
-2. For Helm charts: add `Chart.yaml` + `values.yaml`
-3. For raw manifests: add YAML files directly
-4. Push to Git; ArgoCD auto-deploys via ApplicationSet
+- Step 1: Create `infrastructure/{component}/` directory
+- Step 2: For Helm charts: add `Chart.yaml` + `values.yaml`
+- Step 3: For raw manifests: add YAML files directly
+- Step 4: Push to Git; ArgoCD auto-deploys via ApplicationSet

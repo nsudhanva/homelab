@@ -165,9 +165,9 @@ kubectl -n vault exec -it vault-0 -- vault kv put kv/headlamp/oidc \
 
 ### Step 4: Configure Kubernetes API server OIDC
 
-Add the OIDC settings to the API server configuration in the control plane machine configuration. Use the `client_id` returned by Vault.
+Add the OIDC settings to the API server configuration. Use the `client_id` returned by Vault.
 
-Apply the change with `./scripts/talos-baremetal.sh apply` and the API server rolls with the new flags. This is a control plane change and should go through the machine configuration in Git.
+In K3s, configure `--kube-apiserver-arg` in `/etc/rancher/k3s/config.yaml` or through Ansible variables (`ansible/group_vars/all.yaml`), then restart the `k3s` service on the control plane.
 
 ### Step 4a: Ensure cluster DNS resolves Vault
 
@@ -249,14 +249,13 @@ kubectl -n headlamp annotate externalsecret headlamp-oidc \
 
 ### OIDC not enabled on the API server
 
-Headlamp OIDC tokens only work if the API server has OIDC flags set. Check the running flags:
+Headlamp OIDC tokens only work if the API server has OIDC flags set. Check the running flags on node `legion`:
 
 ```bash
-kubectl -n kube-system get pods -l component=kube-apiserver \
-  -o jsonpath='{.items[0].spec.containers[0].command}' | tr ' ' '\n' | rg oidc
+ssh sudhanva@100.66.139.118 "ps aux | grep k3s | grep oidc"
 ```
 
-If no OIDC flags are present, add them to the control plane machine configuration and re-apply as described in Step 4.
+If no OIDC flags are present, add the `kube-apiserver-arg` entries to `/etc/rancher/k3s/config.yaml` and restart K3s.
 
 ## Repo Wiring For OIDC
 

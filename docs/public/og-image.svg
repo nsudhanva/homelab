@@ -8,6 +8,6 @@
   <rect width="1200" height="630" fill="url(#bg)"/>
   <text x="600" y="250" font-family="system-ui, -apple-system, sans-serif" font-size="64" font-weight="bold" fill="#ffffff" text-anchor="middle">Bare Metal Kubernetes</text>
   <text x="600" y="330" font-family="system-ui, -apple-system, sans-serif" font-size="64" font-weight="bold" fill="#ffffff" text-anchor="middle">Homelab</text>
-  <text x="600" y="420" font-family="system-ui, -apple-system, sans-serif" font-size="28" fill="#94a3b8" text-anchor="middle">GitOps-first cluster on Ubuntu 24.04 with kubeadm, ArgoCD, and Cilium</text>
+  <text x="600" y="420" font-family="system-ui, -apple-system, sans-serif" font-size="28" fill="#94a3b8" text-anchor="middle">GitOps-first cluster on Ubuntu 26.04 with K3s, ArgoCD, and Envoy Gateway</text>
   <text x="600" y="550" font-family="system-ui, -apple-system, sans-serif" font-size="24" fill="#64748b" text-anchor="middle">docs.sudhanva.me</text>
 </svg>

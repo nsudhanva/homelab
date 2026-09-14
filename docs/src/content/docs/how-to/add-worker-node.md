@@ -1,55 +1,69 @@
 ---
-title: Add Worker Node to Talos Cluster
-description: Add a new Talos Linux worker machine to an existing cluster. Covers inventory, machine configuration, GPU workers, and Longhorn storage labels.
+title: Add Worker Node to K3s Cluster
+description: Add a new bare-metal Ubuntu worker node to an existing K3s cluster. Covers inventory configuration, Ansible agent provisioning, GPU labels, and cluster join verification.
 keywords:
-  - add talos worker node
-  - talos cluster scaling
-  - gpu worker node
-  - longhorn node label
-  - talos worker configuration
+  - add k3s worker node
+  - k3s cluster scaling
+  - bare metal worker node
+  - ansible k3s agent
+  - kubernetes node expansion
 sidebar:
   order: 2
 ---
 
 # Add a Worker Node
 
-Use this guide when you want to add a worker to an existing control plane without rebuilding the cluster.
+Use this guide to add a bare-metal Ubuntu worker node to an existing K3s cluster.
 
-## Step 1: Update the machine inventory
+## Step 1: Prepare the target machine
 
-Add the new machine under `workers` in `talos/nodes.yaml` with its hostname, LAN IP, and install disk. For GPU workers, note the GPU type alongside the entry so the follow-up steps apply.
+Install Ubuntu 26.04 LTS on the new machine. Configure a static LAN IP address, verify network connectivity to the control-plane node `legion`, and install your SSH public key for passwordless sudo access.
 
-## Step 2: Confirm shared settings
+## Step 2: Retrieve the cluster node token
 
-Check the pinned versions in `talos/versions.yaml` and the role patches in `talos/patches/worker.yaml`. Worker machines receive the `node.homelab/role=worker` label for workload placement.
-
-If you change the Longhorn storage layout, also update the Longhorn bootstrap template in `bootstrap/templates/longhorn.yaml`.
-
-## Step 3: Boot the machine into maintenance mode
-
-Flash the installer USB from [Boot Media](../tutorials/system-prep.md) and boot the new machine. It waits for configuration over the Talos API.
-
-## Step 4: Render and apply the worker configuration
+Log in to the control plane node `legion` to retrieve the K3s node join token:
 
 ```bash
-./scripts/talos-baremetal.sh gen-config
-./scripts/talos-baremetal.sh apply --role worker --limit <worker-hostname>
+ssh sudhanva@100.66.139.118 "sudo cat /var/lib/rancher/k3s/server/node-token"
 ```
 
-The worker installs Talos, reboots, and joins the cluster with the shared PKI.
+Store this token securely for agent registration.
 
-## Step 5: Enable Longhorn disk creation on the node
+## Step 3: Update the Ansible inventory
 
-If Longhorn is in use, label the node so it gets a default disk:
+Add the new machine to `ansible/inventory/hosts.yaml` under the `k3s_agents` group:
+
+```yaml
+k3s_agents:
+  hosts:
+    worker-01:
+      ansible_host: 10.0.0.140
+      ansible_user: sudhanva
+      k3s_node_ip: "10.0.0.140"
+```
+
+If the node features an NVIDIA GPU, add the node label `gpu.nvidia.com/present=true` under node variables so the GPU Operator can manage it.
+
+## Step 4: Provision the agent with Ansible
+
+Run the Ansible playbook targeting the new worker node:
 
 ```bash
-kubectl label node <worker-node-name> node.longhorn.io/create-default-disk=true --overwrite
+ansible-playbook -i ansible/inventory/hosts.yaml ansible/site.yaml --limit worker-01
 ```
 
-## Step 6: Validate the node
+Ansible installs system prerequisites, configures kernel modules and sysctl parameters, installs the K3s agent binary, and registers the node with the control plane.
+
+## Step 5: Validate node registration
+
+Verify from your workstation that the new node has joined and reports `Ready`:
 
 ```bash
 kubectl get nodes -o wide
 ```
 
-If the node stays `NotReady`, verify the Cilium agents are healthy in `kube-system` and that the worker can reach the API server endpoint.
+Check that the Flannel CNI pod is running on the new node:
+
+```bash
+kubectl get pods -n kube-system -o wide
+```

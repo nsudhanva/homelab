@@ -9,8 +9,8 @@ export default defineConfig({
     sitemap(),
     mermaid(),
     starlight({
-      title: 'Talos Linux Homelab',
-      description: 'Talos Linux Kubernetes cluster on immutable infrastructure, managed via GitOps with ArgoCD, Cilium CNI, and declarative talosctl automation.',
+      title: 'Bare-Metal K3s Homelab',
+      description: 'Bare-metal K3s Kubernetes cluster on Ubuntu 26.04 LTS (node legion), managed via GitOps with ArgoCD, Envoy Gateway, and Ansible automation.',
       social: [
         { icon: 'github', label: 'GitHub', href: 'https://github.com/nsudhanva/homelab' },
       ],
@@ -22,7 +22,7 @@ export default defineConfig({
           tag: 'meta',
           attrs: {
             name: 'keywords',
-            content: 'talos linux kubernetes, talos cluster, ubuntu 26.04 containers, argocd gitops, cilium cni, homelab kubernetes, longhorn storage',
+            content: 'k3s homelab, bare metal kubernetes, ubuntu 26.04 containers, argocd gitops, envoy gateway, tailscale gateway api, local-path storage, nvidia gpu cdi',
           },
         },
         {
@@ -76,7 +76,7 @@ export default defineConfig({
             '@context': 'https://schema.org',
             '@type': 'TechArticle',
             'headline': 'Bare Metal Kubernetes Homelab',
-            'description': 'Complete guide to building a Talos Linux Kubernetes cluster with declarative machine configuration, ArgoCD, and Cilium.',
+            'description': 'Complete guide to building a bare-metal K3s Kubernetes cluster on Ubuntu 26.04 LTS with ArgoCD GitOps, Envoy Gateway, and Ansible.',
             'author': {
               '@type': 'Person',
               'name': 'Sudhanva Narayana',
@@ -96,7 +96,6 @@ export default defineConfig({
           items: [
             { label: 'Overview', slug: 'index' },
             { label: 'From Scratch', slug: 'how-to/from-scratch' },
-            { label: 'Local Development', slug: 'tutorials/local-talos-cluster' },
           ],
         },
         {
@@ -109,16 +108,15 @@ export default defineConfig({
               collapsed: true,
               items: [
                 { label: 'Prerequisites', slug: 'tutorials/prerequisites' },
-                { label: 'Boot Media', slug: 'tutorials/system-prep' },
-                { label: 'Machine Configuration', slug: 'tutorials/containerd' },
+                { label: 'Host Preparation', slug: 'tutorials/system-prep' },
+                { label: 'Ansible Configuration', slug: 'tutorials/containerd' },
               ],
             },
             {
               label: 'Cluster Bootstrap',
               collapsed: true,
               items: [
-                { label: 'Talos Bootstrap', slug: 'tutorials/kubernetes' },
-                { label: 'Cilium CNI', slug: 'tutorials/cilium' },
+                { label: 'K3s Bootstrap', slug: 'tutorials/kubernetes' },
                 { label: 'ArgoCD GitOps', slug: 'tutorials/argocd' },
                 { label: 'Add Workers', slug: 'tutorials/join-workers' },
               ],
@@ -144,7 +142,7 @@ export default defineConfig({
               label: 'Storage & Secrets',
               collapsed: true,
               items: [
-                { label: 'Longhorn Storage', slug: 'how-to/storage' },
+                { label: 'Local-Path Storage', slug: 'how-to/storage' },
                 { label: 'Vault Secrets', slug: 'how-to/vault' },
               ],
             },
@@ -190,7 +188,7 @@ export default defineConfig({
           items: [
             { label: 'Automation Model', slug: 'explanation/automation-model' },
             { label: 'Gateway & Networking', slug: 'explanation/gateway-networking' },
-            { label: 'Local vs Bare Metal', slug: 'explanation/local-vs-baremetal' },
+            { label: 'Storage Architecture', slug: 'explanation/storage-architecture' },
           ],
         },
         {

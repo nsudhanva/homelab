@@ -65,7 +65,7 @@ Step 4: Scale back to one replica and re-enable auto-sync.
 
 Step 5: Re-run the test alert in Step 4.
 
-If deleting `cache.db` returns an I/O error, detach the Longhorn volume and run `fsck` on the node before starting the pod again.
+If deleting `cache.db` returns an I/O error, inspect the local-path storage directory under `/home/k3s-storage/` on node `legion` and verify filesystem integrity.
 
 ## Notes
 

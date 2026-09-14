@@ -1,168 +1,160 @@
 ---
-title: Talos Linux Homelab - Complete Setup Guide
-description: Build a production-ready Talos Linux Kubernetes cluster using immutable infrastructure, ArgoCD GitOps, Cilium CNI, Tailscale ingress, Vault secrets, and Longhorn storage. Complete guide from scratch with local development workflow on Ubuntu 26.04.
+title: Bare-Metal K3s Homelab - Setup Guide & Architecture
+description: Self-hosted bare-metal Kubernetes cluster on Ubuntu 26.04 LTS (node legion) powered by K3s v1.36+, Flannel CNI, ArgoCD GitOps, Envoy Gateway, Tailscale Gateway API, Vault secrets, native local-path storage, and NVIDIA GPU CDI.
 keywords:
-  - talos linux homelab
-  - kubernetes homelab
-  - talos kubernetes
+  - k3s homelab
+  - bare metal kubernetes
+  - ubuntu 26.04 kubernetes
   - argocd gitops
-  - cilium cni
-  - tailscale kubernetes
-  - longhorn storage
-  - vault secrets kubernetes
-  - ubuntu 26.04 containers
-  - kubernetes from scratch
-  - production kubernetes cluster
+  - envoy gateway
+  - tailscale gateway api
+  - local-path provisioner
+  - vault external secrets
+  - nvidia gpu cdi
+  - system upgrade controller
 template: splash
 hero:
-  tagline: Production-ready Kubernetes on immutable Talos Linux with GitOps automation. Go from a blank laptop to a fully operational cluster with one scripted workflow.
+  tagline: Production-ready bare-metal Kubernetes on Ubuntu 26.04 LTS (node legion) powered by K3s and GitOps automation. Automated with Ansible and reconciled by ArgoCD.
   actions:
     - text: Start from Scratch
       link: /how-to/from-scratch/
       icon: right-arrow
       variant: primary
-    - text: Local Development
-      link: /tutorials/local-talos-cluster/
-      icon: external
     - text: Architecture
-      link: /explanation/automation-model/
+      link: /explanation/gateway-networking/
+      icon: external
+    - text: Secrets Management
+      link: /how-to/vault/
 ---
 
 import { Aside, Card, CardGrid, LinkCard, Tabs, TabItem } from '@astrojs/starlight/components';
 
 ## What You'll Build
 
-A production-ready Kubernetes cluster with these services accessible via HTTPS on your Tailnet:
+A self-hosted bare-metal Kubernetes cluster on node `legion` with services accessible over Tailscale via Envoy Gateway:
 
-| Service | URL | Purpose |
-|---------|-----|---------|
-| ArgoCD | `argocd.yourdomain.com` | GitOps dashboard |
-| Grafana | `grafana.yourdomain.com` | Metrics and dashboards |
-| Prometheus | `prometheus.yourdomain.com` | Metrics collection |
-| Alertmanager | `alertmanager.yourdomain.com` | Alert routing |
-| Vault | `vault.yourdomain.com` | Secrets management |
-| Longhorn | `longhorn.yourdomain.com` | Storage dashboard |
-| Headlamp | `headlamp.yourdomain.com` | Kubernetes UI |
-| Hubble | `hubble.yourdomain.com` | Network observability |
-| Home | `home.yourdomain.com` | Dashboard with links |
+| Service | Hostname | Port | Purpose |
+|---------|----------|------|---------|
+| ArgoCD | `argocd.sudhanva.me` | 443 | GitOps control plane UI |
+| Vault | `vault.sudhanva.me` | 443 | Centralized secret management |
+| Grafana | `grafana.sudhanva.me` | 443 | Metrics and dashboards |
+| Prometheus | `prometheus.sudhanva.me` | 443 | Metrics collection |
+| Alertmanager | `alertmanager.sudhanva.me` | 443 | Alert routing |
+| Headlamp | `headlamp.sudhanva.me` | 443 | Kubernetes cluster management UI |
+| Home | `home.sudhanva.me` | 443 | Dashboard with service links |
+| Jellyfin | `jellyfin.sudhanva.me` | 443 | Media streaming with NVIDIA GTX 1050 Ti transcoding |
+| Filebrowser | `filebrowser.sudhanva.me` | 443 | File manager for persistent media volumes |
+| Docs | `docs.sudhanva.me` | 443 | Cluster documentation site |
 
 ## Architecture
 
 ```mermaid
 flowchart TB
-    subgraph Workstation["Ubuntu 26.04 Workstation"]
-        Talosctl["talosctl + Talos configs"]
-        Git["Git Push"]
+    subgraph Workstation["Operator Workstation"]
+        Ansible["Ansible Playbooks"]
+        Git["Git Push (homelab repo)"]
     end
 
-    subgraph Nodes["Talos Linux Nodes"]
-        CP["Control Plane"]
-        W1["Worker 1"]
-        W2["Worker N"]
+    subgraph Node["Bare-Metal Host: legion (Ubuntu 26.04 LTS)"]
+        K3s["K3s Server v1.36+ (Flannel CNI)"]
+        GPU["NVIDIA Driver + Container Toolkit (CDI)"]
+        Disk["Dedicated SSD (/home/k3s-storage)"]
     end
 
-    subgraph Cluster["Kubernetes Cluster"]
-        ArgoCD["ArgoCD"]
-        Cilium["Cilium CNI"]
-        Envoy["Envoy Gateway"]
-        Vault["Vault"]
-        Longhorn["Longhorn"]
-        Apps["Your Apps"]
+    subgraph Cluster["Kubernetes Control Plane & Infrastructure"]
+        ArgoCD["ArgoCD + ApplicationSets"]
+        Envoy["Envoy Gateway (gatewayClassName: tailscale)"]
+        Vault["HashiCorp Vault + External Secrets"]
+        Storage["Native Local-Path Provisioner"]
+        GPUOp["NVIDIA GPU Operator (CDI enabled)"]
+        SUC["System Upgrade Controller"]
+        Apps["User Applications"]
     end
 
-    subgraph External["External Services"]
-        TS["Tailscale"]
-        CF["Cloudflare DNS"]
-        B2["Backblaze Backup"]
+    subgraph External["External Network & Identity"]
+        TS["Tailscale Gateway API"]
+        CF["Cloudflare DNS (ExternalDNS)"]
     end
 
-    Talosctl -->|declarative API| Nodes
-    Git -->|GitOps| ArgoCD
+    Ansible -->|provision.sh & SSH| Node
+    Git -->|GitOps reconciliation| ArgoCD
     ArgoCD -->|deploys| Cluster
-    Envoy -->|ingress via| TS
-    CF -->|DNS records| TS
-    Longhorn -->|backups| B2
+    TS -->|LoadBalancer & Ingress 443| Envoy
+    CF -->|Split-horizon DNS| TS
+    Disk -->|hostPath volumes| Storage
+    Storage --> Apps
+    GPUOp --> Apps
+    Envoy --> Apps
 ```
 
 ## Prerequisites
 
 <Tabs>
   <TabItem label="Hardware">
-    - **1+ x86_64 or ARM64 machines** (laptop, mini PC, or VM)
-    - Minimum 2 CPU, 4GB RAM, 20GB disk per node
-    - Nodes can reach each other over the network
-    - USB stick for the Talos installer image
-    - Optional: GPU for transcoding (Intel iGPU or NVIDIA)
+    - Bare-metal machine (node `legion`) with Ubuntu 26.04 LTS installed
+    - Minimum 4 CPU cores, 16GB RAM
+    - Dedicated SSD/NVMe mounted at `/home/k3s-storage`
+    - NVIDIA GeForce GTX 1050 Ti GPU for hardware acceleration
+    - Stable LAN network connection and static IP
   </TabItem>
   <TabItem label="Accounts">
-    - **Tailscale** - Free account at [tailscale.com](https://tailscale.com)
-    - **Cloudflare** - Domain with API token for DNS management
-    - **Backblaze B2** (optional) - For Longhorn backup storage
-    - **GitHub** - For ArgoCD Image Updater write-back
+    - Tailscale account with Tailnet OAuth client configured for the Kubernetes operator
+    - Cloudflare account with managed domain (`sudhanva.me`) and API token for ExternalDNS & cert-manager
+    - GitHub personal repository with access token for ArgoCD Image Updater
   </TabItem>
   <TabItem label="Workstation">
-    - macOS with Apple Containers, or Ubuntu 26.04
-    - talosctl, kubectl, Helm installed
-    - No SSH needed: Talos is managed over a mutually-authenticated API
+    - macOS or Linux workstation
+    - Ansible, OpenSSH, and `kubectl` installed
+    - SSH key access to target node (`sudhanva@legion`) with passwordless sudo
   </TabItem>
 </Tabs>
-
-## Choose Your Path
-
-<CardGrid>
-  <LinkCard
-    title="Bare Metal Setup"
-    href="/how-to/from-scratch/"
-    description="Production deployment on real hardware. Full guide from blank nodes to running cluster."
-  />
-  <LinkCard
-    title="Local Development"
-    href="/tutorials/local-talos-cluster/"
-    description="Test everything locally with a Talos QEMU cluster before touching hardware."
-  />
-</CardGrid>
 
 ## What's Included
 
 <CardGrid stagger>
   <Card title="GitOps with ArgoCD" icon="github">
-    Declarative cluster management. Push to Git, ArgoCD deploys.
+    Declarative cluster reconciliation via ApplicationSets. Changes pushed to Git deploy automatically.
   </Card>
-  <Card title="Talos Linux" icon="rocket">
-    Immutable, minimal OS managed by API. No SSH, no drift, atomic upgrades.
+  <Card title="Ubuntu 26.04 & K3s v1.36+" icon="rocket">
+    Lightweight, production-grade Kubernetes with Flannel CNI and zero-touch Ansible provisioning.
   </Card>
-  <Card title="Cilium CNI" icon="seti:graphql">
-    eBPF networking with Gateway API via Envoy Gateway.
+  <Card title="Envoy Gateway & Tailscale" icon="setting">
+    Kubernetes Gateway API with Tailscale operator integration, split-horizon DNS, and automated Let's Encrypt TLS.
   </Card>
-  <Card title="Tailscale Ingress" icon="setting">
-    Secure ingress with split-horizon DNS and automatic certificates.
+  <Card title="Vault & External Secrets" icon="approve-check">
+    Centralized HashiCorp Vault secrets injected as native Kubernetes secrets via External Secrets Operator.
   </Card>
-  <Card title="Vault Secrets" icon="approve-check">
-    HashiCorp Vault with External Secrets Operator. No secrets in Git.
+  <Card title="Local-Path SSD Storage" icon="document">
+    Dynamic hostPath storage on dedicated SSD at `/home/k3s-storage` with zero distributed storage overhead.
   </Card>
-  <Card title="Longhorn Storage" icon="document">
-    Distributed block storage with S3 backups.
+  <Card title="NVIDIA GPU Acceleration" icon="laptop">
+    Hardware acceleration with NVIDIA GPU Operator and Container Device Interface (CDI) for GTX 1050 Ti.
+  </Card>
+  <Card title="Automated Upgrades" icon="refresh">
+    Zero-downtime, declarative K3s upgrades orchestrated by Rancher System Upgrade Controller.
   </Card>
 </CardGrid>
 
 ## Component Stack
 
-| Layer | Components |
-|-------|------------|
-| **Bootstrap** | Talos Linux, Image Factory schematics |
-| **Networking** | Cilium, Envoy Gateway, Tailscale Operator |
-| **GitOps** | ArgoCD, ApplicationSets, Image Updater |
-| **Secrets** | Vault, External Secrets Operator |
-| **Storage** | Longhorn, Backblaze B2 backup |
-| **DNS/TLS** | ExternalDNS, cert-manager, Cloudflare |
-| **Monitoring** | Prometheus, Grafana, Alertmanager, ntfy |
-| **Security** | Kubescape scanning |
+| Layer | Components | Configuration Location |
+|-------|------------|------------------------|
+| Host & OS | Ubuntu 26.04 LTS (node `legion`) | `ansible/inventory/hosts.yaml` |
+| Kubernetes | K3s `v1.36+` (`v1.36.4+k3s1`), Flannel CNI | `ansible/group_vars/all.yaml` |
+| Storage | Native Local-Path Provisioner (`/home/k3s-storage`) | `ansible/roles/k3s_server/` |
+| Ingress & Networking | Envoy Gateway `v1.9.1`, Tailscale Operator, ExternalDNS, CoreDNS | `infrastructure/gateway/`, `infrastructure/envoy-gateway/` |
+| GitOps | ArgoCD `v3.5.2`, ApplicationSets, Image Updater | `bootstrap/`, `infrastructure/argocd-image-updater/` |
+| Secrets | HashiCorp Vault `0.34.1`, External Secrets Operator `2.10.0` | `infrastructure/vault/`, `infrastructure/external-secrets/` |
+| Hardware / GPU | NVIDIA GPU Operator `v26.7.0` (CDI enabled) | `infrastructure/gpu/` |
+| Lifecycle | System Upgrade Controller (Plan `k3s-server`) | `infrastructure/system-upgrade-controller/` |
+| Monitoring | kube-prometheus-stack, Grafana, Alertmanager, ntfy | `infrastructure/prometheus/`, `infrastructure/ntfy/` |
+| Security | Kubescape Operator | `infrastructure/kubescape/` |
 
 ## Quick Links
 
 <CardGrid>
-  <LinkCard title="Tutorials" href="/tutorials/" description="Step-by-step cluster setup guides" />
-  <LinkCard title="How-To Guides" href="/how-to/from-scratch/" description="Task-specific procedures" />
-  <LinkCard title="Architecture" href="/explanation/automation-model/" description="GitOps automation model" />
-  <LinkCard title="GitHub" href="https://github.com/nsudhanva/homelab" description="Source code" />
+  <LinkCard title="From Scratch" href="/how-to/from-scratch/" description="Complete bare-metal bring-up procedure" />
+  <LinkCard title="Gateway & Ingress" href="/explanation/gateway-networking/" description="Envoy Gateway and Tailscale integration" />
+  <LinkCard title="Persistent Storage" href="/how-to/storage/" description="Local-Path storage architecture on /home/k3s-storage" />
+  <LinkCard title="Version Matrix" href="/reference/versions/" description="Pinned versions for all cluster components" />
 </CardGrid>

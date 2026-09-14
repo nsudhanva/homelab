@@ -1,59 +1,76 @@
 ---
-title: Bootstrap the Talos Cluster
-description: Apply machine configuration to Talos nodes, bootstrap etcd, fetch kubeconfig, and verify the Kubernetes API on Talos Linux v1.14 with Kubernetes v1.37.
+title: K3s Cluster Provisioning and Bootstrap
+description: Execute the Ansible provisioning playbook to install K3s, Flannel CNI, Local-Path storage, NVIDIA CDI, and bootstrap ArgoCD.
 keywords:
-  - talos bootstrap
-  - talos apply-config
-  - talos etcd bootstrap
-  - talos kubeconfig
-  - talos maintenance mode
-  - bare metal kubernetes cluster
+  - k3s bootstrap
+  - ansible k3s installation
+  - bare metal kubernetes
+  - local-path storage
+  - nvidia cdi k3s
 sidebar:
   order: 5
 ---
 
-# Talos Bootstrap
+# K3s Bootstrap
 
-Bootstrapping turns configured Talos machines into a Kubernetes cluster. The whole flow runs from the workstation through the Talos API.
+This tutorial guides you through provisioning the bare-metal K3s control plane and bootstrapping the GitOps control loop.
 
-## Step 1: Apply machine configuration
+## Step 1: Run the Ansible provisioning playbook
 
-Every machine boots its installer image into maintenance mode first. Push each rendered configuration from `talos/_out/`:
+Execute the unified provisioning script or run `ansible-playbook` directly from your workstation:
 
 ```bash
-./scripts/talos-baremetal.sh apply
+./scripts/provision.sh
 ```
 
-Machines install Talos to their install disks and reboot into the configured system. Wait until every machine answers over the API:
+Or execute the playbook manually:
 
 ```bash
-talosctl -n <machine-ip> get members
+ansible-playbook -i ansible/inventory/hosts.yaml ansible/site.yaml
 ```
 
-## Step 2: Bootstrap etcd
+The playbook executes the complete lifecycle automatically:
 
-Bootstrap once against the first control plane:
+- **OS & Kernel Tuning**: Loads `overlay` and `br_netfilter`, configures bridge iptables sysctl flags, and ensures `/home/k3s-storage` exists.
+- **NVIDIA GPU Integration**: Adds NVIDIA repositories, installs `nvidia-container-toolkit`, and generates OCI CDI specifications at `/etc/cdi/nvidia.yaml`.
+- **K3s Server Installation**: Installs K3s `v1.36.4+k3s1`, applies `/etc/rancher/k3s/config.yaml` with Flannel CNI and local-path storage, and registers the systemd service.
+- **Kubeconfig Retrieval**: Copies the cluster kubeconfig to your workstation as `k3s.kubeconfig` and configures the external Tailscale endpoint.
+- **ArgoCD Bootstrap**: Applies the ArgoCD manifests via server-side apply and reconciles the root application `bootstrap/root.yaml`.
+
+## Step 2: Validate the control plane node
+
+Verify that the control plane node reports `Ready`:
 
 ```bash
-./scripts/talos-baremetal.sh bootstrap
-```
-
-Etcd forms, the Kubernetes control plane components start, and worker nodes join with the PKI from the shared secrets bundle.
-
-## Step 3: Fetch kubeconfig
-
-```bash
-./scripts/talos-baremetal.sh kubeconfig
-export KUBECONFIG=$PWD/talos/_out/kubeconfig
+export KUBECONFIG=$PWD/k3s.kubeconfig
 kubectl get nodes -o wide
 ```
 
-Nodes report Ready once Cilium is deployed by ArgoCD in [ArgoCD and GitOps](./argocd.md). Pods stay pending until the CNI arrives, which is expected on a fresh bootstrap.
+Expected output:
 
-## Step 4: Confirm API OIDC for Headlamp
+```text
+NAME     STATUS   ROLES           AGE   VERSION
+legion   Ready    control-plane   10m   v1.36.4+k3s1
+```
 
-If Headlamp should offer OIDC logins, set the API server OIDC arguments before the first bootstrap by extending the control plane patch with an API server configuration document. Apply the change with `./scripts/talos-baremetal.sh apply` and the API server rolls with the new flags. See [Headlamp](../how-to/headlamp.md) for the Vault provider values.
+## Step 3: Verify GPU allocatable resource
 
-## Step 5: Add workers later
+Confirm that the NVIDIA GPU Operator or local device plugin registered the GPU:
 
-Follow [Add Workers](./join-workers.md) after the control plane is healthy.
+```bash
+kubectl get node legion -o jsonpath='{.status.allocatable.nvidia\.com/gpu}'
+```
+
+Expected output is `1`.
+
+## Step 4: Verify core system pods
+
+Confirm that all system pods in `kube-system` and `argocd` are running:
+
+```bash
+kubectl get pods -A
+```
+
+## Step 5: Next steps
+
+Proceed to [ArgoCD and GitOps](./argocd.md) to understand how the GitOps engine manages infrastructure components and user workloads.

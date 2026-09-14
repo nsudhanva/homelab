@@ -12,11 +12,6 @@
 .DS_Store
 *.log
 
-# Talos
-talos/_out/
-talos/.rehearsal/
-talos/secrets.yaml
-
 # Node / Docusaurus
 node_modules/
 docs/node_modules/

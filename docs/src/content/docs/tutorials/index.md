@@ -1,12 +1,11 @@
 ---
-title: Talos Cluster Setup Tutorials
-description: Step-by-step tutorials for building a Talos Linux Kubernetes cluster with declarative machine configuration, Cilium, and ArgoCD.
+title: K3s Cluster Setup Tutorials
+description: Step-by-step tutorials for building a bare-metal K3s Kubernetes cluster on Ubuntu 26.04 LTS using Ansible automation and ArgoCD GitOps.
 keywords:
-  - talos tutorial
-  - talos linux setup
-  - kubernetes tutorial
-  - declarative infrastructure
-  - cilium cni installation
+  - k3s tutorial
+  - bare metal kubernetes setup
+  - ubuntu 26.04 kubernetes
+  - ansible automation k3s
   - argocd gitops setup
 sidebar:
   order: 1
@@ -14,33 +13,27 @@ sidebar:
 
 # Cluster Setup Tutorials
 
-These tutorials walk you through building a production-ready Kubernetes cluster from scratch. The scripted path below is the recommended flow. Every step is also documented individually for manual control.
+These tutorials guide you step-by-step through setting up a bare-metal K3s Kubernetes cluster on node `legion` (Ubuntu 26.04 LTS) from scratch.
 
 ```mermaid
 flowchart TD
-  Start["Start here"] --> Prereq["Prerequisites"]
-  Prereq --> Media["Boot Media"]
-  Media --> MachineConfig["Machine Configuration"]
-  MachineConfig --> Bootstrap["Talos Bootstrap"]
-  Bootstrap --> Cilium["Cilium CNI"]
-  Cilium --> Argo["ArgoCD + GitOps bootstrap"]
-  Argo --> Sync["Apps and infrastructure sync"]
+  Start["Start here"] --> Prereq["Step 1: Prerequisites"]
+  Prereq --> Prep["Step 2: Host Preparation"]
+  Prep --> Config["Step 3: Ansible Configuration"]
+  Config --> Provision["Step 4: K3s Provisioning"]
+  Provision --> Argo["Step 5: ArgoCD GitOps Bootstrap"]
+  Argo --> Workers["Step 6: Expand Worker Nodes"]
 ```
 
-## Scripted Path (Recommended)
+## Tutorial Roadmap
 
-Use this path for reproducible, version-controlled cluster builds.
+Follow these tutorials in sequence to build a reproducible, production-ready homelab cluster:
 
-| Step | Tutorial | What You Get |
-|------|----------|--------------|
-| 1 | [Prerequisites](./prerequisites.md) | Workstation tools, machine inventory |
-| 2 | [Boot Media](./system-prep.md) | Installer image on USB |
-| 3 | [Machine Configuration](./containerd.md) | Rendered Talos configs |
-| 4 | [Talos Bootstrap](./kubernetes.md) | Running Kubernetes cluster |
-| 5 | [Cilium CNI](./cilium.md) | eBPF networking, kube-proxy replacement |
-| 6 | [ArgoCD and GitOps](./argocd.md) | GitOps continuous deployment |
-| 7 | [Add Workers](./join-workers.md) | Multi-node cluster |
-
-## Local Development
-
-Want to test the setup before touching hardware? Use the [Local Talos Cluster](./local-talos-cluster.md) tutorial to rehearse with QEMU virtual machines on your workstation.
+| Stage | Tutorial | Deliverable |
+|---|---|---|
+| Step 1 | [Prerequisites](./prerequisites.md) | Workstation dependencies and access credentials |
+| Step 2 | [Host Preparation](./system-prep.md) | Ubuntu 26.04 installation, networking, and storage mount |
+| Step 3 | [Ansible Configuration](./containerd.md) | Inventory variables and host role definitions |
+| Step 4 | [K3s Bootstrap](./kubernetes.md) | Live K3s cluster with Flannel CNI and NVIDIA CDI |
+| Step 5 | [ArgoCD and GitOps](./argocd.md) | Declarative infrastructure and app synchronization |
+| Step 6 | [Add Workers](./join-workers.md) | Multi-node scaling with K3s agent nodes |
