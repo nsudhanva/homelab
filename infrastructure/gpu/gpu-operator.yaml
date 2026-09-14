@@ -20,6 +20,10 @@ spec:
             env:
               - name: DISABLE_CUDA_VALIDATION
                 value: "true"
+          cuda:
+            env:
+              - name: WITH_WORKLOAD
+                value: "false"
         cdi:
           enabled: true
           default: true
