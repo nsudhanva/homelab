@@ -15,8 +15,12 @@ spec:
   ignoreDifferences:
     - group: admissionregistration.k8s.io
       kind: ValidatingAdmissionPolicy
+      jsonPointers:
+        - /metadata/annotations
     - group: admissionregistration.k8s.io
       kind: ValidatingAdmissionPolicyBinding
+      jsonPointers:
+        - /metadata/annotations
   syncPolicy:
     automated:
       prune: true
