@@ -22,7 +22,7 @@ spec:
     - namePattern: app-headlamp
       images:
         - alias: headlamp
-          imageName: ghcr.io/headlamp-k8s/headlamp:v0.39.0
+          imageName: ghcr.io/headlamp-k8s/headlamp:v0.45.0
           commonUpdateSettings:
             updateStrategy: semver
             allowTags: regexp:^v[0-9]+\.[0-9]+\.[0-9]+$
@@ -30,7 +30,7 @@ spec:
     - namePattern: app-homer
       images:
         - alias: homer
-          imageName: b4bz/homer:v25.11.1
+          imageName: b4bz/homer:v26.08.3
           commonUpdateSettings:
             updateStrategy: semver
             allowTags: regexp:^v[0-9]+\.[0-9]+\.[0-9]+$
@@ -38,9 +38,10 @@ spec:
     - namePattern: app-filebrowser
       images:
         - alias: filebrowser
-          imageName: docker.io/filebrowser/filebrowser:latest
+          imageName: docker.io/filebrowser/filebrowser:v2.32.0
           commonUpdateSettings:
-            updateStrategy: digest
+            updateStrategy: semver
+            allowTags: regexp:^v[0-9]+\.[0-9]+\.[0-9]+$
             pullSecret: secret:argocd/argocd-image-updater-registries#dockerhub
     - namePattern: app-jellyfin
       images:

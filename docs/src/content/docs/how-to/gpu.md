@@ -36,7 +36,7 @@ Host dependencies are automated via the Ansible playbook (`ansible/roles/nvidia/
 
 ## Step 1: GPU Operator Deployment via GitOps
 
-The NVIDIA GPU Operator is declared as an ArgoCD Application in `infrastructure/gpu/gpu-operator.yaml`. It is preconfigured for host-installed drivers:
+The NVIDIA GPU Operator (Helm chart `v26.7.0`) is declared as an ArgoCD Application in `infrastructure/gpu/gpu-operator.yaml`. It is preconfigured for host-installed drivers:
 
 - `driver.enabled: false` (uses the host's existing 580 series kernel module).
 - `toolkit.enabled: false` (leverages the pre-configured host containerd runtime).

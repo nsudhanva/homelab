@@ -1,40 +1,53 @@
 ---
-title: Add Worker Nodes to Talos Cluster
-description: Add Talos Linux worker machines to an existing cluster by extending the inventory, rendering worker configuration, and applying it over the Talos API.
+title: Add Worker Nodes to K3s Cluster
+description: Add bare-metal Ubuntu worker nodes to an existing K3s cluster using Ansible automation.
 keywords:
-  - talos worker node
+  - k3s worker node
   - add node to cluster
-  - talos apply-config
+  - ansible k3s agent
   - kubernetes cluster expansion
-  - multi-node talos
+  - multi-node k3s
 sidebar:
   order: 8
 ---
 
 # Add Workers
 
-Use this after the control plane is bootstrapped to add worker machines to the cluster. If you are adding brand new hardware, start with [Add a Worker Node](../how-to/add-worker-node.md).
+Use this tutorial after the control plane is operational to scale out your cluster with additional worker nodes.
 
-## Step 1: Render the worker configuration
+## Step 1: Add the node to inventory
 
-Workers share the cluster secrets and the common patches, plus the worker role patch:
+Update `ansible/inventory/hosts.yaml` with the new worker node details under `k3s_agents`:
 
-```bash
-./scripts/talos-baremetal.sh gen-config
+```yaml
+k3s_agents:
+  hosts:
+    worker-01:
+      ansible_host: 10.0.0.140
+      ansible_user: sudhanva
+      k3s_node_ip: "10.0.0.140"
 ```
 
-## Step 2: Apply configuration to each worker
+## Step 2: Run the agent provisioning role
 
-Push the rendered worker file to machines waiting in maintenance mode:
+Execute Ansible against the target worker:
 
 ```bash
-./scripts/talos-baremetal.sh apply --role worker
+ansible-playbook -i ansible/inventory/hosts.yaml ansible/site.yaml --limit worker-01
 ```
 
-Workers install Talos, reboot, and join the cluster with the shared PKI. No join tokens are created or copied by hand.
+The playbook installs prerequisites, joins the K3s cluster using the cluster join token, and starts the `k3s-agent` service.
 
-## Step 3: Verify the nodes
+## Step 3: Verify the new node
+
+Confirm that the new worker reports `Ready` and displays its role:
 
 ```bash
 kubectl get nodes -o wide
+```
+
+Check that the Flannel CNI and workload pods are scheduling onto the worker:
+
+```bash
+kubectl get pods -A -o wide
 ```

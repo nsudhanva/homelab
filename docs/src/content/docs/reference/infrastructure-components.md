@@ -4,8 +4,8 @@ description: Complete reference of all infrastructure components managed by Argo
 keywords:
   - kubernetes infrastructure components
   - argocd applications
-  - cilium configuration
-  - longhorn storage
+  - flannel cni
+  - local-path storage
   - vault secrets
   - prometheus monitoring
   - cert-manager
@@ -41,7 +41,7 @@ flowchart TB
     ExtDNS["external-dns"]
     ExtSecrets["external-secrets"]
     Vault["vault"]
-    Longhorn["longhorn-system"]
+    Storage["local-path-storage"]
     Monitoring["monitoring"]
   end
 
@@ -57,13 +57,13 @@ flowchart TB
   InfraApps --> ExtDNS
   InfraApps --> ExtSecrets
   InfraApps --> Vault
-  InfraApps --> Longhorn
+  InfraApps --> Storage
   InfraApps --> Monitoring
 ```
 
 ## ArgoCD ApplicationSets
 
-ApplicationSets watch `apps/` and `infrastructure/` and create ArgoCD Applications automatically.
+ApplicationSets watch `apps/` and `infrastructure/` and create ArgoCD Applications automatically:
 
 - `bootstrap/templates/infra-appset.yaml`
 - `bootstrap/templates/apps-appset.yaml`
@@ -74,29 +74,27 @@ ApplicationSets watch `apps/` and `infrastructure/` and create ArgoCD Applicatio
 | --- | --- | --- | --- |
 | ArgoCD | `bootstrap/argocd/` | GitOps controller install | Apply once before bootstrap |
 | ArgoCD Image Updater | `infrastructure/argocd-image-updater/` | Automated image updates | Uses ImageUpdater CRD and Vault creds |
-| Cilium | `infrastructure/cilium/` | CNI and kube-proxy replacement | Install once manually, ArgoCD manages after bootstrap; creates `cilium-secrets` namespace |
 | Gateway API CRDs | `infrastructure/gateway-api-crds/gateway-api-crds.yaml` | Installs Gateway API CRDs | ArgoCD pulls upstream `config/crd` |
 | Envoy Gateway CRDs | `infrastructure/envoy-gateway-crds/` | Installs Envoy Gateway CRDs | Kustomize pulls upstream CRD bundle |
 | Envoy Gateway | `infrastructure/envoy-gateway/envoy-gateway.yaml` | Ingress controller for Gateway API | Helm chart with pinned image tag |
 | Tailscale Operator | `infrastructure/tailscale/tailscale-operator.yaml` | Tailnet integration and LoadBalancer proxy pods | Requires `operator-oauth` Secret |
 | cert-manager | `infrastructure/cert-manager/cert-manager.yaml` | TLS certificate management | Used with DNS-01 |
-| ClusterIssuer | `infrastructure/cert-manager-issuer/cluster-issuer.yaml` | ACME issuer for wildcard certs | Update email and Cloudflare token |
+| ClusterIssuer | `infrastructure/cert-manager-issuer/cluster-issuer.yaml` | ACME issuer for wildcard certs | Cloudflare API token solver |
 | ExternalDNS | `infrastructure/external-dns/external-dns.yaml` | Creates DNS records for HTTPRoutes | Watches `external-dns.alpha.kubernetes.io/expose=true` |
 | CoreDNS override | `infrastructure/coredns/configmap.yaml` | Rewrites `*.sudhanva.me` to `gateway-internal` | Split-horizon DNS for in-cluster access |
 | Tailscale DNS | `infrastructure/tailscale-dns/` | Split-horizon DNS for tailnet clients | CoreDNS exposed via Tailscale LoadBalancer |
 | External Secrets CRDs | `infrastructure/external-secrets-crds/` | Installs External Secrets CRDs | Kustomize pulls upstream CRD bundle |
-| External Secrets Operator | `infrastructure/external-secrets/external-secrets.yaml` | Syncs secrets from Vault | ClusterSecretStore and ExternalSecret manifests live in `infrastructure/external-secrets/` |
+| External Secrets Operator | `infrastructure/external-secrets/external-secrets.yaml` | Syncs secrets from Vault | ClusterSecretStore and ExternalSecret manifests |
 | Gateway | `infrastructure/gateway/` | GatewayClass, Gateway, EnvoyProxy, cert, internal-service | Uses Tailscale `gatewayClassName` |
-| Longhorn | `bootstrap/templates/longhorn.yaml` | Storage via Longhorn | Helm chart in ArgoCD |
-| Vault | `infrastructure/vault/vault.yaml` | Central secrets storage | PVC on Longhorn |
-| Hubble UI | `infrastructure/hubble-ui/httproute.yaml` | Exposes Hubble UI over Tailscale | HTTPRoute to `hubble-ui` service in `kube-system` |
+| Vault | `infrastructure/vault/vault.yaml` | Central secrets storage | PVC on local-path |
 | Prometheus Operator CRDs | `infrastructure/prometheus-operator-crds/` | Prometheus CRDs | Installed before the monitoring stack |
 | Prometheus stack | `infrastructure/prometheus/` | Metrics, alerting, dashboards | Grafana, Prometheus, Alertmanager, and HTTPRoutes |
 | Kubescape | `infrastructure/kubescape/` | Cluster security scanning | Operator runs in offline mode |
 | ntfy | `infrastructure/ntfy/` | Push notification service | Tailscale HTTPRoute with persistent cache |
 | ntfy alerts | `infrastructure/ntfy-alerts/` | Alertmanager webhook adapter and alert rules | Routes alert rules into ntfy |
 | Metrics Server | `infrastructure/metrics-server/` | CPU and memory metrics API | Required for Headlamp usage graphs |
-| GPU plugins | `infrastructure/gpu/` | Intel and NVIDIA device plugins | Optional, based on node hardware |
+| GPU Operator | `infrastructure/gpu/` | NVIDIA GPU Operator | Helm chart v26.7.0 with Container Device Interface (CDI) |
+| System Upgrade Controller | `infrastructure/system-upgrade-controller/` | Automated K3s cluster upgrades | Managed via system-upgrade-controller Plans |
 
 ## Gateway and route definitions
 
@@ -108,11 +106,7 @@ Gateway resources are split by purpose:
 - `infrastructure/gateway/certificate.yaml`
 - `infrastructure/gateway/internal-service.yaml`
 - `infrastructure/gateway/argocd-httproute.yaml`
-- `infrastructure/gateway/longhorn-httproute.yaml`
 - `infrastructure/gateway/vault-httproute.yaml`
-- `infrastructure/hubble-ui/httproute.yaml`
 - `infrastructure/prometheus/httproute-grafana.yaml`
 - `infrastructure/prometheus/httproute-prometheus.yaml`
 - `infrastructure/prometheus/httproute-alertmanager.yaml`
-
-HTTPRoutes for apps live alongside each app under `apps/*/httproute.yaml`.

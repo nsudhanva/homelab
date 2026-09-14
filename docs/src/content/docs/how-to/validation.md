@@ -46,7 +46,7 @@ If a route is not accepting, describe it to see conditions:
 kubectl describe httproute <name> -n <namespace>
 ```
 
-Hubble UI is available at `https://hubble.sudhanva.me` from a Tailnet client once the HTTPRoute syncs.
+Homer dashboard is available at `https://home.sudhanva.me` from a Tailnet client once the HTTPRoute syncs.
 
 ### Validate split-horizon DNS
 

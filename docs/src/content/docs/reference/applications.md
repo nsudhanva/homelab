@@ -33,7 +33,7 @@ The `media` namespace is shared by Jellyfin and Filebrowser so they can use the 
 | Deployment | `apps/jellyfin/deployment.yaml` | Requests NVIDIA GPUs by default (`nvidia.com/gpu`) |
 | Service | `apps/jellyfin/service.yaml` | ClusterIP on port 80 |
 | HTTPRoute | `apps/jellyfin/httproute.yaml` | `jellyfin.sudhanva.me` |
-| PVCs | `apps/jellyfin/pvc-config.yaml` and `apps/jellyfin/pvc-media.yaml` | Longhorn storage |
+| PVCs | `apps/jellyfin/pvc-config.yaml` and `apps/jellyfin/pvc-media.yaml` | Local-path SSD storage |
 
 ## Filebrowser
 
@@ -60,7 +60,7 @@ The `media` namespace is shared by Jellyfin and Filebrowser so they can use the 
 | --- | --- | --- |
 | Namespace | `apps/headlamp/namespace.yaml` | Dedicated `headlamp` namespace |
 | App config | `apps/headlamp/app.yaml` | ArgoCD app definition |
-| Deployment | `apps/headlamp/deployment.yaml` | `ghcr.io/headlamp-k8s/headlamp:v0.39.0` |
+| Deployment | `apps/headlamp/deployment.yaml` | `ghcr.io/headlamp-k8s/headlamp:v0.45.0` |
 | Service | `apps/headlamp/service.yaml` | ClusterIP on port 80 |
 | HTTPRoute | `apps/headlamp/httproute.yaml` | `headlamp.sudhanva.me` |
 | ServiceMonitor | `apps/headlamp/servicemonitor.yaml` | Prometheus scrape config |
@@ -72,6 +72,6 @@ The `media` namespace is shared by Jellyfin and Filebrowser so they can use the 
 | Namespace | `apps/homer/namespace.yaml` | Dedicated `homer` namespace |
 | App config | `apps/homer/app.yaml` | ArgoCD app definition |
 | ConfigMap | `apps/homer/configmap.yaml` | Homer `config.yml` |
-| Deployment | `apps/homer/deployment.yaml` | Uses `b4bz/homer:v25.11.1` |
+| Deployment | `apps/homer/deployment.yaml` | Uses `b4bz/homer:v26.08.3` |
 | Service | `apps/homer/service.yaml` | ClusterIP on port 80 |
 | HTTPRoute | `apps/homer/httproute.yaml` | `home.sudhanva.me` |

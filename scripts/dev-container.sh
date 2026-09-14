@@ -46,14 +46,12 @@ cmd_up() {
             -v "$REPO_ROOT:/homelab" \
             "$DEV_IMAGE" sleep infinity
     fi
-    log_info "Provisioning tooling (Docker, talosctl, kubectl)..."
+    log_info "Provisioning tooling (Docker, Ansible, kubectl)..."
     container exec "$DEV_NAME" bash -c "mount -o remount,rw /proc/sys 2>/dev/null; echo 1 > /proc/sys/net/ipv4/ip_forward"
-    container exec "$DEV_NAME" bash -c "command -v docker >/dev/null || (apt-get update && apt-get install -y docker.io curl ca-certificates)"
-    TALOS_VERSION="$(grep -E '^talosctl:' "$REPO_ROOT/talos/versions.yaml" | awk '{print $2}')"
-    K8S_VERSION="$(grep -E '^kubernetes:' "$REPO_ROOT/talos/versions.yaml" | awk '{print $2}')"
+    container exec "$DEV_NAME" bash -c "command -v docker >/dev/null || (apt-get update && apt-get install -y docker.io curl ca-certificates ansible)"
+    K8S_VERSION="1.36.4"
     ARCH="$(container exec "$DEV_NAME" uname -m | tr -d '[:space:]')"
     [[ "$ARCH" == "aarch64" ]] && TARCH="arm64" || TARCH="amd64"
-    container exec "$DEV_NAME" bash -c "command -v talosctl >/dev/null || (curl -sSL -o /usr/local/bin/talosctl https://github.com/siderolabs/talos/releases/download/${TALOS_VERSION}/talosctl-linux-${TARCH} && chmod +x /usr/local/bin/talosctl)"
     container exec "$DEV_NAME" bash -c "command -v kubectl >/dev/null || (curl -sSL -o /usr/local/bin/kubectl https://dl.k8s.io/release/v${K8S_VERSION}/bin/linux/${TARCH}/kubectl && chmod +x /usr/local/bin/kubectl)"
     container exec "$DEV_NAME" bash -c "pgrep dockerd >/dev/null || (nohup dockerd > /tmp/dockerd.log 2>&1 & sleep 8)"
     container exec "$DEV_NAME" docker info --format 'Docker {{.ServerVersion}} ready'

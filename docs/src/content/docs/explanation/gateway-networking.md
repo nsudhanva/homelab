@@ -6,9 +6,7 @@ keywords:
   - envoy gateway
   - tailscale kubernetes networking
   - kubernetes tls termination
-  - httproute kubernetes
   - kubernetes ingress architecture
-  - cilium socket lb
   - split horizon dns kubernetes
 sidebar:
   order: 2
@@ -149,7 +147,7 @@ cert-manager obtains wildcard TLS certificates from Let's Encrypt using DNS-01 c
 
 These resources have to align or HTTPS routing through Tailscale will break:
 
-- Cilium runs with `kubeProxyReplacement=true` and `socketLB.hostNamespaceOnly=true` so the Tailscale proxy DNAT works.
+- Flannel CNI preserves iptables DNAT from Tailscale proxy pods directly to the target ClusterIP.
 - EnvoyProxy exposes a `LoadBalancer` service with `loadBalancerClass: tailscale` and a stable Tailscale hostname.
 - Gateway uses `gatewayClassName: tailscale` and points to the wildcard certificate.
 - ExternalDNS targets the Tailscale hostname via the Gateway annotation.
@@ -223,12 +221,6 @@ kubectl get pods -n envoy-gateway
 kubectl get httproute -A
 ```
 
-For the Cilium requirement:
-
-```bash
-cilium config view | grep -E "bpf-lb-sock|kubeProxyReplacement"
-```
-
 ## Traffic Flow
 
 When you visit `https://docs.sudhanva.me` from your Mac:
@@ -239,7 +231,7 @@ When you visit `https://docs.sudhanva.me` from your Mac:
 
 - **DNAT**: iptables rules in the proxy pod rewrite the destination from `TAILSCALE_GATEWAY_IP:443` to the ClusterIP `10.x.x.x:443`.
 
-- **Cilium Processing**: With `socketLB.hostNamespaceOnly=true`, Cilium processes the DNAT'd packet at the tc layer (not socket layer) and routes it to the Envoy pod.
+- **Packet Routing**: Flannel CNI routes the DNAT'd packet across the cluster network to the Envoy Gateway pod.
 
 - **TLS Termination**: Envoy reads the SNI (`docs.sudhanva.me`) and selects the filter chain with the wildcard certificate.
 
@@ -258,12 +250,6 @@ When you visit `https://docs.sudhanva.me` from your Mac:
 | HTTPRoutes | `apps/*/httproute.yaml` | Per-app routing rules |
 
 ## Common Issues
-
-### Cilium Socket LB Interference
-
-When Cilium runs in kube-proxy replacement mode, its socket-level LoadBalancer intercepts connections in pod namespaces before iptables rules apply. This breaks the Tailscale proxy's DNAT.
-
-**Fix:** Set `socketLB.hostNamespaceOnly=true` in Cilium. See [Cilium CNI](../tutorials/cilium.md).
 
 ### Missing SNI
 

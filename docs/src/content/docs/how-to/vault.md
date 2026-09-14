@@ -43,12 +43,11 @@ Push the repo changes and let ArgoCD sync `infrastructure/vault/` and `infrastru
 Confirm the pods are ready:
 
 ```bash
-kubectl -n longhorn-system get pods
 kubectl -n vault get pods
 kubectl -n external-secrets get pods
 ```
 
-If Vault is Pending, confirm the PVC is bound (Vault depends on Longhorn storage):
+If Vault is Pending, confirm the PVC is bound to local-path storage:
 
 ```bash
 kubectl -n vault get pvc
@@ -109,17 +108,6 @@ kubectl -n vault exec -it vault-0 -- vault kv put kv/filebrowser/auth \
   password_hash="REPLACE_ME"
 ```
 
-### Step 4b: Longhorn backup credentials
-
-Store the Backblaze B2 credentials for Longhorn:
-
-```bash
-kubectl -n vault exec -it vault-0 -- vault kv put kv/longhorn/b2 \
-  access_key_id="REPLACE_ME" \
-  application_key="REPLACE_ME" \
-  endpoint="REPLACE_ME"
-```
-
 ## ArgoCD Image Updater credentials
 
 Store registry and Git credentials for ArgoCD Image Updater:
@@ -171,7 +159,7 @@ kubectl -n vault exec -it vault-0 -- vault kv put kv/my-app/api token="REPLACE_M
 Example ExternalSecret (save as a standalone YAML file like `apps/my-app/externalsecret.yaml` or `infrastructure/<component>/external-secret.yaml`):
 
 ```yaml
-apiVersion: external-secrets.io/v1beta1
+apiVersion: external-secrets.io/v1
 kind: ExternalSecret
 metadata:
   name: my-app-api
@@ -187,7 +175,7 @@ spec:
   data:
   - secretKey: token
     remoteRef:
-      key: kv/my-app/api
+      key: my-app/api
       property: token
 ```
 

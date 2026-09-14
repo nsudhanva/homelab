@@ -1,14 +1,12 @@
 ---
 title: Bootstrap ArgoCD for GitOps Deployment
-description: Install ArgoCD and configure ApplicationSets for automated GitOps deployment of infrastructure and applications from a Git repository.
+description: Manage Kubernetes infrastructure and applications continuously with ArgoCD ApplicationSets and GitOps automation.
 keywords:
   - argocd installation
   - gitops kubernetes
   - argocd applicationset
   - argocd bootstrap
   - kubernetes gitops
-  - argocd application
-  - infrastructure as code
   - argocd auto sync
 sidebar:
   order: 7
@@ -16,98 +14,65 @@ sidebar:
 
 # ArgoCD and GitOps
 
-Run these steps after the cluster is bootstrapped and Cilium is syncing.
+ArgoCD is the primary declarative engine for the cluster. It continuously synchronizes Kubernetes resources against the master branch of this repository.
 
-## Step 1: Install ArgoCD
+## Step 1: Automated vs Manual Installation
+
+When running `./scripts/provision.sh`, the Ansible role `ansible/roles/argocd` installs ArgoCD and applies the root application automatically.
+
+If you ever need to manually deploy or recover ArgoCD:
 
 ```bash
-kubectl apply -k bootstrap/argocd
+kubectl apply --server-side --force-conflicts -k bootstrap/argocd
 kubectl wait --for=condition=available --timeout=600s deployment/argocd-server -n argocd
+```
+
+Retrieve the initial admin password:
+
+```bash
 kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath='{.data.password}' | base64 -d; echo
 ```
 
 :::note
 
-ArgoCD is exposed via Gateway API in `infrastructure/gateway/argocd-httproute.yaml` (hostname: `argocd.sudhanva.me`).
+ArgoCD is exposed via Gateway API at `argocd.sudhanva.me`.
 
-This repo patches `argocd-cmd-params-cm` to set `server.insecure: "true"` because TLS is terminated at the Gateway. If the UI or CLI gets stuck in redirect loops, confirm the patch is applied and restart the `argocd-server` deployment.
+The deployment includes `argocd-cmd-params-patch.yaml` setting `server.insecure: "true"` because TLS terminates at Envoy Gateway.
 
 :::
 
-## Step 2: Prepare GitOps bootstrap
+## Step 2: The ApplicationSet pattern
 
-Update these files if you fork the repo. The default references point to `nsudhanva/homelab`:
-
-- `bootstrap/root.yaml`
-- `bootstrap/templates/infra-appset.yaml`
-- `bootstrap/templates/apps-appset.yaml`
-- `infrastructure/cilium/cilium.yaml`
-
-Confirm the Longhorn data path in `bootstrap/templates/longhorn.yaml` matches your storage layout.
+The repository uses two ApplicationSets in `bootstrap/templates/`:
 
 ```mermaid
 flowchart TD
-  Root["bootstrap/root.yaml"] --> Argo["ArgoCD"]
+  Root["bootstrap/root.yaml"] --> Argo["ArgoCD Engine"]
   Argo --> InfraSet["infra ApplicationSet"]
   Argo --> AppsSet["apps ApplicationSet"]
-  InfraSet --> InfraApps["infra-* apps from infrastructure/"]
-  AppsSet --> UserApps["app-* apps from apps/"]
+  InfraSet --> InfraApps["infra-* apps (infrastructure/*)"]
+  AppsSet --> UserApps["app-* apps (apps/*)"]
 ```
 
-## Detailed ApplicationSet Wiring
+- **`bootstrap/templates/infra-appset.yaml`**: Discovers every subdirectory in `infrastructure/` and deploys its manifests or Helm charts into the cluster.
+- **`bootstrap/templates/apps-appset.yaml`**: Discovers workloads via `apps/*/app.yaml` and deploys applications into target namespaces with auto-prune and self-healing.
 
-```mermaid
-flowchart TB
-  subgraph Bootstrap["bootstrap/"]
-    Root["root.yaml"]
-    InfraAppSet["templates/infra-appset.yaml"]
-    AppsAppSet["templates/apps-appset.yaml"]
-  end
+## Step 3: Apply the root bootstrap application
 
-  subgraph Repo["Git repo"]
-    InfraDir["infrastructure/*"]
-    AppsDir["apps/*"]
-    AppYaml["apps/*/app.yaml"]
-  end
-
-  subgraph Argo["ArgoCD namespace"]
-    ArgoServer["argocd-server"]
-    AppSetController["applicationset-controller"]
-    InfraApps["Applications: infra-*"]
-    UserApps["Applications: app-*"]
-  end
-
-  Root --> ArgoServer
-  Root --> InfraAppSet
-  Root --> AppsAppSet
-  InfraAppSet --> AppSetController
-  AppsAppSet --> AppSetController
-  InfraDir --> InfraApps
-  AppYaml --> UserApps
-  AppsDir --> UserApps
-  AppSetController --> InfraApps
-  AppSetController --> UserApps
-```
-
-## Step 3: Apply the bootstrap
+To trigger reconciliation of all infrastructure components and applications:
 
 ```bash
 kubectl apply -f bootstrap/root.yaml
 ```
 
-## Step 4: Verify ArgoCD applications
+ArgoCD reconciles `root.yaml`, which creates the ApplicationSets, which in turn generate and synchronize all applications across the cluster.
+
+## Step 4: Verify application sync status
+
+Check that all applications report `Synced` and `Healthy`:
 
 ```bash
-kubectl get apps -n argocd
+kubectl get applications -n argocd
 ```
 
-For adding workloads, see [Deploy Apps With GitOps](../how-to/deploy-apps.md).
-
-## How ApplicationSets work
-
-ApplicationSets watch the `apps/` and `infrastructure/` folders and create applications automatically:
-
-- `apps/*/app.yaml` defines `app-<name>` and its namespace
-- `infrastructure/*` becomes `infra-<folder>`
-
-Auto-sync is enabled in the ApplicationSets, so Git is the source of truth.
+To add a new workload or infrastructure component, push your manifests directly to Git; ArgoCD deploys them automatically.

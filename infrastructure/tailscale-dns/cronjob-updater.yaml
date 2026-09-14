@@ -28,7 +28,7 @@ spec:
             - |
               set -eu
               apk add --no-cache curl ca-certificates >/dev/null
-              URL="https://dl.k8s.io/release/v1.34.3/bin/linux/amd64"
+              URL="https://dl.k8s.io/release/v1.36.4/bin/linux/amd64"
               curl -sSL -o /tmp/kubectl "${URL}/kubectl"
               curl -sSL -o /tmp/kubectl.sha256 "${URL}/kubectl.sha256"
               echo "$(cat /tmp/kubectl.sha256)  /tmp/kubectl" | sha256sum -c - >/dev/null

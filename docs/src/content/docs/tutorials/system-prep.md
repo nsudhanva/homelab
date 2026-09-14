@@ -1,49 +1,68 @@
 ---
-title: Talos Boot Media and Installer Image
-description: Build the Talos installer image from the repo schematic with Longhorn storage extensions. Flash the ISO to USB and boot machines into maintenance mode.
+title: Bare-Metal Host Preparation
+description: Prepare the bare-metal Ubuntu 26.04 LTS host machine. Configure networking, dedicated SSD storage at /home/k3s-storage, and NVIDIA GPU drivers.
 keywords:
-  - talos installer image
-  - talos image factory
-  - talos schematic
-  - talos system extensions
-  - talos maintenance mode
-  - talos iso usb
-  - longhorn iscsi talos
+  - ubuntu 26.04 bare metal
+  - host preparation kubernetes
+  - k3s storage partition
+  - nvidia driver ubuntu
+  - bare metal server setup
 sidebar:
   order: 3
 ---
 
-# Boot Media
+# Host Preparation
 
-Talos machines boot from an installer image built for this repo. The image carries the system extensions Longhorn needs, so storage works from the first boot with no follow-up package installation.
+This tutorial guides you through preparing a physical machine (node `legion`) running Ubuntu 26.04 LTS to serve as a Kubernetes node.
 
-## Step 1: Review the schematic
+## Step 1: Install Ubuntu 26.04 LTS
 
-The schematic lives in `talos/schematic.yaml` and pins the official extensions:
+Install Ubuntu 26.04 LTS Server on the machine. During installation:
 
-- `siderolabs/iscsi-tools` provides the iSCSI daemon and tools for persistent volume operations
-- `siderolabs/util-linux-tools` provides trimming tools for volume maintenance
+- Select standard OpenSSH server installation.
+- Configure a static IPv4 address on your local network (for example, `10.0.0.133`).
+- Set the hostname to `legion`.
 
-Bump extensions only by editing this file. The bootstrap script resolves the schematic to an installer image automatically.
+## Step 2: Prepare the local storage mount
 
-## Step 2: Print the installer URLs
+The homelab uses K3s built-in Local-Path Provisioner. Workloads persist their data to `/home/k3s-storage`, which should reside on a dedicated high-speed SSD or NVMe partition.
 
-```bash
-./scripts/talos-baremetal.sh iso-url
-```
-
-The script posts the schematic to the Image Factory and prints the installer container image and the bootable ISO URL for Talos `v1.14.0`. Both artifacts are deterministic for the pinned schematic and Talos version.
-
-## Step 3: Flash the USB stick
-
-Write the ISO to a USB stick with your usual flashing tool, then boot each machine from it.
-
-## Step 4: Confirm maintenance mode
-
-Each machine prints its IP addresses on the console and waits. From the workstation, confirm the machine answers over the API without credentials:
+Format the partition with `ext4` or `xfs` and mount it to `/home/k3s-storage`:
 
 ```bash
-talosctl -n <machine-ip> version --insecure
+sudo mkdir -p /home/k3s-storage
+sudo chmod 0777 /home/k3s-storage
 ```
 
-If the machine is reachable, it is ready to receive its machine configuration in [Machine Configuration](./containerd.md).
+Add the mount to `/etc/fstab` to persist it across reboots:
+
+```text
+UUID=<storage-partition-uuid> /home/k3s-storage ext4 defaults,noatime 0 2
+```
+
+## Step 3: Install NVIDIA GPU drivers (Optional for GPU Nodes)
+
+If your bare-metal node includes an NVIDIA GPU (such as the GeForce GTX 1050 Ti on `legion`), install the proprietary NVIDIA driver:
+
+```bash
+sudo apt update
+sudo apt install -y nvidia-driver-580
+```
+
+Reboot the node to initialize the NVIDIA kernel module:
+
+```bash
+sudo reboot
+```
+
+After rebooting, verify driver initialization:
+
+```bash
+nvidia-smi
+```
+
+The output confirms the GPU model, driver version, and CUDA version.
+
+## Step 4: Next steps
+
+With the bare-metal host installed, networked, and storage mounted, proceed to [Ansible Configuration](./containerd.md) to define cluster inventory variables.

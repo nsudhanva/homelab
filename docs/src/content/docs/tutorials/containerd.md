@@ -1,49 +1,65 @@
 ---
-title: Talos Machine Configuration
-description: Render declarative Talos machine configuration from the repo inventory and patches. Covers secrets generation, CNI and proxy settings for Cilium, and per-role patches.
+title: Ansible Inventory and Configuration
+description: Configure Ansible inventory, group variables, and role settings to prepare the automated K3s provisioning pipeline.
 keywords:
-  - talos machine configuration
-  - talos config patch
-  - talos secrets
-  - talos cilium cni
-  - talos disable kube-proxy
-  - infrastructure as code talos
+  - ansible configuration
+  - k3s inventory
+  - infrastructure as code
+  - ansible roles k3s
+  - bare metal automation
 sidebar:
   order: 4
 ---
 
-# Machine Configuration
+# Ansible Configuration
 
-Every Talos machine is configured from version-controlled files. Nothing is typed into a machine by hand.
+Every bare-metal node in this homelab is configured through version-controlled Ansible playbooks. Nothing is typed into a node by hand.
 
-## Step 1: Learn the layout
+## Step 1: Learn the repository layout
 
-- `talos/nodes.yaml` lists control planes and workers with hostnames, IPs, and install disks
-- `talos/versions.yaml` pins Talos and Kubernetes versions
-- `talos/patches/common.yaml` disables the built-in CNI and kube-proxy so Cilium owns networking
-- `talos/patches/controlplane.yaml` allows scheduling on control planes for compact clusters
-- `talos/patches/worker.yaml` labels worker nodes for workload placement
+The automation structure in `ansible/` manages the bare-metal lifecycle:
 
-## Step 2: Generate secrets once
+- `ansible/inventory/hosts.yaml`: Lists control plane nodes and worker nodes with hostnames, SSH users, and IP addresses.
+- `ansible/group_vars/all.yaml`: Defines global cluster variables including pinned K3s versions, TLS SANs, and storage paths.
+- `ansible/site.yaml`: The master playbook defining the sequence of roles applied to hosts.
+- `ansible/roles/`: Modular tasks for OS preparation (`common`), GPU setup (`nvidia`), K3s server (`k3s_server`), and ArgoCD bootstrap (`argocd`).
 
-```bash
-./scripts/talos-baremetal.sh gen-secrets
+## Step 2: Configure host inventory
+
+Inspect and update `ansible/inventory/hosts.yaml` with your node information:
+
+```yaml
+k3s_cluster:
+  children:
+    k3s_servers:
+      hosts:
+        legion:
+          ansible_host: 100.66.139.118
+          ansible_user: sudhanva
+          k3s_node_ip: "10.0.0.133"
+          k3s_external_ip: "100.66.139.118"
 ```
 
-Secrets are generated a single time and reused for every machine. The script keeps them out of Git and reuses the stored copy on later runs.
+## Step 3: Configure cluster variables
 
-## Step 3: Render machine configs
+Review `ansible/group_vars/all.yaml` to ensure cluster parameters match your network and storage layout:
 
-```bash
-./scripts/talos-baremetal.sh gen-config
+```yaml
+k3s_version: "v1.36.4+k3s1"
+local_storage_path: "/home/k3s-storage"
+tls_sans:
+  - "100.66.139.118"
+  - "10.0.0.133"
+  - "legion"
+  - "legion.ainu-herring.ts.net"
 ```
 
-The script renders one configuration file per machine into `talos/_out/`. Review the rendered output before applying and confirm the CNI and proxy settings plus the endpoint match `talos/nodes.yaml`.
+## Step 4: Verify Ansible connectivity
 
-## Step 4: Apply and install
+Test connectivity from your workstation to the target node:
 
 ```bash
-./scripts/talos-baremetal.sh apply
+ansible all -i ansible/inventory/hosts.yaml -m ping
 ```
 
-Each machine in maintenance mode receives its configuration and installs Talos to its install disk. Continue with [Talos Bootstrap](./kubernetes.md) once every machine reports healthy over the API.
+If the ping reports `SUCCESS`, your automation environment is ready. Proceed to [K3s Bootstrap](./kubernetes.md) to execute the provisioning playbook.

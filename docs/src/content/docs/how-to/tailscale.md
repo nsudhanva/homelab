@@ -97,7 +97,7 @@ If the kubeconfig does not exist yet on the node, create it first:
 
 ```bash
 mkdir -p ~/.kube
-sudo cp /etc/kubernetes/admin.conf ~/.kube/config
+sudo cp /etc/rancher/k3s/k3s.yaml ~/.kube/config
 sudo chown $(id -u):$(id -g) ~/.kube/config
 ```
 
@@ -264,29 +264,23 @@ sudo killall -HUP mDNSResponder
 
 ### Connections to subdomains time out
 
-If `tailscale ping <gateway-ip>` works but `curl https://subdomain.sudhanva.me` times out, the issue is likely Cilium's socket-level LoadBalancer interfering with the Tailscale proxy's iptables DNAT rules.
-
-**Solution:** Enable `socketLB.hostNamespaceOnly=true` in Cilium:
+If `tailscale ping <gateway-ip>` works but `curl https://subdomain.sudhanva.me` times out, verify that the Tailscale ingress proxy pod is running and healthy:
 
 ```bash
-cilium upgrade --version $(cilium version | grep 'cilium image (running)' | awk '{print $4}') \
-  --set socketLB.hostNamespaceOnly=true
-kubectl rollout restart daemonset/cilium -n kube-system
+kubectl get pods -n tailscale -l tailscale.com/parent-resource-type=svc
 ```
 
-Then restart the Tailscale proxy pod:
+If the proxy pod needs to be refreshed, restart it:
 
 ```bash
 kubectl delete pod -n tailscale -l tailscale.com/parent-resource-type=svc
 ```
 
-See [Cilium CNI](../tutorials/cilium.md) for details.
+Confirm that the Envoy Gateway data plane pod is running and accepting traffic on port 10443:
 
-:::warning
-
-This is a **required** configuration when using Cilium in kube-proxy replacement mode with Tailscale Kubernetes Operator LoadBalancer services.
-
-:::
+```bash
+kubectl get pods -n envoy-gateway
+```
 
 ### Envoy returns "filter_chain_not_found"
 

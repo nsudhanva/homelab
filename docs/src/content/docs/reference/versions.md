@@ -43,8 +43,8 @@ Check the latest stable release before changing any pinned version.
 - Prometheus Operator CRDs chart: `32.0.0` in `infrastructure/prometheus-operator-crds/prometheus-operator-crds.yaml`
 - Metrics Server chart: `3.14.0` in `infrastructure/metrics-server/metrics-server.yaml`
 - Vault chart: `0.34.1` in `infrastructure/vault/vault.yaml`
-- Intel GPU plugin: `0.36.0` in `infrastructure/gpu/intel-plugin.yaml`
-- NVIDIA device plugin: `v0.20.0` in `infrastructure/gpu/nvidia-plugin.yaml`
+- NVIDIA GPU Operator: `v26.7.0` in `infrastructure/gpu/gpu-operator.yaml`
+- System Upgrade Controller: `v0.20.1` in `infrastructure/system-upgrade-controller/system-upgrade-controller.yaml`
 - ntfy: `v2.28.0` in `infrastructure/ntfy/deployment.yaml`
 - CoreDNS: `1.14.7` in `infrastructure/tailscale-dns/deployment.yaml`
 - Homer: `v26.08.3` in `apps/homer/deployment.yaml`

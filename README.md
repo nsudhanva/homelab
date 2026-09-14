@@ -1,11 +1,12 @@
 # Homelab
 
-A self-hosted bare-metal Kubernetes cluster on Ubuntu 26.04 LTS powered by K3s and managed 100% via GitOps with ArgoCD.
+A self-hosted bare-metal Kubernetes cluster on Ubuntu 26.04 LTS (node `legion`) powered by K3s `v1.36+` (`v1.36.4+k3s1`) and managed 100% via GitOps with ArgoCD.
 
 - Provisioned from scratch using automated Ansible playbooks for zero-touch bare-metal bring-up
 - Traffic flows through Tailscale for secure ingress and Envoy Gateway for routing, with Vault and External Secrets handling credentials
-- High-performance local NVMe/SSD storage backed by K3s Local-Path Provisioner on dedicated solid-state drives
-- Full hardware GPU acceleration with NVIDIA GTX 1050 Ti passed through to Kubernetes workloads via NVIDIA Container Toolkit and K8s Device Plugin
+- High-performance local SSD storage backed by K3s Local-Path Provisioner on `/home/k3s-storage`
+- Full hardware GPU acceleration with NVIDIA GTX 1050 Ti passed through via NVIDIA GPU Operator `v26.7.0` with Container Device Interface (CDI)
+- Automated zero-downtime K3s upgrades orchestrated by Rancher System Upgrade Controller
 - Immutable GitOps operations where ArgoCD reconciles all infrastructure and user applications from this repository
 
 ## Table of contents
@@ -15,6 +16,7 @@ A self-hosted bare-metal Kubernetes cluster on Ubuntu 26.04 LTS powered by K3s a
   - [Core systems map](#core-systems-map)
   - [Platform services map](#platform-services-map)
   - [Network topology](#network-topology)
+  - [Cluster network ports](#cluster-network-ports)
 - [Quick start](#quick-start)
   - [Automated bare metal bring-up](#automated-bare-metal-bring-up)
   - [From scratch flow](#from-scratch-flow)
@@ -27,13 +29,14 @@ A self-hosted bare-metal Kubernetes cluster on Ubuntu 26.04 LTS powered by K3s a
 
 ## Features
 
-- Single-node / multi-node bare-metal K3s Kubernetes with Flannel CNI
+- Single-node / multi-node bare-metal K3s Kubernetes `v1.36.4+k3s1` on node `legion` with Flannel CNI
 - Automated Ansible playbooks for host preparation, runtime configuration, and cluster bootstrap
-- Full NVIDIA GPU hardware acceleration for AI and media transcoding
+- NVIDIA GPU Operator `v26.7.0` with Container Device Interface (CDI) for GTX 1050 Ti transcoding
+- Rancher System Upgrade Controller for automated, declarative zero-downtime K3s upgrades
 - GitOps-managed infrastructure and apps via ArgoCD ApplicationSets
 - Tailscale Gateway API ingress with split-horizon DNS
 - Vault + External Secrets Operator for centralized secret management
-- Native high-speed SSD storage via Local-Path Provisioner
+- Native high-speed SSD storage on `/home/k3s-storage` via Local-Path Provisioner
 - Prometheus monitoring stack with Alertmanager and Grafana
 - Automated container image updates with ArgoCD Image Updater
 - Envoy Gateway data plane for Kubernetes Gateway API
@@ -52,10 +55,11 @@ flowchart LR
     Apps["apps/"]
   end
 
-  subgraph Host["Bare-Metal Linux Nodes"]
-    OS["Ubuntu 26.04 LTS"]
-    GPU["NVIDIA GPU Driver + Toolkit"]
-    K3s["K3s Server & Agent"]
+  subgraph Host["Bare-Metal Host: legion"]
+    OS["Ubuntu 26.04 LTS (Kernel 7.0)"]
+    GPU["NVIDIA Driver 580 + CDI"]
+    Storage["SSD Storage (/home/k3s-storage)"]
+    K3s["K3s Server (v1.36.4+k3s1)"]
   end
 
   subgraph Cluster["Kubernetes Cluster"]
@@ -85,9 +89,10 @@ flowchart TB
   subgraph Platform["Platform Services"]
     Vault["Vault"]
     ESO["External Secrets"]
-    Storage["Local-Path SSD Storage"]
+    Storage["Local-Path (/home/k3s-storage)"]
     Metrics["Prometheus + Grafana"]
-    NVIDIA["NVIDIA Device Plugin"]
+    NVIDIA["NVIDIA GPU Operator (CDI)"]
+    SUC["System Upgrade Controller"]
   end
 
   subgraph Apps["User Apps"]
@@ -105,6 +110,7 @@ flowchart TB
   Storage --> Apps
   Metrics --> Apps
   NVIDIA --> Media
+  SUC --> Platform
 ```
 
 ### Network topology
@@ -129,11 +135,24 @@ flowchart LR
   CoreDNS --> Services
 ```
 
+### Cluster network ports
+
+| Port | Protocol | Component | Description |
+|---|---|---|---|
+| `443` | TCP | Envoy Gateway / Tailscale | Public and Tailnet HTTPS ingress (terminates `*.sudhanva.me`) |
+| `10443` | TCP | Envoy Proxy (Data Plane) | Envoy container internal HTTPS targetPort |
+| `6443` | TCP | K3s API Server | Kubernetes API server endpoint on node `legion` |
+| `41641` | UDP | Tailscale WireGuard | Direct WireGuard transport communication |
+| `53` | UDP/TCP | CoreDNS | Split-horizon cluster DNS and Tailscale rewrites |
+| `10250` | TCP | Kubelet | Kubelet node metrics and exec API |
+| `22` | TCP | OpenSSH | Host SSH access on node `legion` |
+| `8472` | UDP | Flannel CNI | VXLAN overlay communication |
+
 ## Quick start
 
 ### Automated bare metal bring-up
 
-Ensure your target machine is running Ubuntu with SSH and sudo access configured, then run one command from your workstation:
+Ensure your target machine `legion` is running Ubuntu with SSH and sudo access configured, then run one command from your workstation:
 
 ```bash
 ./scripts/provision.sh
@@ -158,11 +177,11 @@ flowchart TB
     Playbook["ansible/site.yaml"]
   end
 
-  subgraph Target["Bare-Metal Host"]
+  subgraph Target["Bare-Metal Host: legion"]
     Prep["Host Prep & Modules"]
-    NvidiaSetup["NVIDIA Toolkit & CDI"]
+    NvidiaSetup["NVIDIA Driver & CDI"]
+    SSD["SSD Storage (/home/k3s-storage)"]
     K3sInstall["K3s Server Install"]
-    SSD["SSD Storage Config"]
   end
 
   subgraph Bootstrap["GitOps Bootstrap"]
@@ -205,6 +224,7 @@ Key reference guides:
 
 - From scratch installation: [Build K3s Cluster from Scratch](docs/src/content/docs/how-to/from-scratch.md)
 - Secrets management: [HashiCorp Vault Secrets Management](docs/src/content/docs/how-to/vault.md)
+- Persistent storage: [Local-Path Storage Architecture](docs/src/content/docs/explanation/storage-architecture.md)
 - Version matrix: [Component Version Matrix](docs/src/content/docs/reference/versions.md)
 
 ## Repository layout
