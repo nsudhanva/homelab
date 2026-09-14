@@ -12,6 +12,11 @@ spec:
   destination:
     server: https://kubernetes.default.svc
     namespace: default
+  ignoreDifferences:
+    - group: admissionregistration.k8s.io
+      kind: ValidatingAdmissionPolicy
+    - group: admissionregistration.k8s.io
+      kind: ValidatingAdmissionPolicyBinding
   syncPolicy:
     automated:
       prune: true
@@ -19,3 +24,4 @@ spec:
     syncOptions:
       - ServerSideApply=true
       - Replace=true
+      - RespectIgnoreDifferences=true
