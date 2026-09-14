@@ -23,6 +23,10 @@ spec:
               value: all
             - name: NVIDIA_DRIVER_CAPABILITIES
               value: all
+            - name: NVIDIA_DRIVER_ROOT
+              value: /driver-root
+            - name: LD_LIBRARY_PATH
+              value: /driver-root/usr/lib/x86_64-linux-gnu:/usr/lib/x86_64-linux-gnu
           securityContext:
             allowPrivilegeEscalation: false
             capabilities:
@@ -30,7 +34,19 @@ spec:
           volumeMounts:
             - name: device-plugin
               mountPath: /var/lib/kubelet/device-plugins
+            - name: driver-root
+              mountPath: /driver-root
+              readOnly: true
+            - name: cdi-root
+              mountPath: /etc/cdi
+              readOnly: true
       volumes:
         - name: device-plugin
           hostPath:
             path: /var/lib/kubelet/device-plugins
+        - name: driver-root
+          hostPath:
+            path: /
+        - name: cdi-root
+          hostPath:
+            path: /etc/cdi
