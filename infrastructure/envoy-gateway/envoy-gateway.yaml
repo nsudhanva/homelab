@@ -54,11 +54,15 @@ spec:
   - group: admissionregistration.k8s.io
     kind: ValidatingAdmissionPolicy
     jsonPointers:
-    - /metadata/annotations
+    - /metadata
+    - /spec
+    - /status
   - group: admissionregistration.k8s.io
     kind: ValidatingAdmissionPolicyBinding
     jsonPointers:
-    - /metadata/annotations
+    - /metadata
+    - /spec
+    - /status
   syncPolicy:
     automated:
       prune: true
