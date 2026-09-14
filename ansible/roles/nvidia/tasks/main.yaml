@@ -22,10 +22,19 @@
     filename: nvidia-container-toolkit
     update_cache: true
 
-- name: Install NVIDIA Container Toolkit
+- name: Install NVIDIA Container Toolkit and runc
   ansible.builtin.apt:
-    name: nvidia-container-toolkit
+    name:
+      - nvidia-container-toolkit
+      - runc
     state: present
+
+- name: Ensure runc is symlinked to /usr/bin/runc
+  ansible.builtin.file:
+    src: /usr/sbin/runc
+    dest: /usr/bin/runc
+    state: link
+    force: true
 
 - name: Ensure CDI directory exists
   ansible.builtin.file:

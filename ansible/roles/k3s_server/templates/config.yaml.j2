@@ -10,6 +10,7 @@ disable:
   - traefik
   - servicelb
 default-local-storage-path: "{{ local_storage_path }}"
+default-runtime: "nvidia"
 node-label:
   - "gpu.nvidia.com/present=true"
   - "node.homelab/role=controlplane"

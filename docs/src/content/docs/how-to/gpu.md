@@ -1,46 +1,90 @@
 ---
-title: GPU Support for Kubernetes Workloads
-description: Enable Intel iGPU and NVIDIA GPU support for Kubernetes workloads on Talos Linux. Covers the Intel device plugin DaemonSet and the NVIDIA GPU Operator.
+title: NVIDIA GPU Support for Kubernetes Workloads
+description: Enable NVIDIA GPU hardware acceleration on bare-metal Ubuntu K3s using NVIDIA Container Toolkit, CDI, and the GPU Operator.
 keywords:
   - kubernetes gpu
-  - nvidia gpu kubernetes
-  - nvidia gpu operator talos
-  - intel gpu kubernetes
-  - gpu device plugin
-  - kubernetes transcoding
-  - jellyfin gpu
+  - nvidia gpu k3s
+  - nvidia gpu operator
+  - k3s cdi
+  - jellyfin hardware transcoding
 sidebar:
   order: 16
 ---
 
-# GPU Support
+# NVIDIA GPU Acceleration
 
-## Step 1: Enable Intel GPU support
+The homelab node `legion` includes an NVIDIA GeForce GTX 1050 Ti Mobile GPU (Pascal architecture, 4GB VRAM). The GPU is exposed to Kubernetes pods via NVIDIA Container Toolkit, Container Device Interface (CDI), and the NVIDIA GPU Operator.
 
-Intel iGPU transcoding needs no host packages. The Intel GPU Plugin DaemonSet advertises the devices to the scheduler.
-
-The Intel GPU plugin manifest lives in `infrastructure/gpu/intel-plugin.yaml`.
-
-Verify after deployment:
-
-```bash
-kubectl describe node | grep gpu.intel.com/i915
+```mermaid
+flowchart TD
+  Host["Host (Ubuntu 26.04 LTS + Kernel 7.0 + Driver 580)"] --> Toolkit["nvidia-container-toolkit + CDI (/etc/cdi/nvidia.yaml)"]
+  Toolkit --> K3s["K3s containerd (default-runtime: nvidia)"]
+  K3s --> Operator["NVIDIA GPU Operator (infrastructure/gpu)"]
+  Operator --> Plugin["k8s-device-plugin + dcgm-exporter"]
+  Plugin --> Pods["Workload Pods (resources.limits: nvidia.com/gpu: 1)"]
 ```
 
-## Step 2: Enable NVIDIA GPU support
+## Host Configuration
 
-Talos has no package manager, so the driver userspace and container runtime integration come from the NVIDIA GPU Operator. The operator deploys the driver containers, the container toolkit with CDI support, and the device plugin.
+Host dependencies are automated via the Ansible playbook (`ansible/roles/nvidia/`):
 
-The GPU Operator Application lives in `infrastructure/gpu-operator/gpu-operator.yaml` and syncs through ArgoCD like every other component.
+- **NVIDIA Driver**: Version 580+ pre-installed on the host.
+- **NVIDIA Container Toolkit**: Installed via official apt repository.
+- **CDI Generation**: `nvidia-ctk cdi generate --output=/etc/cdi/nvidia.yaml`.
+- **Low-level Runtime**: `runc` installed and symlinked to `/usr/bin/runc`.
+- **K3s Server**: Configured with `default-runtime: "nvidia"` in `/etc/rancher/k3s/config.yaml`.
 
-Verify after deployment:
+## Step 1: GPU Operator Deployment via GitOps
+
+The NVIDIA GPU Operator is declared as an ArgoCD Application in `infrastructure/gpu/gpu-operator.yaml`. It is preconfigured for host-installed drivers:
+
+- `driver.enabled: false` (uses the host's existing 580 series kernel module).
+- `toolkit.enabled: false` (leverages the pre-configured host containerd runtime).
+- `cdi.enabled: true` (enables Container Device Interface for OCI device injection).
+- `validator.plugin.env`: `DISABLE_CUDA_VALIDATION=true` (skips Ampere-specific synthetic checks on Pascal architecture).
+
+## Step 2: Verify GPU Allocation
+
+Confirm that Kubelet registers the GPU on the node:
 
 ```bash
-kubectl describe node | grep nvidia.com/gpu
+kubectl get node legion -o jsonpath='{.status.allocatable.nvidia\.com/gpu}'
 ```
 
-The legacy NVIDIA device plugin manifest lives in `infrastructure/gpu/nvidia-plugin.yaml` for clusters where the driver stack is already present on the host.
+Expected output:
 
-## Step 3: Request GPUs from workloads
+```text
+1
+```
 
-Add a GPU resource limit to the container that needs acceleration. Jellyfin uses this pattern for transcoding.
+Confirm that the GPU model and capabilities are discovered:
+
+```bash
+kubectl get node legion -o jsonpath='{.metadata.labels.nvidia\.com/gpu\.product}'
+```
+
+Expected output:
+
+```text
+NVIDIA-GeForce-GTX-1050-Ti
+```
+
+## Step 3: Running a Test Workload
+
+Verify end-to-end container execution by running a quick `nvidia-smi` test pod:
+
+```bash
+kubectl run gpu-test --rm -i --restart=Never \
+  --image=nvidia/cuda:12.4.1-base-ubuntu22.04 \
+  --overrides='{"spec":{"containers":[{"name":"gpu-test","image":"nvidia/cuda:12.4.1-base-ubuntu22.04","command":["nvidia-smi"],"resources":{"limits":{"nvidia.com/gpu":"1"}}}]}}'
+```
+
+## Step 4: Requesting GPUs in Workloads
+
+In application manifests (such as Jellyfin or AI inference workloads), request GPU access using standard resource limits:
+
+```yaml
+resources:
+  limits:
+    nvidia.com/gpu: "1"
+```
