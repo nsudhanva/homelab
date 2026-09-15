@@ -90,8 +90,6 @@ ApplicationSets watch `apps/` and `infrastructure/` and create ArgoCD Applicatio
 | Prometheus Operator CRDs | `infrastructure/prometheus-operator-crds/` | Prometheus CRDs | Installed before the monitoring stack |
 | Prometheus stack | `infrastructure/prometheus/` | Metrics, alerting, dashboards | Grafana, Prometheus, Alertmanager, and HTTPRoutes |
 | Kubescape | `infrastructure/kubescape/` | Cluster security scanning | Operator runs in offline mode |
-| ntfy | `infrastructure/ntfy/` | Push notification service | Tailscale HTTPRoute with persistent cache |
-| ntfy alerts | `infrastructure/ntfy-alerts/` | Alertmanager webhook adapter and alert rules | Routes alert rules into ntfy |
 | Metrics Server | `infrastructure/metrics-server/` | CPU and memory metrics API | Required for Headlamp usage graphs |
 | GPU Operator | `infrastructure/gpu/` | NVIDIA GPU Operator | Helm chart v26.7.0 with Container Device Interface (CDI) |
 | System Upgrade Controller | `infrastructure/system-upgrade-controller/` | Automated K3s cluster upgrades | Managed via system-upgrade-controller Plans |

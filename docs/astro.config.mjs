@@ -158,7 +158,6 @@ export default defineConfig({
               collapsed: true,
               items: [
                 { label: 'Prometheus & Grafana', slug: 'how-to/monitoring' },
-                { label: 'Ntfy Alerting', slug: 'how-to/ntfy-alerting' },
                 { label: 'Kubescape Security', slug: 'how-to/kubescape' },
               ],
             },

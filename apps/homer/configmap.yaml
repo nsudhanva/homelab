@@ -30,6 +30,15 @@ data:
             icon: "fas fa-folder-open"
             tag: "media"
             target: "_blank"
+      - name: "Smart Home"
+        icon: "fas fa-home"
+        items:
+          - name: "Home Assistant"
+            subtitle: "Home automation"
+            url: "https://homeassistant.sudhanva.me"
+            icon: "mdi:home-assistant"
+            tag: "smarthome"
+            target: "_blank"
       - name: "Docs"
         icon: "fas fa-book"
         items:
@@ -72,12 +81,6 @@ data:
       - name: "Observability"
         icon: "fas fa-chart-line"
         items:
-          - name: "Ntfy"
-            subtitle: "Push alerts"
-            url: "https://ntfy.sudhanva.me"
-            icon: "fas fa-bullhorn"
-            tag: "infra"
-            target: "_blank"
           - name: "Grafana"
             subtitle: "Dashboards"
             url: "https://grafana.sudhanva.me"
