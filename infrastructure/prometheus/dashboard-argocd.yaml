@@ -27,7 +27,7 @@ data:
       "editable": true,
       "fiscalYearStartMonth": 0,
       "graphTooltip": 0,
-      "id": 28,
+      "id": null,
       "links": [],
       "liveNow": false,
       "panels": [
@@ -4442,7 +4442,7 @@ data:
       },
       "timezone": "",
       "title": "ArgoCD",
-      "uid": "LCAgc9rWz",
+      "uid": "argocd",
       "version": 2,
       "weekStart": ""
     }
