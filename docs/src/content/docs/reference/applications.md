@@ -102,3 +102,14 @@ The `media` namespace is shared by Jellyfin and Filebrowser so they can use the 
 | Service | `apps/home-assistant/service.yaml` | ClusterIP on port 8123 |
 | HTTPRoute | `apps/home-assistant/httproute.yaml` | `homeassistant.sudhanva.me` via tailnet gateway |
 | PVC | `apps/home-assistant/pvc.yaml` | 5Gi local-path storage for `/config` |
+
+## Llama Server (Gemma 4)
+
+| Item | Path | Notes |
+| --- | --- | --- |
+| Namespace | `apps/llama/namespace.yaml` | Dedicated `llama` namespace |
+| App config | `apps/llama/app.yaml` | ArgoCD app definition |
+| Deployment | `apps/llama/deployment.yaml` | `ghcr.io/ggml-org/llama.cpp:server-cuda` with Gemma 4 E2B |
+| Service | `apps/llama/service.yaml` | ClusterIP on port 8080 |
+| HTTPRoute | `apps/llama/httproute.yaml` | `ai.sudhanva.me` via tailnet gateway |
+| PVC | `apps/llama/pvc.yaml` | 15Gi local-path storage for `/models` |
