@@ -45,7 +45,6 @@ Check the latest stable release before changing any pinned version.
 - Vault chart: `0.34.1` in `infrastructure/vault/vault.yaml`
 - NVIDIA GPU Operator: `v26.7.0` in `infrastructure/gpu/gpu-operator.yaml`
 - System Upgrade Controller: `v0.20.1` in `infrastructure/system-upgrade-controller/system-upgrade-controller.yaml`
-- ntfy: `v2.28.0` in `infrastructure/ntfy/deployment.yaml`
 - CoreDNS: `1.14.7` in `infrastructure/tailscale-dns/deployment.yaml`
 - Homer: `v26.08.3` in `apps/homer/deployment.yaml`
 - Headlamp: `v0.45.0` in `apps/headlamp/deployment.yaml`

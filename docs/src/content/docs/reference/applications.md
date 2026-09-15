@@ -1,12 +1,13 @@
 ---
 title: Applications Catalog Reference
-description: Reference catalog of all user applications deployed via ArgoCD including Jellyfin, Filebrowser, Headlamp, Homer dashboard, and documentation site with their manifest paths.
+description: Reference catalog of all user applications deployed via ArgoCD including Jellyfin, Filebrowser, Headlamp, Home Assistant, Homer dashboard, and documentation site with their manifest paths.
 keywords:
   - kubernetes applications
   - jellyfin kubernetes
   - headlamp deployment
   - homer dashboard
   - filebrowser kubernetes
+  - home assistant kubernetes
   - kubernetes app manifests
   - argocd apps
 sidebar:
@@ -90,3 +91,14 @@ The `media` namespace is shared by Jellyfin and Filebrowser so they can use the 
 | ExternalSecret | `apps/technitium/external-secret.yaml` | Vault integration for admin API credentials |
 | ConfigMap | `apps/technitium/configmap-settings.yaml` | Declarative settings for blocklists, forwarders, DNSSEC |
 | PostSync Job | `apps/technitium/job-sync.yaml` | GitOps configuration sync via Technitium REST API |
+
+## Home Assistant
+
+| Item | Path | Notes |
+| --- | --- | --- |
+| Namespace | `apps/home-assistant/namespace.yaml` | Dedicated `home-assistant` namespace |
+| App config | `apps/home-assistant/app.yaml` | ArgoCD app definition |
+| Deployment | `apps/home-assistant/deployment.yaml` | `ghcr.io/home-assistant/home-assistant:2026.9.2` |
+| Service | `apps/home-assistant/service.yaml` | ClusterIP on port 8123 |
+| HTTPRoute | `apps/home-assistant/httproute.yaml` | `homeassistant.sudhanva.me` via tailnet gateway |
+| PVC | `apps/home-assistant/pvc.yaml` | 5Gi local-path storage for `/config` |
