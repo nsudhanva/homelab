@@ -2,7 +2,7 @@ apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:
   name: envoy-gateway-metrics
-  namespace: envoy-gateway-system
+  namespace: envoy-gateway
   labels:
     control-plane: envoy-gateway
 spec:
@@ -14,4 +14,4 @@ spec:
     interval: 30s
   namespaceSelector:
     matchNames:
-    - envoy-gateway-system
+    - envoy-gateway
