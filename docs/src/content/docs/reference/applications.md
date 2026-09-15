@@ -75,3 +75,18 @@ The `media` namespace is shared by Jellyfin and Filebrowser so they can use the 
 | Deployment | `apps/homer/deployment.yaml` | Uses `b4bz/homer:v26.08.3` |
 | Service | `apps/homer/service.yaml` | ClusterIP on port 80 |
 | HTTPRoute | `apps/homer/httproute.yaml` | `home.sudhanva.me` |
+
+## Technitium DNS Server
+
+| Item | Path | Notes |
+| --- | --- | --- |
+| Namespace | `apps/technitium/namespace.yaml` | Dedicated `technitium` namespace |
+| App config | `apps/technitium/app.yaml` | ArgoCD app definition |
+| Deployment | `apps/technitium/deployment.yaml` | `technitium/dns-server:latest` |
+| Service | `apps/technitium/service.yaml` | ClusterIP on port 5380 (HTTP) and 53 (DNS) |
+| Tailscale LB | `apps/technitium/service-tailscale.yaml` | Tailscale LoadBalancer on port 53 |
+| HTTPRoute | `apps/technitium/httproute.yaml` | `dns.sudhanva.me` |
+| PVC | `apps/technitium/pvc.yaml` | 5Gi local-path storage for `/etc/dns` |
+| ExternalSecret | `apps/technitium/external-secret.yaml` | Vault integration for admin API credentials |
+| ConfigMap | `apps/technitium/configmap-settings.yaml` | Declarative settings for blocklists, forwarders, DNSSEC |
+| PostSync Job | `apps/technitium/job-sync.yaml` | GitOps configuration sync via Technitium REST API |
