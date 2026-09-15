@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: technitium-config
+  namespace: technitium
+data:
+  ENABLE_BLOCKING: "true"
+  BLOCKING_TYPE: "NxDomain"
+  BLOCKLIST_UPDATE_INTERVAL_HOURS: "24"
+  BLOCKLIST_URLS: "https://raw.githubusercontent.com/StevenBlack/hosts/master/hosts"
+  DNSSEC_VALIDATION: "true"
+  FORWARDERS: "https://dns.quad9.net/dns-query,https://cloudflare-dns.com/dns-query"
