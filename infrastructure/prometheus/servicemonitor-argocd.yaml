@@ -7,8 +7,15 @@ metadata:
     app.kubernetes.io/part-of: argocd
 spec:
   selector:
-    matchLabels:
-      app.kubernetes.io/part-of: argocd
+    matchExpressions:
+    - key: app.kubernetes.io/component
+      operator: In
+      values:
+      - metrics
+      - server
+      - repo-server
+      - applicationset-controller
+      - notifications-controller
   endpoints:
   - port: metrics
     interval: 30s
