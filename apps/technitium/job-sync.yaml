@@ -1,0 +1,79 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: technitium-config-sync
+  namespace: technitium
+  annotations:
+    argocd.argoproj.io/hook: PostSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+spec:
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: sync
+          image: curlimages/curl:8.22.0
+          envFrom:
+            - configMapRef:
+                name: technitium-config
+          env:
+            - name: ADMIN_USER
+              valueFrom:
+                secretKeyRef:
+                  name: technitium-admin-secret
+                  key: admin-user
+            - name: ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: technitium-admin-secret
+                  key: admin-password
+          command:
+            - /bin/sh
+            - -c
+            - |
+              set -e
+              echo "Starting Technitium GitOps configuration sync..."
+
+              LOGIN_RESP=$(curl -sf -X POST "http://technitium:5380/api/user/login" \
+                -d "user=${ADMIN_USER}" \
+                -d "pass=${ADMIN_PASSWORD}" \
+                -d "includeToken=true")
+
+              TOKEN=$(echo "$LOGIN_RESP" | grep -o '"token":"[^"]*' | cut -d'"' -f4)
+
+              if [ -z "$TOKEN" ]; then
+                echo "Failed to acquire API token from Technitium"
+                exit 1
+              fi
+
+              echo "Authenticated with Technitium API."
+
+              echo "Applying DNS forwarders, DNSSEC, and ad blocking configuration..."
+              SET_RESP=$(curl -sf -X POST "http://technitium:5380/api/settings/set" \
+                -d "token=${TOKEN}" \
+                -d "enableBlocking=${ENABLE_BLOCKING}" \
+                -d "blockingType=${BLOCKING_TYPE}" \
+                -d "blockListUpdateIntervalHours=${BLOCKLIST_UPDATE_INTERVAL_HOURS}" \
+                -d "blockListUrls=${BLOCKLIST_URLS}" \
+                -d "dnssecValidation=${DNSSEC_VALIDATION}" \
+                -d "forwarders=${FORWARDERS}")
+
+              SET_STATUS=$(echo "$SET_RESP" | grep -o '"status":"[^"]*' | cut -d'"' -f4)
+              if [ "$SET_STATUS" != "ok" ]; then
+                echo "Error applying settings: $SET_RESP"
+                exit 1
+              fi
+              echo "Settings applied successfully."
+
+              echo "Triggering immediate blocklist download and compilation..."
+              UPDATE_RESP=$(curl -sf -X POST "http://technitium:5380/api/settings/forceUpdateBlockLists" \
+                -d "token=${TOKEN}")
+
+              UPDATE_STATUS=$(echo "$UPDATE_RESP" | grep -o '"status":"[^"]*' | cut -d'"' -f4)
+              if [ "$UPDATE_STATUS" != "ok" ]; then
+                echo "Warning: blocklist update trigger returned: $UPDATE_RESP"
+              else
+                echo "Blocklist download triggered successfully."
+              fi
+
+              echo "Technitium GitOps configuration sync finished."
