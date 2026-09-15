@@ -60,6 +60,15 @@ data:
             icon: "fas fa-sitemap"
             tag: "infra"
             target: "_blank"
+      - name: "Network"
+        icon: "fas fa-network-wired"
+        items:
+          - name: "Technitium"
+            subtitle: "DNS Server"
+            url: "https://dns.sudhanva.me"
+            icon: "fas fa-globe"
+            tag: "infra"
+            target: "_blank"
       - name: "Observability"
         icon: "fas fa-chart-line"
         items:

@@ -1,0 +1,27 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: vault-metrics
+  namespace: vault
+  labels:
+    app.kubernetes.io/name: vault
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: vault
+  endpoints:
+  - port: http
+    path: /v1/sys/metrics
+    params:
+      format:
+      - prometheus
+    interval: 30s
+  - port: https
+    path: /v1/sys/metrics
+    params:
+      format:
+      - prometheus
+    interval: 30s
+  namespaceSelector:
+    matchNames:
+    - vault
