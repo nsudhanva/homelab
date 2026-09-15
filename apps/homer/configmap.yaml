@@ -39,6 +39,15 @@ data:
             icon: "mdi:home-assistant"
             tag: "smarthome"
             target: "_blank"
+      - name: "AI & Automation"
+        icon: "fas fa-brain"
+        items:
+          - name: "Gemma 4 AI"
+            subtitle: "Local LLM on GPU"
+            url: "https://ai.sudhanva.me"
+            icon: "fas fa-robot"
+            tag: "ai"
+            target: "_blank"
       - name: "Docs"
         icon: "fas fa-book"
         items:
