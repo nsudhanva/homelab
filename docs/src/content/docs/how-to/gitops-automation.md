@@ -17,14 +17,14 @@ This repository eliminates manual bash scripts by automating both cluster upgrad
 
 ```mermaid
 flowchart TD
-  subgraph GitOps Host Provisioning
+  subgraph HostProv["GitOps Host Provisioning"]
     GitAnsible["Push to ansible/**"] --> GHA["GitHub Actions Runner"]
     GHA --> Tailnet["Tailscale Secure Mesh (tailscale/github-action)"]
     Tailnet --> LegionHost["Node 'legion' (100.66.139.118)"]
     LegionHost --> AnsibleRun["Runs ansible-playbook"]
   end
 
-  subgraph In-Cluster GitOps Upgrades
+  subgraph ClusterUp["In-Cluster GitOps Upgrades"]
     GitK3s["Commit Plan CRD (infrastructure/system-upgrade-controller/)"] --> Argo["ArgoCD"]
     Argo --> SUC["System Upgrade Controller"]
     SUC --> K3sUpgrade["Cordon, Upgrade K3s Binary, Uncordon"]

@@ -89,21 +89,21 @@ flowchart LR
     ProxyPod["Proxy Pod (gateway-envoy)"]
   end
 
-  subgraph Gateway["Gateway API"]
+  subgraph GatewayAPI["Gateway API"]
     GatewayClass["GatewayClass tailscale"]
-    Gateway["Gateway tailscale-gateway"]
+    GWNode["Gateway tailscale-gateway"]
     EnvoyProxy["EnvoyProxy"]
     HTTPRoute["HTTPRoute (apps/*/httproute.yaml)"]
   end
 
   CF --> Issuer
   Issuer --> Cert
-  Cert --> Gateway
+  Cert --> GWNode
   Operator --> ProxyPod
   ProxySvc --> ProxyPod
   EnvoyProxy --> ProxySvc
-  GatewayClass --> Gateway
-  Gateway --> HTTPRoute
+  GatewayClass --> GWNode
+  GWNode --> HTTPRoute
   HTTPRoute --> ProxySvc
   LE -.-> CF
 ```

@@ -1,0 +1,12 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - clustersecretstore.yaml
+  - external-secret-argocd-image-updater-registries.yaml
+  - external-secret-argocd-repo-creds.yaml
+  - external-secret-cloudflare-cert-manager-tailscale.yaml
+  - external-secret-cloudflare-cert-manager.yaml
+  - external-secret-cloudflare-external-dns.yaml
+  - external-secret-tailscale-operator.yaml
+  - external-secrets.yaml
+  - podmonitor.yaml

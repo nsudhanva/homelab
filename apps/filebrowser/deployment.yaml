@@ -23,7 +23,7 @@ spec:
         fsGroupChangePolicy: OnRootMismatch
       containers:
         - name: filebrowser
-          image: docker.io/filebrowser/filebrowser:v2.32.0
+          image: docker.io/filebrowser/filebrowser:v2.63.23
           args:
             - --root=/srv
             - --address=0.0.0.0
