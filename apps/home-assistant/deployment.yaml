@@ -39,12 +39,18 @@ spec:
           volumeMounts:
             - name: config
               mountPath: /config
+            - name: core-config
+              mountPath: /config/configuration.yaml
+              subPath: configuration.yaml
             - name: packages
               mountPath: /config/packages
       volumes:
         - name: config
           persistentVolumeClaim:
             claimName: home-assistant-config
+        - name: core-config
+          configMap:
+            name: home-assistant-core-config
         - name: packages
           configMap:
             name: home-assistant-packages
