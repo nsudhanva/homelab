@@ -43,7 +43,7 @@ CI validation focuses on the Kubernetes and GitOps manifests in this repo.
 | `apps/` | YAML lint, schema validation (excluding `app.yaml`) | `ci.yaml` |
 | `infrastructure/` | YAML lint, schema validation | `ci.yaml` |
 | `bootstrap/` | YAML lint, schema validation | `ci.yaml` |
-| `docs/` | Docusaurus build and image push | `ci.yaml` |
+| `docs/` | Astro Starlight build and container image push | `ci.yaml` |
 
 ## Step 4: Trigger a cluster smoke test
 

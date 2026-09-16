@@ -54,3 +54,5 @@ Check the latest stable release before changing any pinned version.
 - Jellyfin: `10.11.7` in `apps/jellyfin/deployment.yaml`
 - Filebrowser: `latest` in `apps/filebrowser/deployment.yaml`
 - Alertmanager: `0.34.0` (via kube-prometheus-stack)
+- Astro: `7.3.2` in `docs/package.json`
+- Starlight: `0.42.1` in `docs/package.json`

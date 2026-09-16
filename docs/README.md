@@ -1,41 +1,58 @@
-# Website
+# Homelab Documentation
 
-This website is built using [Docusaurus](https://docusaurus.io/), a modern static website generator.
+Documentation for the bare-metal K3s homelab cluster, built with [Astro](https://astro.build/) and [Starlight](https://starlight.astro.build/).
+
+## Prerequisites
+
+- [Bun](https://bun.sh/) (v1.3+ recommended) or Node.js 24+ LTS
 
 ## Installation
 
+Install dependencies using Bun:
+
 ```bash
-npm ci
+bun install
 ```
 
 ## Local Development
 
-```bash
-npm start
-```
-
-This command starts a local development server and opens up a browser window. Most changes are reflected live without having to restart the server.
-
-## Build
+Start the local development server:
 
 ```bash
-npm run build
+bun dev
 ```
 
-This command generates static content into the `build` directory and can be served using any static contents hosting service.
+The site will be available at `http://localhost:4321/` with hot module reloading.
 
-## Deployment
+## Type Checking & Validation
 
-Using SSH:
+Run Astro's type checker:
 
 ```bash
-USE_SSH=true npm run deploy
+bunx @astrojs/check
 ```
 
-Not using SSH:
+## Production Build
+
+Generate the static site into the `dist/` directory:
 
 ```bash
-GIT_USER=<Your GitHub username> npm run deploy
+bun run build
 ```
 
-If you are using GitHub pages for hosting, this command is a convenient way to build the website and push to the `gh-pages` branch.
+Preview the production build locally:
+
+```bash
+bun run preview
+```
+
+## Documentation Structure
+
+The documentation follows the [Divio documentation system](https://docs.divio.com/documentation-system/):
+
+- `tutorials/`: Learning-oriented tutorials (e.g., node preparation, K3s bootstrap)
+- `how-to/`: Problem-oriented how-to guides (e.g., adding worker nodes, storage, monitoring)
+- `reference/`: Information-oriented technical reference (e.g., versions, application catalog)
+- `explanation/`: Understanding-oriented architectural explanations (e.g., networking, storage)
+
+Content is written in Markdown (`.md`) and MDX (`.mdx`) in `src/content/docs/`.
