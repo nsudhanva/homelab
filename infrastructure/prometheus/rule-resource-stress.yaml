@@ -1,0 +1,60 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: resource-stress-alerts
+  namespace: monitoring
+  labels:
+    release: monitoring
+    role: alert-rules
+spec:
+  groups:
+  - name: resource.stress
+    rules:
+    - alert: HostCPUStress90
+      expr: 100 - (avg by (instance) (rate(node_cpu_seconds_total{mode="idle"}[2m])) * 100) > 90
+      for: 3m
+      labels:
+        severity: warning
+      annotations:
+        description: Node CPU utilization on {{ $labels.instance }} is above 90% (currently {{ printf "%.2f" $value }}%) for more than 3 minutes.
+        summary: Host CPU utilization is above 90%
+    - alert: HostMemoryStress90
+      expr: 100 * (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) > 90
+      for: 3m
+      labels:
+        severity: warning
+      annotations:
+        description: Node memory utilization on {{ $labels.instance }} is above 90% (currently {{ printf "%.2f" $value }}%) for more than 3 minutes.
+        summary: Host memory utilization is above 90%
+    - alert: HostDiskStress90
+      expr: 100 * (1 - (node_filesystem_avail_bytes{mountpoint=~"/|/home"} / node_filesystem_size_bytes{mountpoint=~"/|/home"})) > 90
+      for: 5m
+      labels:
+        severity: warning
+      annotations:
+        description: Node filesystem {{ $labels.mountpoint }} on {{ $labels.instance }} is above 90% full (currently {{ printf "%.2f" $value }}%).
+        summary: Host disk usage is above 90%
+    - alert: GpuComputeStress90
+      expr: DCGM_FI_DEV_GPU_UTIL > 90
+      for: 5m
+      labels:
+        severity: warning
+      annotations:
+        description: GPU compute utilization on {{ $labels.modelName }} (device {{ $labels.device }}) is above 90% (currently {{ printf "%.2f" $value }}%) for more than 5 minutes.
+        summary: GPU compute utilization is above 90%
+    - alert: GpuVramStress90
+      expr: 100 * (DCGM_FI_DEV_FB_USED / (DCGM_FI_DEV_FB_USED + DCGM_FI_DEV_FB_FREE)) > 90
+      for: 3m
+      labels:
+        severity: warning
+      annotations:
+        description: GPU VRAM usage on {{ $labels.modelName }} (device {{ $labels.device }}) is above 90% (currently {{ printf "%.2f" $value }}%) for more than 3 minutes.
+        summary: GPU VRAM utilization is above 90%
+    - alert: GpuTemperatureHigh
+      expr: DCGM_FI_DEV_GPU_TEMP > 80
+      for: 2m
+      labels:
+        severity: critical
+      annotations:
+        description: GPU temperature on {{ $labels.modelName }} (device {{ $labels.device }}) has reached {{ printf "%.0f" $value }}°C (throttle threshold is 83°C).
+        summary: GPU temperature is critically high

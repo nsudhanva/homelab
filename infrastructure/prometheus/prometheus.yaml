@@ -28,6 +28,7 @@ spec:
           service:
             type: ClusterIP
           prometheusSpec:
+            externalUrl: https://prometheus.sudhanva.me
             retention: 15d
             retentionSize: 20GB
             enableAdminAPI: false
@@ -57,6 +58,7 @@ spec:
                 memory: 4Gi
         alertmanager:
           alertmanagerSpec:
+            externalUrl: https://alertmanager.sudhanva.me
             storage:
               volumeClaimTemplate:
                 spec:
