@@ -17,6 +17,8 @@ spec:
       labels:
         app: home-assistant
     spec:
+      hostNetwork: true
+      dnsPolicy: ClusterFirstWithHostNet
       automountServiceAccountToken: false
       securityContext:
         seccompProfile:
@@ -37,7 +39,12 @@ spec:
           volumeMounts:
             - name: config
               mountPath: /config
+            - name: packages
+              mountPath: /config/packages
       volumes:
         - name: config
           persistentVolumeClaim:
             claimName: home-assistant-config
+        - name: packages
+          configMap:
+            name: home-assistant-packages
