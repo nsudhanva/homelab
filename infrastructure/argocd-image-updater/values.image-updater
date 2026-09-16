@@ -6,7 +6,6 @@ config:
       api_url: https://ghcr.io
       prefix: ghcr.io
       ping: true
-      credentials: secret:argocd/argocd-image-updater-registries#ghcr
     - name: Docker Hub
       api_url: https://registry-1.docker.io
       prefix: docker.io
