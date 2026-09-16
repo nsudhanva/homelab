@@ -88,7 +88,10 @@ spec:
               routes:
               - receiver: "null"
                 matchers:
-                - alertname =~ "Watchdog|InfoInhibitor"
+                - alertname = Watchdog
+              - receiver: "null"
+                matchers:
+                - alertname = InfoInhibitor
             receivers:
             - name: "null"
             - name: telegram
