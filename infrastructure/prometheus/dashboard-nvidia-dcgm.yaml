@@ -345,8 +345,8 @@ data:
                         "fields": ""
                     },
                     "orientation": "auto",
-                    "textMode": "auto",
-                    "colorMode": "background"
+                    "textMode": "name",
+                    "colorMode": "value"
                 },
                 "targets": [
                     {
@@ -354,9 +354,10 @@ data:
                             "type": "prometheus",
                             "uid": "prometheus"
                         },
-                        "expr": "DCGM_FI_DEV_GPU_TEMP",
-                        "legendFormat": "{{exported_pod}} ({{exported_namespace}})",
-                        "refId": "A"
+                        "expr": "count by (exported_pod) (DCGM_FI_DEV_GPU_TEMP{exported_pod!=\"\"})",
+                        "legendFormat": "{{exported_pod}}",
+                        "refId": "A",
+                        "instant": true
                     }
                 ]
             },
