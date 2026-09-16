@@ -15,6 +15,17 @@ spec:
   hostnames:
   - headlamp.sudhanva.me
   rules:
+  - matches:
+    - path:
+        type: PathPrefix
+        value: /oidc
+    filters:
+    - type: RequestRedirect
+      requestRedirect:
+        path:
+          type: ReplaceFullPath
+          replaceFullPath: /
+        statusCode: 302
   - backendRefs:
     - name: headlamp
       port: 80
