@@ -27,8 +27,10 @@ Example layout:
 - `apps/headlamp/namespace.yaml`
 - `apps/headlamp/serviceaccount.yaml`
 - `apps/headlamp/clusterrolebinding.yaml`
+- `apps/headlamp/secret-token.yaml`
 - `apps/headlamp/deployment.yaml`
 - `apps/headlamp/service.yaml`
+- `apps/headlamp/servicemonitor.yaml`
 - `apps/headlamp/httproute.yaml`
 
 `app.yaml` defines the app name, path, and namespace.
@@ -74,15 +76,17 @@ git push
 
 ## Step 3: Access Headlamp
 
-Open `https://headlamp.sudhanva.me` in your browser. Use a service account token to authenticate.
+Open `https://headlamp.sudhanva.me` in your browser. Headlamp runs with `-unsafe-use-service-account-token` and automatically signs in using the in-cluster service account credentials with `cluster-admin` privileges.
+
+Alternatively, if generating a manual short-lived token:
 
 ```bash
 kubectl -n headlamp create token headlamp
 ```
 
-## Step 4: Adjust permissions if needed
+## Step 4: Cluster role permissions
 
-The default setup binds the Headlamp service account to the built-in `view` role. If you want admin access, update the ClusterRoleBinding to use `cluster-admin` or another role.
+The repository binds the Headlamp service account directly to `cluster-admin` in `apps/headlamp/clusterrolebinding.yaml` for administrative control. If you prefer read-only visibility, change the `roleRef` to the built-in `view` ClusterRole.
 
 ## OIDC Login With Vault
 
@@ -257,18 +261,13 @@ ssh sudhanva@100.66.139.118 "ps aux | grep k3s | grep oidc"
 
 If no OIDC flags are present, add the `kube-apiserver-arg` entries to `/etc/rancher/k3s/config.yaml` and restart K3s.
 
-## Repo Wiring For OIDC
+## Optional OIDC Manifest Wiring
 
-These files implement the OIDC wiring for Headlamp:
-
-- `apps/headlamp/external-secret-oidc.yaml`
-- `apps/headlamp/deployment.yaml`
+If choosing to transition Headlamp from in-cluster service account authentication to external OIDC providers, configure an ExternalSecret for the OIDC client credentials and mount them into `apps/headlamp/deployment.yaml`.
 
 ## OIDC Admin Access
 
-Headlamp users authenticate as OIDC identities. To grant full admin access, bind an OIDC group to `cluster-admin`.
-
-Use a separate manifest so ArgoCD can manage it:
+When Headlamp users authenticate as external OIDC identities, bind their OIDC group or user entity to `cluster-admin`:
 
 ```yaml
 apiVersion: rbac.authorization.k8s.io/v1
@@ -285,9 +284,7 @@ subjects:
   name: oidc:admins
 ```
 
-The repo includes `apps/headlamp/clusterrolebinding-oidc.yaml`. Update the group name if your OIDC provider uses a different group claim.
-
-If you prefer binding a specific OIDC user, set the `User` entry to `oidc:<entity_id>` from Vault:
+Update the group name if your OIDC provider uses a different group claim. If binding a specific Vault OIDC user, set the `User` subject to `oidc:<entity_id>` from Vault:
 
 ```bash
 kubectl -n vault exec -it vault-0 -- vault read -field=id identity/entity/name/headlamp

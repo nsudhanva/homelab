@@ -61,7 +61,10 @@ The `media` namespace is shared by Jellyfin and Filebrowser so they can use the 
 | --- | --- | --- |
 | Namespace | `apps/headlamp/namespace.yaml` | Dedicated `headlamp` namespace |
 | App config | `apps/headlamp/app.yaml` | ArgoCD app definition |
-| Deployment | `apps/headlamp/deployment.yaml` | `ghcr.io/headlamp-k8s/headlamp:v0.45.0` |
+| ServiceAccount | `apps/headlamp/serviceaccount.yaml` | Headlamp dashboard service account |
+| ClusterRoleBinding | `apps/headlamp/clusterrolebinding.yaml` | Grants `cluster-admin` privileges to service account |
+| Secret | `apps/headlamp/secret-token.yaml` | Permanent token secret for seamless in-cluster login |
+| Deployment | `apps/headlamp/deployment.yaml` | `ghcr.io/headlamp-k8s/headlamp:v0.45.0` with `-unsafe-use-service-account-token` |
 | Service | `apps/headlamp/service.yaml` | ClusterIP on port 80 |
 | HTTPRoute | `apps/headlamp/httproute.yaml` | `headlamp.sudhanva.me` |
 | ServiceMonitor | `apps/headlamp/servicemonitor.yaml` | Prometheus scrape config |
@@ -98,6 +101,8 @@ The `media` namespace is shared by Jellyfin and Filebrowser so they can use the 
 | --- | --- | --- |
 | Namespace | `apps/home-assistant/namespace.yaml` | Dedicated `home-assistant` namespace |
 | App config | `apps/home-assistant/app.yaml` | ArgoCD app definition |
+| ConfigMap (Core) | `apps/home-assistant/configmap-core.yaml` | Declarative `configuration.yaml` with reverse proxy trusted proxies |
+| ConfigMap (Packages) | `apps/home-assistant/configmap-packages.yaml` | Declarative packages for Google Cast, Sony TV, PS5, Xfinity |
 | Deployment | `apps/home-assistant/deployment.yaml` | `ghcr.io/home-assistant/home-assistant:2026.9.2` |
 | Service | `apps/home-assistant/service.yaml` | ClusterIP on port 8123 |
 | HTTPRoute | `apps/home-assistant/httproute.yaml` | `homeassistant.sudhanva.me` via tailnet gateway |
