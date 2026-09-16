@@ -38,6 +38,8 @@ A self-hosted bare-metal Kubernetes cluster on Ubuntu 26.04 LTS (node `legion`) 
 - Vault + External Secrets Operator for centralized secret management
 - Native high-speed SSD storage on `/home/k3s-storage` via Local-Path Provisioner
 - Prometheus monitoring stack with Alertmanager and Grafana
+- Telegram alerting via @ManassuHomelabBot integrated with Alertmanager and Grafana
+- Local AI inference with Google Gemma 4 (E2B) on NVIDIA GTX 1050 Ti via llama.cpp
 - Automated container image updates with ArgoCD Image Updater
 - Envoy Gateway data plane for Kubernetes Gateway API
 - Kubescape operator for automated cluster security scanning
@@ -100,6 +102,9 @@ flowchart TB
     Docs["Docs"]
     Homer["Homer"]
     Media["Jellyfin + Filebrowser"]
+    HA["Home Assistant"]
+    AI["Gemma 4 AI"]
+    DNSApp["Technitium DNS"]
   end
 
   Tailscale --> Envoy
@@ -110,6 +115,7 @@ flowchart TB
   Storage --> Apps
   Metrics --> Apps
   NVIDIA --> Media
+  NVIDIA --> AI
   SUC --> Platform
 ```
 
@@ -247,6 +253,9 @@ docs/             Astro Starlight documentation
 | Homer | Home dashboard with service shortcuts | `home.sudhanva.me` |
 | Jellyfin | Media streaming with NVIDIA GPU acceleration | `jellyfin.sudhanva.me` |
 | Filebrowser | File manager for persistent media volumes | `filebrowser.sudhanva.me` |
+| Technitium DNS | Authoritative and recursive DNS server | `dns.sudhanva.me` |
+| Home Assistant | Smart home automation platform | `homeassistant.sudhanva.me` |
+| Gemma 4 AI | Local LLM inference on NVIDIA GPU | `ai.sudhanva.me` |
 | ArgoCD | GitOps control plane UI | `argocd.sudhanva.me` |
 | Vault | Centralized secrets management | `vault.sudhanva.me` |
 | Grafana | Metrics dashboards | `grafana.sudhanva.me` |

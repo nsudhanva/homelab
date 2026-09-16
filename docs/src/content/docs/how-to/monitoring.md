@@ -51,3 +51,22 @@ Headlamp exposes `/metrics` once `HEADLAMP_CONFIG_METRICS_ENABLED` is set. Prome
 ```bash
 kubectl -n monitoring get servicemonitors
 ```
+
+## Step 5: Telegram Alerting
+
+Alertmanager and Grafana forward cluster alerts directly to Telegram:
+
+- Bot: `@ManassuHomelabBot`
+- Target Chat ID: `7341944813`
+- Secret storage: Bot token stored in Vault at `kv/telegram/bot`
+- GitOps Secret Sync: ExternalSecret in `infrastructure/prometheus/external-secret-telegram.yaml` creates `alertmanager-telegram` in `monitoring`
+- Alertmanager Config: `prometheus.yaml` mounts `alertmanager-telegram` and sets `bot_token_file: /etc/alertmanager/secrets/alertmanager-telegram/token`
+- Grafana: Contact point `Telegram AlertBot` configured as default notification policy
+
+To test the alerting pipeline, send a test alert payload to Alertmanager:
+
+```bash
+kubectl exec -n monitoring alertmanager-monitoring-alertmanager-0 -c alertmanager -- \
+  wget -qO- --post-data='[{"labels":{"alertname":"TestTelegramAlert","severity":"info","instance":"k3s-cluster"},"annotations":{"summary":"Homelab Alerting Verified","description":"Telegram alerts delivered successfully."}}]' \
+  --header='Content-Type: application/json' http://localhost:9093/api/v2/alerts
+```

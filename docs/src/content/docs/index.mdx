@@ -44,6 +44,9 @@ A self-hosted bare-metal Kubernetes cluster on node `legion` with services acces
 | Home | `home.sudhanva.me` | 443 | Dashboard with service links |
 | Jellyfin | `jellyfin.sudhanva.me` | 443 | Media streaming with NVIDIA GTX 1050 Ti transcoding |
 | Filebrowser | `filebrowser.sudhanva.me` | 443 | File manager for persistent media volumes |
+| Technitium DNS | `dns.sudhanva.me` | 443 | Authoritative and recursive DNS server |
+| Home Assistant | `homeassistant.sudhanva.me` | 443 | Smart home automation platform |
+| Gemma 4 AI | `ai.sudhanva.me` | 443 | Local LLM inference (Google Gemma 4 E2B on GPU) |
 | Docs | `docs.sudhanva.me` | 443 | Cluster documentation site |
 
 ## Architecture
@@ -148,6 +151,7 @@ flowchart TB
 | Hardware / GPU | NVIDIA GPU Operator `v26.7.0` (CDI enabled) | `infrastructure/gpu/` |
 | Lifecycle | System Upgrade Controller (Plan `k3s-server`) | `infrastructure/system-upgrade-controller/` |
 | Monitoring | kube-prometheus-stack, Grafana, Alertmanager | `infrastructure/prometheus/` |
+| Alerting | Telegram bot (@ManassuHomelabBot) via Alertmanager | `infrastructure/prometheus/` |
 | Security | Kubescape Operator | `infrastructure/kubescape/` |
 
 ## Quick Links
