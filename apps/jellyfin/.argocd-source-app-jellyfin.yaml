@@ -1,0 +1,3 @@
+kustomize:
+  images:
+  - docker.io/jellyfin/jellyfin:latest@sha256:78d3ea1207d1322471fcac39a614f004f2ccf7e878f95ab2977d752f07e4dd7e
