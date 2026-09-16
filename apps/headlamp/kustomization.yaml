@@ -4,8 +4,7 @@ resources:
   - namespace.yaml
   - serviceaccount.yaml
   - clusterrolebinding.yaml
-  - clusterrolebinding-oidc.yaml
-  - external-secret-oidc.yaml
+  - secret-token.yaml
   - deployment.yaml
   - service.yaml
   - servicemonitor.yaml

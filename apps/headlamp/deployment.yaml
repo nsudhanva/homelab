@@ -46,26 +46,6 @@ spec:
             memory: 512Mi
             cpu: 500m
         env:
-        - name: HEADLAMP_CONFIG_OIDC_CLIENT_ID
-          valueFrom:
-            secretKeyRef:
-              name: headlamp-oidc
-              key: client_id
-        - name: HEADLAMP_CONFIG_OIDC_CLIENT_SECRET
-          valueFrom:
-            secretKeyRef:
-              name: headlamp-oidc
-              key: client_secret
-        - name: HEADLAMP_CONFIG_OIDC_IDP_ISSUER_URL
-          valueFrom:
-            secretKeyRef:
-              name: headlamp-oidc
-              key: issuer_url
-        - name: HEADLAMP_CONFIG_OIDC_SCOPES
-          valueFrom:
-            secretKeyRef:
-              name: headlamp-oidc
-              key: scopes
         - name: HEADLAMP_CONFIG_METRICS_ENABLED
           value: "true"
         ports:
