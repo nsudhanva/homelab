@@ -1,3 +1,0 @@
-kustomize:
-  images:
-  - ghcr.io/nsudhanva/homelab-docs:latest@sha256:899a897d78c5b9d86b721a4ea800438670407a1a90bb7ae218b7a20499b7df4d
