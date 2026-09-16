@@ -136,6 +136,7 @@ export default defineConfig({
                 { label: 'Sync ArgoCD Apps', slug: 'how-to/argocd-sync' },
                 { label: 'Connect Repo to ArgoCD', slug: 'how-to/argocd-repo' },
                 { label: 'Automated Image Updates', slug: 'how-to/image-updates' },
+                { label: 'GitOps Automation', slug: 'how-to/gitops-automation' },
               ],
             },
             {
@@ -197,6 +198,7 @@ export default defineConfig({
             { label: 'Applications Catalog', slug: 'reference/applications' },
             { label: 'Version Matrix', slug: 'reference/versions' },
             { label: 'Operations Checklist', slug: 'reference/operations-checklist' },
+            { label: 'Documentation Structure', slug: 'reference/docs-structure' },
           ],
         },
       ],
