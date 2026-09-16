@@ -98,7 +98,7 @@ data:
                             "uid": "prometheus"
                         },
                         "exemplar": false,
-                        "expr": "sum(\n  rate(\n    xds_snapshot_update_total{\n      cluster=\"$cluster\",\nnamespace=~\"$namespace\",\njob=~\"$job\"\n\n    }[$__rate_interval]\n  )\n) by (status, nodeID)\n",
+                        "expr": "sum(\n  rate(\n    xds_snapshot_update_total{\nnamespace=~\"$namespace\",\njob=~\"$job\"\n\n    }[$__rate_interval]\n  )\n) by (status, nodeID)\n",
                         "legendFormat": "{{ status }}/{{ nodeID }}"
                     }
                 ],
@@ -172,7 +172,7 @@ data:
                             "uid": "prometheus"
                         },
                         "exemplar": false,
-                        "expr": "sum(\n  rate(\n    resource_apply_total{\n      cluster=\"$cluster\",\nnamespace=~\"$namespace\",\njob=~\"$job\"\n\n    }[$__rate_interval]\n  )\n) by (status, kind)\n",
+                        "expr": "sum(\n  rate(\n    resource_apply_total{\nnamespace=~\"$namespace\",\njob=~\"$job\"\n\n    }[$__rate_interval]\n  )\n) by (status, kind)\n",
                         "legendFormat": "{{ status }}/{{ kind }}"
                     }
                 ],
@@ -225,7 +225,7 @@ data:
                             "uid": "prometheus"
                         },
                         "exemplar": false,
-                        "expr": "histogram_quantile(\n  0.5,\n  sum(\n    rate(\n      resource_apply_duration_seconds_bucket{\n        cluster=\"$cluster\",\nnamespace=~\"$namespace\",\njob=~\"$job\"\n\n      }[$__rate_interval]\n    )\n  ) by (le)\n)\n",
+                        "expr": "histogram_quantile(\n  0.5,\n  sum(\n    rate(\n      resource_apply_duration_seconds_bucket{\nnamespace=~\"$namespace\",\njob=~\"$job\"\n\n      }[$__rate_interval]\n    )\n  ) by (le)\n)\n",
                         "legendFormat": "P50"
                     },
                     {
@@ -234,7 +234,7 @@ data:
                             "uid": "prometheus"
                         },
                         "exemplar": false,
-                        "expr": "histogram_quantile(\n  0.95,\n  sum(\n    rate(\n      resource_apply_duration_seconds_bucket{\n        cluster=\"$cluster\",\nnamespace=~\"$namespace\",\njob=~\"$job\"\n\n      }[$__rate_interval]\n    )\n  ) by (le)\n)\n",
+                        "expr": "histogram_quantile(\n  0.95,\n  sum(\n    rate(\n      resource_apply_duration_seconds_bucket{\nnamespace=~\"$namespace\",\njob=~\"$job\"\n\n      }[$__rate_interval]\n    )\n  ) by (le)\n)\n",
                         "legendFormat": "P95"
                     }
                 ],
@@ -292,7 +292,7 @@ data:
                             "uid": "prometheus"
                         },
                         "exemplar": false,
-                        "expr": "sum(\n  rate(\n    resource_delete_total{\n      cluster=\"$cluster\",\nnamespace=~\"$namespace\",\njob=~\"$job\"\n\n    }[$__rate_interval]\n  )\n) by (status, kind)\n",
+                        "expr": "sum(\n  rate(\n    resource_delete_total{\nnamespace=~\"$namespace\",\njob=~\"$job\"\n\n    }[$__rate_interval]\n  )\n) by (status, kind)\n",
                         "legendFormat": "{{ status }}/{{ kind }}"
                     }
                 ],
@@ -345,7 +345,7 @@ data:
                             "uid": "prometheus"
                         },
                         "exemplar": false,
-                        "expr": "histogram_quantile(\n  0.5,\n  sum(\n    rate(\n      resource_delete_duration_seconds_bucket{\n        cluster=\"$cluster\",\nnamespace=~\"$namespace\",\njob=~\"$job\"\n\n      }[$__rate_interval]\n    )\n  ) by (le)\n)\n",
+                        "expr": "histogram_quantile(\n  0.5,\n  sum(\n    rate(\n      resource_delete_duration_seconds_bucket{\nnamespace=~\"$namespace\",\njob=~\"$job\"\n\n      }[$__rate_interval]\n    )\n  ) by (le)\n)\n",
                         "legendFormat": "P50"
                     },
                     {
@@ -354,7 +354,7 @@ data:
                             "uid": "prometheus"
                         },
                         "exemplar": false,
-                        "expr": "histogram_quantile(\n  0.95,\n  sum(\n    rate(\n      resource_delete_duration_seconds_bucket{\n        cluster=\"$cluster\",\nnamespace=~\"$namespace\",\njob=~\"$job\"\n\n      }[$__rate_interval]\n    )\n  ) by (le)\n)\n",
+                        "expr": "histogram_quantile(\n  0.95,\n  sum(\n    rate(\n      resource_delete_duration_seconds_bucket{\nnamespace=~\"$namespace\",\njob=~\"$job\"\n\n      }[$__rate_interval]\n    )\n  ) by (le)\n)\n",
                         "legendFormat": "P95"
                     }
                 ],
@@ -412,7 +412,7 @@ data:
                             "uid": "prometheus"
                         },
                         "exemplar": false,
-                        "expr": "sum(\n  rate(\n    status_update_total{\n      cluster=\"$cluster\",\nnamespace=~\"$namespace\",\njob=~\"$job\"\n\n    }[$__rate_interval]\n  )\n) by (kind, status)\n",
+                        "expr": "sum(\n  rate(\n    status_update_total{\nnamespace=~\"$namespace\",\njob=~\"$job\"\n\n    }[$__rate_interval]\n  )\n) by (kind, status)\n",
                         "legendFormat": "{{ kind }}/{{ status }}"
                     }
                 ],
@@ -465,7 +465,7 @@ data:
                             "uid": "prometheus"
                         },
                         "exemplar": false,
-                        "expr": "histogram_quantile(\n  0.5,\n  sum(\n    rate(\n      status_update_duration_seconds_bucket{\n        cluster=\"$cluster\",\nnamespace=~\"$namespace\",\njob=~\"$job\"\n\n      }[$__rate_interval]\n    )\n  ) by (le)\n)\n",
+                        "expr": "histogram_quantile(\n  0.5,\n  sum(\n    rate(\n      status_update_duration_seconds_bucket{\nnamespace=~\"$namespace\",\njob=~\"$job\"\n\n      }[$__rate_interval]\n    )\n  ) by (le)\n)\n",
                         "legendFormat": "P50"
                     },
                     {
@@ -474,7 +474,7 @@ data:
                             "uid": "prometheus"
                         },
                         "exemplar": false,
-                        "expr": "histogram_quantile(\n  0.95,\n  sum(\n    rate(\n      status_update_duration_seconds_bucket{\n        cluster=\"$cluster\",\nnamespace=~\"$namespace\",\njob=~\"$job\"\n\n      }[$__rate_interval]\n    )\n  ) by (le)\n)\n",
+                        "expr": "histogram_quantile(\n  0.95,\n  sum(\n    rate(\n      status_update_duration_seconds_bucket{\nnamespace=~\"$namespace\",\njob=~\"$job\"\n\n      }[$__rate_interval]\n    )\n  ) by (le)\n)\n",
                         "legendFormat": "P95"
                     }
                 ],
