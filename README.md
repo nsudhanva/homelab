@@ -85,16 +85,18 @@ flowchart TB
   subgraph Edge["Edge & Ingress"]
     Tailscale["Tailscale Gateway API"]
     Envoy["Envoy Gateway"]
-    DNS["ExternalDNS + Split-Horizon CoreDNS"]
+    DNS["ExternalDNS + Split-Horizon CoreDNS + Tailscale DNS"]
+    CertManager["Cert-Manager (Let's Encrypt DNS-01)"]
   end
 
   subgraph Platform["Platform Services"]
     Vault["Vault"]
     ESO["External Secrets"]
     Storage["Local-Path (/home/k3s-storage)"]
-    Metrics["Prometheus + Grafana"]
+    Metrics["Prometheus + Grafana + Metrics Server"]
     NVIDIA["NVIDIA GPU Operator (CDI)"]
     SUC["System Upgrade Controller"]
+    Kubescape["Kubescape Security"]
   end
 
   subgraph Apps["User Apps"]
@@ -109,6 +111,7 @@ flowchart TB
 
   Tailscale --> Envoy
   DNS --> Envoy
+  CertManager --> Envoy
   Envoy --> Apps
   Vault --> ESO
   ESO --> Apps
