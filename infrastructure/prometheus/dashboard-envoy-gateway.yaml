@@ -507,27 +507,18 @@ data:
                         "uid": "prometheus"
                     },
                     "includeAll": true,
-                    "label": "Cluster",
-                    "multi": true,
-                    "name": "cluster",
-                    "query": "label_values(xds_snapshot_update_total{}, cluster)",
-                    "refresh": 2,
-                    "sort": 1,
-                    "type": "query"
-                },
-                {
-                    "datasource": {
-                        "type": "prometheus",
-                        "uid": "prometheus"
-                    },
-                    "includeAll": true,
                     "label": "Namespace",
                     "multi": true,
                     "name": "namespace",
-                    "query": "label_values(xds_snapshot_update_total{cluster=\"$cluster\"}, namespace)",
+                    "query": "label_values(xds_snapshot_update_total, namespace)",
                     "refresh": 2,
                     "sort": 1,
-                    "type": "query"
+                    "type": "query",
+                    "current": {
+                        "selected": true,
+                        "text": "All",
+                        "value": "$__all"
+                    }
                 },
                 {
                     "datasource": {
@@ -538,10 +529,15 @@ data:
                     "label": "Job",
                     "multi": true,
                     "name": "job",
-                    "query": "label_values(xds_snapshot_update_total{cluster=\"$cluster\", namespace=~\"$namespace\"}, job)",
+                    "query": "label_values(xds_snapshot_update_total, job)",
                     "refresh": 2,
                     "sort": 1,
-                    "type": "query"
+                    "type": "query",
+                    "current": {
+                        "selected": true,
+                        "text": "All",
+                        "value": "$__all"
+                    }
                 }
             ]
         },
