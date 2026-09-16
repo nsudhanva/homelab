@@ -48,3 +48,9 @@ Check the latest stable release before changing any pinned version.
 - CoreDNS: `1.14.7` in `infrastructure/tailscale-dns/deployment.yaml`
 - Homer: `v26.08.3` in `apps/homer/deployment.yaml`
 - Headlamp: `v0.45.0` in `apps/headlamp/deployment.yaml`
+- Technitium DNS Server: `latest` in `apps/technitium/deployment.yaml`
+- Home Assistant: `2026.9.2` in `apps/home-assistant/deployment.yaml`
+- llama.cpp (Gemma 4): `server-cuda` in `apps/llama/deployment.yaml`
+- Jellyfin: `10.11.7` in `apps/jellyfin/deployment.yaml`
+- Filebrowser: `latest` in `apps/filebrowser/deployment.yaml`
+- Alertmanager: `0.34.0` (via kube-prometheus-stack)
