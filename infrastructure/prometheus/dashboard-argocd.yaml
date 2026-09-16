@@ -4255,7 +4255,10 @@ data:
         ],
         "refresh": "",
         "schemaVersion": 39,
-        "tags": [],
+        "tags": [
+            "argocd",
+            "gitops"
+        ],
         "templating": {
             "list": [
                 {

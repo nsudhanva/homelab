@@ -21,9 +21,8 @@ data:
                 "includeVars": false,
                 "keepTime": true,
                 "tags": [
-                    "envoy",
-                    "envoy-mixin",
-                    "gateway"
+                    "envoy-gateway",
+                    "networking"
                 ],
                 "targetBlank": true,
                 "title": "Envoy",
@@ -484,9 +483,8 @@ data:
         ],
         "schemaVersion": 39,
         "tags": [
-            "envoy",
-            "envoy-mixin",
-            "gateway"
+            "envoy-gateway",
+            "networking"
         ],
         "templating": {
             "list": [
