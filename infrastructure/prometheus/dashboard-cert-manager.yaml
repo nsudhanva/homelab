@@ -1313,7 +1313,9 @@ data:
         "schemaVersion": 19,
         "style": "dark",
         "tags": [
-            "k8s"
+            "cert-manager",
+            "security",
+            "certificates"
         ],
         "templating": {
             "list": [

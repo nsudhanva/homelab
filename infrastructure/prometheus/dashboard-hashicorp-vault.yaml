@@ -2703,7 +2703,8 @@ data:
         "schemaVersion": 25,
         "style": "dark",
         "tags": [
-            "vault"
+            "vault",
+            "security"
         ],
         "templating": {
             "list": [
