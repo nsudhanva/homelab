@@ -11,13 +11,6 @@ spec:
     gitConfig:
       branch: master
   applicationRefs:
-    - namePattern: app-docs
-      images:
-        - alias: docs
-          imageName: ghcr.io/nsudhanva/homelab-docs:latest
-          commonUpdateSettings:
-            updateStrategy: digest
-            pullSecret: secret:argocd/argocd-image-updater-registries#ghcr
     - namePattern: app-headlamp
       images:
         - alias: headlamp
