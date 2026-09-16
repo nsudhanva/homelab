@@ -4,23 +4,8 @@ metadata:
   name: home-assistant-packages
   namespace: home-assistant
 data:
-  media.yaml: |
-    cast:
-      media_player:
-        - host: 10.0.0.187
-        - host: 10.0.0.148
-
-    binary_sensor:
-      - platform: ping
-        host: 10.0.0.171
-        name: "PlayStation 5"
-        scan_interval: 10
-
-  network.yaml: |
-    upnp:
-
-    binary_sensor:
-      - platform: ping
-        host: 10.0.0.1
-        name: "Xfinity Gateway"
-        scan_interval: 30
+  general.yaml: |
+    input_boolean:
+      gaming_mode:
+        name: Gaming Mode
+        icon: mdi:gamepad-variant
