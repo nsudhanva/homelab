@@ -56,17 +56,7 @@ spec:
             - --n-gpu-layers
             - "99"
             - --ctx-size
-            - "8192"
-            - --flash-attn
-            - "on"
-            - --cache-type-k
-            - q8_0
-            - --cache-type-v
-            - q8_0
-            - --threads
-            - "4"
-            - --threads-batch
-            - "6"
+            - "4096"
             - --parallel
             - "1"
             - --metrics
@@ -79,7 +69,7 @@ spec:
               memory: 1536Mi
             limits:
               cpu: 3000m
-              memory: 6Gi
+              memory: 5Gi
               nvidia.com/gpu: "1"
           env:
             - name: NVIDIA_VISIBLE_DEVICES
