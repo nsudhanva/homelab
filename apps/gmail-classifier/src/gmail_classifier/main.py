@@ -29,6 +29,12 @@ def parse_arguments(args: list[str] | None = None) -> argparse.Namespace:
         help="Target date to process in YYYY-MM-DD format (defaults to yesterday UTC).",
     )
     parser.add_argument(
+        "--days",
+        type=int,
+        default=None,
+        help="Number of days in the past to process sequentially (e.g. --days 7 for last week).",
+    )
+    parser.add_argument(
         "--dry-run",
         action="store_true",
         default=False,
@@ -168,11 +174,15 @@ def main() -> None:
     """CLI entrypoint."""
     args = parse_arguments()
 
-    if args.date:
-        target_date = args.date
+    if args.days:
+        today = datetime.now(UTC).date()
+        # Dates from (today - N days) up to yesterday
+        dates = [(today - timedelta(days=i)).isoformat() for i in range(args.days, 0, -1)]
+    elif args.date:
+        dates = [args.date]
     else:
         yesterday = datetime.now(UTC).date() - timedelta(days=1)
-        target_date = yesterday.isoformat()
+        dates = [yesterday.isoformat()]
 
     try:
         settings = Settings()
@@ -180,16 +190,17 @@ def main() -> None:
         logger.error(f"Failed to load application settings from environment: {exc}")
         sys.exit(1)
 
-    try:
-        run_pipeline(
-            target_date=target_date,
-            dry_run=args.dry_run,
-            limit=args.limit,
-            settings=settings,
-        )
-    except Exception as exc:
-        logger.exception(f"Unhandled error during classification pipeline: {exc}")
-        sys.exit(1)
+    for target_date in dates:
+        try:
+            run_pipeline(
+                target_date=target_date,
+                dry_run=args.dry_run,
+                limit=args.limit,
+                settings=settings,
+            )
+        except Exception as exc:
+            logger.exception(f"Unhandled error during pipeline for date {target_date}: {exc}")
+            sys.exit(1)
 
 
 if __name__ == "__main__":
