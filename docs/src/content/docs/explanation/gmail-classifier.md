@@ -248,3 +248,16 @@ stateDiagram-v2
 - **Restricted Container Capabilities**: The container runs under non-root UID/GID `10001:10001`, mounts a read-only root filesystem, drops all POSIX capabilities, and utilizes the `RuntimeDefault` seccomp profile.
 - **Privacy Preservation**: Email contents are processed completely inside the local cluster network (`http://llama-server.llama.svc.cluster.local:8080/v1`). No personal correspondence or headers ever leave the local network for third-party inference APIs.
 - **Fail-Safe Processing**: Transient Google API failures on individual emails are caught gracefully. The pipeline logs the failure, marks the message for human attention, and proceeds through the rest of the queue to guarantee summary alert delivery.
+
+---
+
+## Observability & Grafana Dashboard
+
+A dedicated, zero-PII Grafana dashboard is provisioned in the `monitoring` namespace via `infrastructure/prometheus/dashboard-gmail-classifier.yaml` (labeled `grafana_dashboard: "1"` for automatic discovery by the Grafana sidecar).
+
+- **Executive KPI Cards**: Real-time visibility into CronJob schedule status (`0 1 * * *`), total successful jobs, failure counts, active batch workers, and last execution duration.
+- **Batch Execution Lifecycle**: Historical run duration and Pod lifecycle phase state timelines (`Running`, `Succeeded`, `Failed`).
+- **Resource Footprint**: Container CPU usage and memory working set metrics tracked against container requests (100m / 128Mi) and limits (500m / 384Mi).
+- **SLM Hardware Acceleration**: Correlated NVIDIA GTX 1050 Ti GPU compute utilization %, VRAM framebuffer allocation (MB), core temperature, and compute clock speeds during inference cycles.
+- **Zero-PII Privacy Posture**: No email bodies, subjects, sender emails, or personal identifiers are stored in Prometheus or displayed on dashboards, ensuring personal privacy is strictly preserved.
+
