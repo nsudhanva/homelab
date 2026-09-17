@@ -60,9 +60,9 @@ spec:
             - --parallel
             - "1"
             - --threads
-            - "2"
+            - "1"
             - --threads-batch
-            - "2"
+            - "1"
             - --metrics
           ports:
             - name: http
