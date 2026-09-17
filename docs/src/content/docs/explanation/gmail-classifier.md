@@ -260,4 +260,3 @@ A dedicated, zero-PII Grafana dashboard is provisioned in the `monitoring` names
 - **Resource Footprint**: Container CPU usage and memory working set metrics tracked against container requests (100m / 128Mi) and limits (500m / 384Mi).
 - **SLM Hardware Acceleration**: Correlated NVIDIA GTX 1050 Ti GPU compute utilization %, VRAM framebuffer allocation (MB), core temperature, and compute clock speeds during inference cycles.
 - **Zero-PII Privacy Posture**: No email bodies, subjects, sender emails, or personal identifiers are stored in Prometheus or displayed on dashboards, ensuring personal privacy is strictly preserved.
-
