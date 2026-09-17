@@ -159,9 +159,12 @@ Data structures are strongly typed Pydantic models:
 ```python
 from pydantic import BaseModel, Field
 
+
 class ClassificationResult(BaseModel):
     label: str = Field(description="Selected Gmail label or quarantine fallback")
-    confidence: float = Field(ge=0.0, le=1.0, description="Confidence score between 0.0 and 1.0")
+    confidence: float = Field(
+        ge=0.0, le=1.0, description="Confidence score between 0.0 and 1.0"
+    )
     reason: str = Field(description="Brief explanation of classification decision")
 ```
 

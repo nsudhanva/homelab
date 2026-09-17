@@ -9,12 +9,14 @@ def test_parse_arguments():
     # Defaults
     args = parse_arguments([])
     assert args.date is None
+    assert args.days is None
     assert args.dry_run is False
     assert args.limit is None
 
     # Custom flags
-    args = parse_arguments(["--date", "2026-09-15", "--dry-run", "--limit", "10"])
+    args = parse_arguments(["--date", "2026-09-15", "--days", "7", "--dry-run", "--limit", "10"])
     assert args.date == "2026-09-15"
+    assert args.days == 7
     assert args.dry_run is True
     assert args.limit == 10
 
