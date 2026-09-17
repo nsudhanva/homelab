@@ -22,6 +22,7 @@ Multi-node bare-metal Kubernetes cluster on Ubuntu 26.04 LTS using K3s, managed 
   - **How-To Guides**: Problem-oriented (e.g., "How to add a worker node").
   - **Reference**: Information-oriented (e.g., "Version matrix").
   - **Explanation**: Understanding-oriented (e.g., "GitOps Workflow explanation").
+- For all Python projects and microservices in `apps/`: use `uv` for package and virtual environment management, `ruff` for linting and formatting, and `ty` for static type checking. Always include `ruff` and `ty` in the project's dev dependencies (`pyproject.toml`) and ensure `uv run ruff check`, `uv run ruff format --check`, and `uv run ty check` pass cleanly before committing.
 
 ## Don'ts
 
@@ -72,3 +73,12 @@ kubectl get pods -A
 - Step 2: For Helm charts: add `Chart.yaml` + `values.yaml`
 - Step 3: For raw manifests: add YAML files directly
 - Step 4: Push to Git; ArgoCD auto-deploys via ApplicationSet
+
+### Adding a Python Application
+
+- Step 1: Create `apps/{app-name}/` with standard package layout (`src/{package_name}`, `tests/`, `pyproject.toml`, `Dockerfile`)
+- Step 2: Manage dependencies using `uv` with lockfile (`uv.lock`)
+- Step 3: Include `ruff` and `ty` in the dev dependency group in `pyproject.toml`
+- Step 4: Configure `[tool.ruff]` and `[tool.ty]` in `pyproject.toml`
+- Step 5: Verify all linters and type checks pass: `uv run ruff check`, `uv run ruff format --check`, `uv run ty check`, and `uv run pytest`
+- Step 6: Add Kubernetes manifests and push to Git for ArgoCD deployment

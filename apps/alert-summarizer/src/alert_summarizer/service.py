@@ -1,6 +1,5 @@
 import html
 import logging
-from typing import Optional
 
 from .clients import LLMClient, TelegramClient
 from .models import Alert, AlertmanagerPayload
@@ -22,7 +21,8 @@ class AlertSummarizerService:
             f"Description: {alert.description}",
         ]
         relevant_labels = {
-            k: v for k, v in alert.labels.items()
+            k: v
+            for k, v in alert.labels.items()
             if k not in {"alertname", "namespace", "severity", "prometheus", "endpoint"}
         }
         if relevant_labels:
@@ -31,7 +31,9 @@ class AlertSummarizerService:
         return "\n".join(lines)
 
     def format_fallback_message(self, alert: Alert) -> str:
-        status_emoji = "🟢" if alert.is_resolved else ("🔴" if alert.severity == "critical" else "🟡")
+        status_emoji = (
+            "🟢" if alert.is_resolved else ("🔴" if alert.severity == "critical" else "🟡")
+        )
         status_text = "RESOLVED" if alert.is_resolved else "FIRING"
 
         safe_alertname = html.escape(alert.alertname)
@@ -49,15 +51,15 @@ class AlertSummarizerService:
         )
 
     def format_ai_message(self, alert: Alert, ai_summary: str) -> str:
-        status_emoji = "🟢" if alert.is_resolved else ("🔴" if alert.severity == "critical" else "🟡")
+        status_emoji = (
+            "🟢" if alert.is_resolved else ("🔴" if alert.severity == "critical" else "🟡")
+        )
         status_text = "RESOLVED" if alert.is_resolved else "FIRING"
         safe_alertname = html.escape(alert.alertname)
         safe_namespace = html.escape(alert.namespace)
 
-        return (
-            f"{status_emoji} <b>[{status_text}] {safe_alertname}</b> (<code>{safe_namespace}</code>)\n\n"
-            f"{ai_summary}"
-        )
+        header = f"{status_emoji} <b>[{status_text}] {safe_alertname}</b>"
+        return f"{header} (<code>{safe_namespace}</code>)\n\n{ai_summary}"
 
     async def process_alert(self, alert: Alert) -> bool:
         alert_context = self.format_alert_context(alert)
