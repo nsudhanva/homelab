@@ -27,7 +27,7 @@ spec:
       containers:
         - name: alert-summarizer
           image: ghcr.io/nsudhanva/homelab-alert-summarizer:latest
-          imagePullPolicy: IfNotPresent
+          imagePullPolicy: Always
           securityContext:
             runAsNonRoot: true
             runAsUser: 10001
@@ -42,6 +42,10 @@ spec:
               value: "http://llama-server.llama.svc.cluster.local:8080/v1"
             - name: ALERT_LLM_MODEL
               value: "gemma-4-e2b-it"
+            - name: ALERT_LLM_TIMEOUT_SECONDS
+              value: "15.0"
+            - name: ALERT_LLM_MAX_TOKENS
+              value: "400"
             - name: ALERT_TELEGRAM_CHAT_ID
               value: "7341944813"
             - name: ALERT_TELEGRAM_BOT_TOKEN_FILE
