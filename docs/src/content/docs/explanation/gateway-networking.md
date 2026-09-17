@@ -38,7 +38,7 @@ flowchart TB
         LE["Let's Encrypt"]
     end
 
-    Client -->|"1. DNS: docs.sudhanva.me"| CF
+    Client -->|"1. DNS: homelab.sudhanva.me"| CF
     CF -->|"2. CNAME: gateway-envoy.TAILNET.ts.net"| Client
     Client -->|"3. TLS to TAILSCALE_GATEWAY_IP:443"| TS
     TS -->|"4. DNAT to ClusterIP"| SVC
@@ -61,7 +61,7 @@ sequenceDiagram
     participant AppSvc as App Service
     participant Pod as App Pod
 
-    Client->>TSdns: Query docs.sudhanva.me
+    Client->>TSdns: Query homelab.sudhanva.me
     TSdns-->>Client: 100.x.y.z
     Client->>TS: TLS 443 to 100.x.y.z
     TS->>Svc: DNAT to ClusterIP:443
@@ -132,7 +132,7 @@ The `EnvoyProxy` resource configures the Envoy deployment as a `LoadBalancer` wi
 
 ExternalDNS watches HTTPRoute resources with the annotation `external-dns.alpha.kubernetes.io/expose: "true"` and creates DNS records in Cloudflare:
 
-- Subdomain CNAMEs (e.g., `docs.sudhanva.me`)
+- Subdomain CNAMEs (e.g., `homelab.sudhanva.me`)
 - Pointing to the Tailscale hostname (`gateway-envoy.TAILNET.ts.net`)
 
 ### cert-manager
@@ -157,7 +157,7 @@ These resources have to align or HTTPS routing through Tailscale will break:
 
 ## Split-horizon DNS for public hostnames
 
-Some hostnames need different targets on and off the tailnet. For example, `docs.sudhanva.me` should resolve to the cluster on tailnet clients and to Cloudflare Pages for public clients.
+Some hostnames need different targets on and off the tailnet. For example, `homelab.sudhanva.me` should resolve to the cluster on tailnet clients and to Cloudflare for public clients.
 
 To make this work:
 
@@ -223,9 +223,9 @@ kubectl get httproute -A
 
 ## Traffic Flow
 
-When you visit `https://docs.sudhanva.me` from your Mac:
+When you visit `https://homelab.sudhanva.me` from your Mac:
 
-- **DNS Resolution**: Your Tailscale client queries Tailscale DNS (100.100.100.100), which knows that `docs.sudhanva.me` points to `gateway-envoy.TAILNET.ts.net`, which resolves to `TAILSCALE_GATEWAY_IP`.
+- **DNS Resolution**: Your Tailscale client queries Tailscale DNS (100.100.100.100), which knows that `homelab.sudhanva.me` points to `gateway-envoy.TAILNET.ts.net`, which resolves to `TAILSCALE_GATEWAY_IP`.
 
 - **TLS Connection**: Your browser connects to `TAILSCALE_GATEWAY_IP:443` via the WireGuard tunnel. The Tailscale proxy pod receives the connection.
 
@@ -233,7 +233,7 @@ When you visit `https://docs.sudhanva.me` from your Mac:
 
 - **Packet Routing**: Flannel CNI routes the DNAT'd packet across the cluster network to the Envoy Gateway pod.
 
-- **TLS Termination**: Envoy reads the SNI (`docs.sudhanva.me`) and selects the filter chain with the wildcard certificate.
+- **TLS Termination**: Envoy reads the SNI (`homelab.sudhanva.me`) and selects the filter chain with the wildcard certificate.
 
 - **HTTPRoute Matching**: Envoy matches the `Host` header to an HTTPRoute and forwards the request to the backend Service (e.g., `docs.docs.svc.cluster.local:80`).
 

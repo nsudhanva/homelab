@@ -4,7 +4,7 @@ import sitemap from '@astrojs/sitemap';
 import mermaid from 'astro-mermaid';
 
 export default defineConfig({
-  site: 'https://docs.sudhanva.me',
+  site: 'https://homelab.sudhanva.me',
   integrations: [
     sitemap(),
     mermaid(),
@@ -36,7 +36,7 @@ export default defineConfig({
           tag: 'meta',
           attrs: {
             property: 'og:image',
-            content: 'https://docs.sudhanva.me/og-image.svg',
+            content: 'https://homelab.sudhanva.me/og-image.svg',
           },
         },
         {
@@ -57,14 +57,14 @@ export default defineConfig({
           tag: 'meta',
           attrs: {
             name: 'twitter:image',
-            content: 'https://docs.sudhanva.me/og-image.svg',
+            content: 'https://homelab.sudhanva.me/og-image.svg',
           },
         },
         {
           tag: 'link',
           attrs: {
             rel: 'canonical',
-            href: 'https://docs.sudhanva.me',
+            href: 'https://homelab.sudhanva.me',
           },
         },
         {
@@ -86,7 +86,7 @@ export default defineConfig({
               'name': 'homelab',
               'url': 'https://github.com/nsudhanva/homelab',
             },
-            'mainEntityOfPage': 'https://docs.sudhanva.me',
+            'mainEntityOfPage': 'https://homelab.sudhanva.me',
           }),
         },
       ],

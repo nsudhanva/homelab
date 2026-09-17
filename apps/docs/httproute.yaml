@@ -11,6 +11,7 @@ spec:
     namespace: tailscale
     sectionName: https
   hostnames:
+  - homelab.sudhanva.me
   - docs.sudhanva.me
   rules:
   - backendRefs:
