@@ -1,0 +1,34 @@
+from pathlib import Path
+from typing import Optional
+from pydantic import HttpUrl, SecretStr
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+class Settings(BaseSettings):
+    model_config = SettingsConfigDict(env_prefix="ALERT_", env_file=".env", extra="ignore")
+
+    # LLM Settings
+    llm_base_url: str = "http://llama-server.llama.svc.cluster.local:8080/v1"
+    llm_model: str = "gemma-4-e2b-it"
+    llm_timeout_seconds: float = 4.0
+    llm_max_tokens: int = 160
+    llm_temperature: float = 0.2
+
+    # Telegram Settings
+    telegram_bot_token: Optional[SecretStr] = None
+    telegram_bot_token_file: Optional[Path] = Path("/etc/alertmanager/secrets/alertmanager-telegram/token")
+    telegram_chat_id: int = 7341944813
+    telegram_timeout_seconds: float = 5.0
+    telegram_api_url: str = "https://api.telegram.org"
+
+    # Server Settings
+    host: str = "0.0.0.0"
+    port: int = 8000
+    log_level: str = "INFO"
+
+    def get_telegram_token(self) -> str:
+        if self.telegram_bot_token:
+            return self.telegram_bot_token.get_secret_value()
+        if self.telegram_bot_token_file and self.telegram_bot_token_file.is_file():
+            return self.telegram_bot_token_file.read_text().strip()
+        raise ValueError("No Telegram bot token found in environment or secret file")
