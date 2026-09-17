@@ -60,19 +60,19 @@ spec:
             - --parallel
             - "2"
             - --threads
-            - "4"
+            - "2"
             - --threads-batch
-            - "4"
+            - "2"
             - --metrics
           ports:
             - name: http
               containerPort: 8080
           resources:
             requests:
-              cpu: 1000m
+              cpu: 500m
               memory: 1536Mi
             limits:
-              cpu: 4500m
+              cpu: 2500m
               memory: 5Gi
               nvidia.com/gpu: "1"
           env:
