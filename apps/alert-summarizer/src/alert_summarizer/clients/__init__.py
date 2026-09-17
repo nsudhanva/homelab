@@ -1,4 +1,4 @@
-from .llm import LLMClient
+from .agent import AlertAgentClient, SummarizerDeps
 from .telegram import TelegramClient
 
-__all__ = ["LLMClient", "TelegramClient"]
+__all__ = ["AlertAgentClient", "SummarizerDeps", "TelegramClient"]

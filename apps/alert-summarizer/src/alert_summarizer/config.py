@@ -7,12 +7,18 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="ALERT_", env_file=".env", extra="ignore")
 
-    # LLM Settings
+    # Cluster Settings
+    cluster_name: str = "homelab-k3s"
+    environment: str = "production"
+
+    # LLM & Pydantic AI Settings
     llm_base_url: str = "http://llama-server.llama.svc.cluster.local:8080/v1"
     llm_model: str = "gemma-4-e2b-it"
     llm_timeout_seconds: float = 15.0
     llm_max_tokens: int = 400
     llm_temperature: float = 0.2
+    llm_retries: int = 2
+    pydantic_ai_no_banner: bool = True
 
     # Telegram Settings
     telegram_bot_token: SecretStr | None = None

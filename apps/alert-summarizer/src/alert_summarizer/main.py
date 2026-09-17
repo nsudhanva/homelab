@@ -1,4 +1,5 @@
 import logging
+import os
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from typing import Any
@@ -6,7 +7,7 @@ from typing import Any
 import httpx
 from fastapi import Depends, FastAPI, HTTPException, status
 
-from .clients import LLMClient, TelegramClient
+from .clients import AlertAgentClient, TelegramClient
 from .config import Settings
 from .models import AlertmanagerPayload
 from .service import AlertSummarizerService
@@ -21,8 +22,10 @@ http_client: httpx.AsyncClient | None = None
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncIterator[None]:
     global http_client
+    if settings.pydantic_ai_no_banner:
+        os.environ["PYDANTIC_AI_NO_BANNER"] = "1"
     http_client = httpx.AsyncClient(timeout=10.0)
-    logger.info("Alert Summarizer microservice started")
+    logger.info("Alert Summarizer microservice started (powered by Pydantic AI)")
     yield
     if http_client and not http_client.is_closed:
         await http_client.aclose()
@@ -31,21 +34,20 @@ async def lifespan(app: FastAPI) -> AsyncIterator[None]:
 
 app = FastAPI(
     title="AI Alert Summarizer",
-    description="Alertmanager Webhook Relay powered by local Gemma 4 and Telegram",
-    version="0.1.0",
+    description="Alertmanager Webhook Relay powered by Pydantic AI, local Gemma 4, and Telegram",
+    version="0.2.0",
     lifespan=lifespan,
 )
 
 
 def get_service() -> AlertSummarizerService:
     token = settings.get_telegram_token()
-    llm = LLMClient(
+    agent = AlertAgentClient(
         base_url=settings.llm_base_url,
-        model=settings.llm_model,
-        timeout_seconds=settings.llm_timeout_seconds,
-        max_tokens=settings.llm_max_tokens,
-        temperature=settings.llm_temperature,
-        client=http_client,
+        model_name=settings.llm_model,
+        retries=settings.llm_retries,
+        cluster_name=settings.cluster_name,
+        environment=settings.environment,
     )
     telegram = TelegramClient(
         bot_token=token,
@@ -54,7 +56,7 @@ def get_service() -> AlertSummarizerService:
         timeout_seconds=settings.telegram_timeout_seconds,
         client=http_client,
     )
-    return AlertSummarizerService(llm_client=llm, telegram_client=telegram)
+    return AlertSummarizerService(agent_client=agent, telegram_client=telegram)
 
 
 @app.get("/healthz", status_code=status.HTTP_200_OK)
