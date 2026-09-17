@@ -35,6 +35,12 @@ def parse_arguments(args: list[str] | None = None) -> argparse.Namespace:
         help="Number of days in the past to process sequentially (e.g. --days 7 for last week).",
     )
     parser.add_argument(
+        "--inbox",
+        action="store_true",
+        default=False,
+        help="Process all unprocessed messages currently in the user's INBOX.",
+    )
+    parser.add_argument(
         "--dry-run",
         action="store_true",
         default=False,
@@ -50,16 +56,18 @@ def parse_arguments(args: list[str] | None = None) -> argparse.Namespace:
 
 
 def run_pipeline(
-    target_date: str,
+    target_date: str | None,
     dry_run: bool,
     limit: int | None,
     settings: Settings,
     gmail: GmailClient | None = None,
     classifier: EmailClassifier | None = None,
     notifier: TelegramNotifier | None = None,
+    inbox_mode: bool = False,
 ) -> int:
-    """Execute classification pipeline for the given date."""
-    logger.info(f"Starting Gmail classification for date: {target_date} (dry_run={dry_run})")
+    """Execute classification pipeline for the given date or entire inbox."""
+    run_label = "all inbox messages" if inbox_mode else f"date: {target_date}"
+    logger.info(f"Starting Gmail classification for {run_label} (dry_run={dry_run})")
 
     if gmail is None:
         gmail = GmailClient(
@@ -94,14 +102,19 @@ def run_pipeline(
     candidate_labels = classifier.filter_candidate_labels(user_labels)
     logger.info(f"Active curated user labels ({len(candidate_labels)}): {candidate_labels}")
 
-    # Query unprocessed messages for target date
-    message_ids = gmail.list_messages_for_date(target_date)
-    total_found = len(message_ids)
-    logger.info(f"Found {total_found} unprocessed message(s) for {target_date}")
-
-    if limit is not None and total_found > limit:
-        logger.info(f"Applying limit of {limit} messages (from {total_found})")
-        message_ids = message_ids[:limit]
+    # Query unprocessed messages
+    if inbox_mode:
+        message_ids = gmail.list_unprocessed_inbox_messages(limit=limit)
+        total_found = len(message_ids)
+        logger.info(f"Found {total_found} unprocessed message(s) in INBOX")
+    else:
+        assert target_date is not None
+        message_ids = gmail.list_messages_for_date(target_date)
+        total_found = len(message_ids)
+        logger.info(f"Found {total_found} unprocessed message(s) for {target_date}")
+        if limit is not None and total_found > limit:
+            logger.info(f"Applying limit of {limit} messages (from {total_found})")
+            message_ids = message_ids[:limit]
 
     label_counts: dict[str, int] = {}
     quarantined_items: list[dict[str, Any]] = []
@@ -153,10 +166,22 @@ def run_pipeline(
                 label_counts.get(settings.quarantine_label, 0) + 1
             )
 
-    # Dispatch summary notification to Telegram
-    logger.info("Dispatching daily summary to Telegram...")
+        # For long runs, dispatch progress checkpoints to Telegram every 25 emails
+        if inbox_mode and index % 25 == 0 and index < len(message_ids):
+            logger.info(f"Dispatching interim progress checkpoint ({index}/{len(message_ids)})...")
+            notifier.send_daily_summary_sync(
+                target_date=f"Inbox Progress ({index}/{len(message_ids)})",
+                total_count=index,
+                label_counts=dict(label_counts),
+                quarantined_items=list(quarantined_items[-5:]),
+                dry_run=dry_run,
+            )
+
+    # Dispatch final summary notification to Telegram
+    final_header = "All Inbox Messages" if inbox_mode else (target_date or "Unknown")
+    logger.info("Dispatching summary to Telegram...")
     notifier.send_daily_summary_sync(
-        target_date=target_date,
+        target_date=final_header,
         total_count=len(message_ids),
         label_counts=label_counts,
         quarantined_items=quarantined_items,
@@ -174,6 +199,26 @@ def main() -> None:
     """CLI entrypoint."""
     args = parse_arguments()
 
+    try:
+        settings = Settings()
+    except Exception as exc:
+        logger.error(f"Failed to load application settings from environment: {exc}")
+        sys.exit(1)
+
+    if args.inbox:
+        try:
+            run_pipeline(
+                target_date=None,
+                dry_run=args.dry_run,
+                limit=args.limit,
+                settings=settings,
+                inbox_mode=True,
+            )
+        except Exception as exc:
+            logger.exception(f"Unhandled error during inbox pipeline: {exc}")
+            sys.exit(1)
+        return
+
     if args.days:
         today = datetime.now(UTC).date()
         # Dates from (today - N days) up to yesterday
@@ -183,12 +228,6 @@ def main() -> None:
     else:
         yesterday = datetime.now(UTC).date() - timedelta(days=1)
         dates = [yesterday.isoformat()]
-
-    try:
-        settings = Settings()
-    except Exception as exc:
-        logger.error(f"Failed to load application settings from environment: {exc}")
-        sys.exit(1)
 
     for target_date in dates:
         try:

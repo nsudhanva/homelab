@@ -87,6 +87,33 @@ class GmailClient:
                 break
         return messages
 
+    def list_unprocessed_inbox_messages(self, limit: int | None = None) -> list[str]:
+        """Query all unprocessed messages currently residing in the user's INBOX."""
+        query = f"-label:{self.processed_label} in:inbox"
+        logger.info(f"Listing all unprocessed inbox messages with query: '{query}'")
+        messages: list[str] = []
+        page_token: str | None = None
+        while True:
+            req = (
+                self.service.users()
+                .messages()
+                .list(
+                    userId="me",
+                    q=query,
+                    pageToken=page_token,
+                )
+            )
+            res = req.execute()
+            for item in res.get("messages", []):
+                if "id" in item:
+                    messages.append(item["id"])
+                    if limit is not None and len(messages) >= limit:
+                        return messages
+            page_token = res.get("nextPageToken")
+            if not page_token:
+                break
+        return messages
+
     def get_message_content(self, msg_id: str) -> dict[str, Any]:
         """Retrieve full message resource including payload and headers."""
         return (
