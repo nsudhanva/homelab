@@ -1,6 +1,7 @@
 import logging
 import os
 import threading
+import time
 
 from openai import AsyncOpenAI
 from pydantic import BaseModel, Field
@@ -247,36 +248,54 @@ class EmailClassifier:
             )
 
         prompt = self._build_prompt(email, curated_labels)
-        try:
-            run_result = self.agent.run_sync(prompt)
-            raw_result = run_result.output
-            return self._evaluate_result(raw_result, set(curated_labels))
-        except Exception as exc:
-            err_str = str(exc).lower()
-            if any(
-                term in err_str
-                for term in [
-                    "connection",
-                    "timeout",
-                    "timed out",
-                    "503",
-                    "502",
-                    "500",
-                    "refused",
-                    "reset by peer",
-                    "server disconnected",
-                    "remoteprotocolerror",
-                    "event loop",
-                ]
-            ):
-                logger.critical(
-                    f"LLM infrastructure failure during inference for email {email.id}: {exc}"
+        max_attempts = 3
+        for attempt in range(1, max_attempts + 1):
+            try:
+                run_result = self.agent.run_sync(prompt)
+                raw_result = run_result.output
+                return self._evaluate_result(raw_result, set(curated_labels))
+            except Exception as exc:
+                err_str = str(exc).lower()
+                is_infra_error = any(
+                    term in err_str
+                    for term in [
+                        "connection",
+                        "timeout",
+                        "timed out",
+                        "503",
+                        "502",
+                        "500",
+                        "refused",
+                        "reset by peer",
+                        "server disconnected",
+                        "remoteprotocolerror",
+                        "event loop",
+                    ]
                 )
-                raise LLMConnectionError(f"LLM endpoint unreachable or failed: {exc}") from exc
+                if is_infra_error and attempt < max_attempts:
+                    logger.warning(
+                        f"Transient LLM infrastructure failure for email {email.id} "
+                        f"(attempt {attempt}/{max_attempts}): {exc}. Retrying in 10s..."
+                    )
+                    time.sleep(10)
+                    continue
+                if is_infra_error:
+                    logger.critical(
+                        f"LLM infrastructure failure during inference for email {email.id} "
+                        f"after {max_attempts} attempts: {exc}"
+                    )
+                    raise LLMConnectionError(f"LLM endpoint unreachable or failed: {exc}") from exc
 
-            logger.error(f"Pydantic AI classification model failure for email {email.id}: {exc}")
-            return ClassificationResult(
-                label=self.quarantine_label,
-                confidence=0.0,
-                reason=f"Model output error: {exc}",
-            )
+                logger.error(
+                    f"Pydantic AI classification model failure for email {email.id}: {exc}"
+                )
+                return ClassificationResult(
+                    label=self.quarantine_label,
+                    confidence=0.0,
+                    reason=f"Model output error: {exc}",
+                )
+        return ClassificationResult(
+            label=self.quarantine_label,
+            confidence=0.0,
+            reason="Exceeded maximum inference retry attempts",
+        )
