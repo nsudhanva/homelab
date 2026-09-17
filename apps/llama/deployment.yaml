@@ -56,9 +56,9 @@ spec:
             - --n-gpu-layers
             - "99"
             - --ctx-size
-            - "4096"
+            - "16384"
             - --parallel
-            - "1"
+            - "2"
             - --metrics
           ports:
             - name: http
