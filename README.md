@@ -219,7 +219,7 @@ flowchart TB
 
 ## Documentation
 
-Documentation is maintained under `docs/` using Astro Starlight.
+The full documentation website is published at [homelab.sudhanva.me](https://homelab.sudhanva.me). Documentation sources are maintained under `docs/` using Astro Starlight.
 
 Build documentation locally:
 
