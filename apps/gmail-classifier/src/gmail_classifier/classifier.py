@@ -41,7 +41,7 @@ class EmailClassifier:
         confidence_threshold: float = 0.80,
         quarantine_label: str = "ai-review",
         processed_label: str = "ai-processed",
-        timeout_seconds: float = 45.0,
+        timeout_seconds: float = 120.0,
         agent: Agent[None, ClassificationResult] | None = None,
     ) -> None:
         self.base_url = base_url.rstrip("/")
