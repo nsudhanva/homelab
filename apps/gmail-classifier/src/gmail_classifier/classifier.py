@@ -1,5 +1,6 @@
 import logging
 import os
+import threading
 
 from openai import AsyncOpenAI
 from pydantic import BaseModel, Field
@@ -56,10 +57,16 @@ class EmailClassifier:
         self.quarantine_label = quarantine_label
         self.processed_label = processed_label
         self.timeout = timeout_seconds
+        self._explicit_agent = agent
+        self._local = threading.local()
 
-        if agent is not None:
-            self.agent = agent
-        else:
+    @property
+    def agent(self) -> Agent[None, ClassificationResult]:
+        """Return the classifier agent, isolated per thread to prevent event loop collisions."""
+        if self._explicit_agent is not None:
+            return self._explicit_agent
+
+        if not hasattr(self._local, "agent"):
             client = AsyncOpenAI(
                 base_url=self.base_url,
                 api_key="not-needed",
@@ -67,7 +74,7 @@ class EmailClassifier:
             )
             provider = OpenAIProvider(openai_client=client)
             model = OpenAIChatModel(self.model_name, provider=provider)
-            self.agent = Agent(
+            self._local.agent = Agent(
                 model=model,
                 output_type=ClassificationResult,
                 system_prompt=(
@@ -82,6 +89,11 @@ class EmailClassifier:
                     "Keep your reasoning brief (1-2 sentences)."
                 ),
             )
+        return self._local.agent
+
+    @agent.setter
+    def agent(self, value: Agent[None, ClassificationResult] | None) -> None:
+        self._explicit_agent = value
 
     def filter_candidate_labels(self, labels: dict[str, str] | list[str]) -> list[str]:
         """Filter out system and workflow labels to return active curated labels."""
@@ -190,6 +202,28 @@ class EmailClassifier:
             raw_result = run_result.output
             return self._evaluate_result(raw_result, set(curated_labels))
         except Exception as exc:
+            err_str = str(exc).lower()
+            if any(
+                term in err_str
+                for term in [
+                    "connection",
+                    "timeout",
+                    "timed out",
+                    "503",
+                    "502",
+                    "500",
+                    "refused",
+                    "reset by peer",
+                    "server disconnected",
+                    "remoteprotocolerror",
+                    "event loop",
+                ]
+            ):
+                logger.critical(
+                    f"LLM infrastructure failure during inference for email {email.id}: {exc}"
+                )
+                raise LLMConnectionError(f"LLM endpoint unreachable or failed: {exc}") from exc
+
             logger.error(f"Pydantic AI classification failed for email {email.id}: {exc}")
             return ClassificationResult(
                 label=self.quarantine_label,
@@ -232,6 +266,7 @@ class EmailClassifier:
                     "reset by peer",
                     "server disconnected",
                     "remoteprotocolerror",
+                    "event loop",
                 ]
             ):
                 logger.critical(
