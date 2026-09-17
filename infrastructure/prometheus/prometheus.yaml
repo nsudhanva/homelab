@@ -119,11 +119,11 @@ spec:
               allow_sign_up: false
           resources:
             requests:
-              cpu: 100m
-              memory: 256Mi
+              cpu: 150m
+              memory: 384Mi
             limits:
-              cpu: 500m
-              memory: 512Mi
+              cpu: 1000m
+              memory: 1Gi
         kube-state-metrics:
           resources:
             requests:
