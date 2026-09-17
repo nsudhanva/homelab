@@ -1,40 +1,13 @@
-import json
+from unittest.mock import AsyncMock, MagicMock
 
-import httpx
 import pytest
 
-from gmail_classifier.classifier import EmailClassifier, extract_json_content
+from gmail_classifier.classifier import ClassificationResult, EmailClassifier
 from gmail_classifier.sanitizer import SanitizedEmail
 
 
-def test_extract_json_content():
-    raw1 = '{"label": "Finance", "confidence": 0.95, "reason": "Bank statement"}'
-    assert extract_json_content(raw1) == {
-        "label": "Finance",
-        "confidence": 0.95,
-        "reason": "Bank statement",
-    }
-
-    raw2 = '```json\n{"label": "Work", "confidence": 0.88, "reason": "Meeting notice"}\n```'
-    assert extract_json_content(raw2) == {
-        "label": "Work",
-        "confidence": 0.88,
-        "reason": "Meeting notice",
-    }
-
-    raw3 = (
-        'Here is the response:\n{"label": "Travel", "confidence": 0.9, "reason": "Flight"}\n'
-        "Hope this helps!"
-    )
-    assert extract_json_content(raw3) == {
-        "label": "Travel",
-        "confidence": 0.9,
-        "reason": "Flight",
-    }
-
-
 def test_filter_candidate_labels():
-    classifier = EmailClassifier()
+    classifier = EmailClassifier(agent=MagicMock())
     labels = {
         "INBOX": "id1",
         "UNREAD": "id2",
@@ -51,8 +24,18 @@ def test_filter_candidate_labels():
 
 
 @pytest.mark.asyncio
-async def test_classify_success(monkeypatch):
-    classifier = EmailClassifier(confidence_threshold=0.80)
+async def test_classify_success():
+    mock_agent = MagicMock()
+    mock_agent.run = AsyncMock(
+        return_value=MagicMock(
+            output=ClassificationResult(
+                label="Finance",
+                confidence=0.95,
+                reason="Explicit quarterly earnings report and financial metrics.",
+            )
+        )
+    )
+    classifier = EmailClassifier(confidence_threshold=0.80, agent=mock_agent)
     email = SanitizedEmail(
         id="1",
         subject="Quarterly Earnings Report",
@@ -60,63 +43,34 @@ async def test_classify_success(monkeypatch):
         body="Q3 financial report and earnings call details.",
     )
 
-    fake_response = {
-        "choices": [
-            {
-                "message": {
-                    "content": json.dumps(
-                        {
-                            "label": "Finance",
-                            "confidence": 0.95,
-                            "reason": "Explicit quarterly earnings report and financial metrics.",
-                        }
-                    )
-                }
-            }
-        ]
-    }
-
-    async def fake_post(self, url, **kwargs):
-        return httpx.Response(200, json=fake_response, request=httpx.Request("POST", url))
-
-    monkeypatch.setattr(httpx.AsyncClient, "post", fake_post)
-
     result = await classifier.classify(email, ["Finance", "Personal", "Work"])
     assert result.label == "Finance"
     assert result.confidence == 0.95
     assert "Explicit quarterly earnings" in result.reason
+    mock_agent.run.assert_called_once()
 
 
 @pytest.mark.asyncio
-async def test_classify_low_confidence_fallback(monkeypatch):
-    classifier = EmailClassifier(confidence_threshold=0.80, quarantine_label="ai-review")
+async def test_classify_low_confidence_fallback():
+    mock_agent = MagicMock()
+    mock_agent.run = AsyncMock(
+        return_value=MagicMock(
+            output=ClassificationResult(
+                label="Work",
+                confidence=0.65,
+                reason="Could be work related but vague.",
+            )
+        )
+    )
+    classifier = EmailClassifier(
+        confidence_threshold=0.80, quarantine_label="ai-review", agent=mock_agent
+    )
     email = SanitizedEmail(
         id="2",
         subject="Random Note",
         sender="someone@example.com",
         body="Just checking in.",
     )
-
-    fake_response = {
-        "choices": [
-            {
-                "message": {
-                    "content": json.dumps(
-                        {
-                            "label": "Work",
-                            "confidence": 0.65,
-                            "reason": "Could be work related but vague.",
-                        }
-                    )
-                }
-            }
-        ]
-    }
-
-    async def fake_post(self, url, **kwargs):
-        return httpx.Response(200, json=fake_response, request=httpx.Request("POST", url))
-
-    monkeypatch.setattr(httpx.AsyncClient, "post", fake_post)
 
     result = await classifier.classify(email, ["Work", "Personal"])
     assert result.label == "ai-review"
@@ -125,8 +79,20 @@ async def test_classify_low_confidence_fallback(monkeypatch):
 
 
 @pytest.mark.asyncio
-async def test_classify_unmatched_label_fallback(monkeypatch):
-    classifier = EmailClassifier(confidence_threshold=0.80, quarantine_label="ai-review")
+async def test_classify_unmatched_label_fallback():
+    mock_agent = MagicMock()
+    mock_agent.run = AsyncMock(
+        return_value=MagicMock(
+            output=ClassificationResult(
+                label="NonExistentLabel",
+                confidence=0.99,
+                reason="Found strange topic.",
+            )
+        )
+    )
+    classifier = EmailClassifier(
+        confidence_threshold=0.80, quarantine_label="ai-review", agent=mock_agent
+    )
     email = SanitizedEmail(
         id="3",
         subject="Unknown topic",
@@ -134,34 +100,15 @@ async def test_classify_unmatched_label_fallback(monkeypatch):
         body="Random newsletter.",
     )
 
-    fake_response = {
-        "choices": [
-            {
-                "message": {
-                    "content": json.dumps(
-                        {
-                            "label": "NonExistentLabel",
-                            "confidence": 0.99,
-                            "reason": "Found strange topic.",
-                        }
-                    )
-                }
-            }
-        ]
-    }
-
-    async def fake_post(self, url, **kwargs):
-        return httpx.Response(200, json=fake_response, request=httpx.Request("POST", url))
-
-    monkeypatch.setattr(httpx.AsyncClient, "post", fake_post)
-
     result = await classifier.classify(email, ["Work", "Personal"])
     assert result.label == "ai-review"
     assert "Unmatched label" in result.reason
 
 
-def test_classify_sync_error_handling(monkeypatch):
-    classifier = EmailClassifier(quarantine_label="ai-review")
+def test_classify_sync_error_handling():
+    mock_agent = MagicMock()
+    mock_agent.run_sync.side_effect = RuntimeError("Connection timeout")
+    classifier = EmailClassifier(quarantine_label="ai-review", agent=mock_agent)
     email = SanitizedEmail(
         id="4",
         subject="Timeout test",
@@ -169,12 +116,18 @@ def test_classify_sync_error_handling(monkeypatch):
         body="Content",
     )
 
-    def fake_post(self, url, **kwargs):
-        raise httpx.ConnectError("Connection refused")
-
-    monkeypatch.setattr(httpx.Client, "post", fake_post)
-
     result = classifier.classify_sync(email, ["Work"])
     assert result.label == "ai-review"
     assert result.confidence == 0.0
     assert "Classifier error" in result.reason
+
+
+def test_classify_no_curated_labels():
+    mock_agent = MagicMock()
+    classifier = EmailClassifier(quarantine_label="ai-review", agent=mock_agent)
+    email = SanitizedEmail(id="5", subject="Empty", body="Empty")
+
+    result = classifier.classify_sync(email, ["INBOX", "SPAM"])
+    assert result.label == "ai-review"
+    assert "No active curated user labels available" in result.reason
+    mock_agent.run_sync.assert_not_called()
