@@ -27,7 +27,7 @@ spec:
           containers:
             - name: gmail-classifier
               image: ghcr.io/nsudhanva/homelab-gmail-classifier:latest
-              imagePullPolicy: IfNotPresent
+              imagePullPolicy: Always
               securityContext:
                 runAsNonRoot: true
                 runAsUser: 10001
