@@ -1,15 +1,15 @@
 import html
 import logging
 
-from .clients import LLMClient, TelegramClient
-from .models import Alert, AlertmanagerPayload
+from .clients import AlertAgentClient, TelegramClient
+from .models import Alert, AlertmanagerPayload, AlertSummary
 
 logger = logging.getLogger(__name__)
 
 
 class AlertSummarizerService:
-    def __init__(self, llm_client: LLMClient, telegram_client: TelegramClient):
-        self.llm = llm_client
+    def __init__(self, agent_client: AlertAgentClient, telegram_client: TelegramClient):
+        self.agent = agent_client
         self.telegram = telegram_client
 
     def format_alert_context(self, alert: Alert) -> str:
@@ -50,7 +50,7 @@ class AlertSummarizerService:
             f"• <b>Description</b>: {safe_desc}"
         )
 
-    def format_ai_message(self, alert: Alert, ai_summary: str) -> str:
+    def format_ai_message(self, alert: Alert, summary: AlertSummary) -> str:
         status_emoji = (
             "🟢" if alert.is_resolved else ("🔴" if alert.severity == "critical" else "🟡")
         )
@@ -59,17 +59,22 @@ class AlertSummarizerService:
         safe_namespace = html.escape(alert.namespace)
 
         header = f"{status_emoji} <b>[{status_text}] {safe_alertname}</b>"
-        return f"{header} (<code>{safe_namespace}</code>)\n\n{ai_summary}"
+        return (
+            f"{header} (<code>{safe_namespace}</code>)\n\n"
+            f"• <b>Symptom:</b> {html.escape(summary.symptom)}\n"
+            f"• <b>Cause:</b> {html.escape(summary.probable_cause)}\n"
+            f"• <b>Action:</b> {html.escape(summary.recommended_action)}"
+        )
 
     async def process_alert(self, alert: Alert) -> bool:
         alert_context = self.format_alert_context(alert)
         logger.info(f"Processing alert: {alert.alertname} (status={alert.status})")
 
-        # Attempt AI summarization via local Gemma 4
-        ai_summary = await self.llm.summarize_alert(alert_context, alert.is_resolved)
+        # Attempt AI summarization via Pydantic AI
+        ai_summary = await self.agent.summarize_alert(alert_context, alert.is_resolved)
 
-        if ai_summary:
-            logger.info(f"AI summarization succeeded for {alert.alertname}")
+        if ai_summary is not None:
+            logger.info(f"Pydantic AI summarization succeeded for {alert.alertname}")
             msg = self.format_ai_message(alert, ai_summary)
         else:
             logger.warning(f"Using fallback template for {alert.alertname}")

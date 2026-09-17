@@ -45,3 +45,15 @@ class AlertmanagerPayload(BaseModel):
     commonAnnotations: dict[str, str] = Field(default_factory=dict)
     externalURL: str | None = None
     alerts: list[Alert] = Field(default_factory=list)
+
+
+class AlertSummary(BaseModel):
+    symptom: str = Field(
+        description="Concise description of the affected Kubernetes component or service symptom"
+    )
+    probable_cause: str = Field(
+        description="Immediate probable root cause inferred from annotations and metrics"
+    )
+    recommended_action: str = Field(
+        description="Precise triage command (e.g. kubectl command) or immediate remediation step"
+    )

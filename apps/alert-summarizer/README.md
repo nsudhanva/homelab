@@ -8,8 +8,11 @@ The AI Alert Summarizer receives Prometheus Alertmanager webhook payloads, sends
 
 ## Features
 
+- Pydantic AI agent architecture with strongly typed, schema-validated outputs (`AlertSummary`)
+- Automatic LLM self-correction retries if generated output violates schema constraints
+- Dynamic system prompts injected with cluster context dependencies (`SummarizerDeps`)
 - Non-blocking async processing with FastAPI and HTTPX
-- Zero external cloud dependencies (runs 100% locally on node `legion`)
+- Zero external cloud dependencies (runs 100% locally on node `legion` with in-cluster Gemma 4)
 - Automatic fallback: If LLM is unreachable or times out, dispatches a clean standard template so alerts are never missed
 - Native HTML formatting for Telegram messages
 
