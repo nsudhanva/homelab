@@ -103,7 +103,7 @@ sudo chown $(id -u):$(id -g) ~/.kube/config
 
 ## Step 2: Enable custom domains with Gateway API
 
-This repo uses Envoy Gateway, ExternalDNS, and cert-manager with the Tailscale Gateway API setup. Subdomains such as `docs.sudhanva.me` resolve to the Tailscale Gateway while your apex `sudhanva.me` remains managed elsewhere.
+This repo uses Envoy Gateway, ExternalDNS, and cert-manager with the Tailscale Gateway API setup. Subdomains such as `homelab.sudhanva.me` resolve to the Tailscale Gateway while your apex `sudhanva.me` remains managed elsewhere.
 
 :::note
 
@@ -175,14 +175,14 @@ kubectl get gateway -n tailscale tailscale-gateway -o jsonpath='{.status.address
 
 Use the `IPAddress` value to validate `dig +short <name> @100.100.100.100` output.
 
-## Split-horizon DNS for docs.sudhanva.me
+## Split-horizon DNS for homelab.sudhanva.me
 
 The docs hostname serves two backends:
 
 - Tailnet clients should hit the cluster through the Tailscale Gateway.
-- Public clients should hit the Cloudflare Pages site.
+- Public clients should hit Cloudflare.
 
-Keep the public Cloudflare record pointed at Pages, and add a Tailscale DNS override for the same hostname.
+Keep the public Cloudflare record pointed at the designated host, and add a Tailscale DNS override for the same hostname.
 
 ### Deploy the split-DNS resolver
 
@@ -198,7 +198,7 @@ If you need to validate the updater, check the `tailscale-dns-updater` CronJob a
 
 ### Configure Cloudflare (public)
 
-Set `docs.sudhanva.me` to the Cloudflare Pages hostname in the `sudhanva.me` zone.
+Set `homelab.sudhanva.me` to the public hostname in the `sudhanva.me` zone.
 
 ### Configure Tailscale DNS (tailnet)
 
@@ -227,8 +227,8 @@ The docs HTTPRoute intentionally omits the ExternalDNS expose annotation so Exte
 On a tailnet device:
 
 ```bash
-dig +short docs.sudhanva.me @100.100.100.100
-curl -I https://docs.sudhanva.me
+dig +short homelab.sudhanva.me @100.100.100.100
+curl -I https://homelab.sudhanva.me
 ```
 
 Expected results:
@@ -239,8 +239,8 @@ Expected results:
 Off the tailnet:
 
 ```bash
-dig +short docs.sudhanva.me @1.1.1.1
-curl -I https://docs.sudhanva.me
+dig +short homelab.sudhanva.me @1.1.1.1
+curl -I https://homelab.sudhanva.me
 ```
 
 Expected results:
@@ -286,7 +286,7 @@ kubectl get pods -n envoy-gateway
 
 This error in Envoy logs means the TLS connection is missing Server Name Indication (SNI). Ensure:
 
-- Clients connect using the hostname (e.g., `docs.sudhanva.me`), not an IP address
+- Clients connect using the hostname (e.g., `homelab.sudhanva.me`), not an IP address
 - The hostname matches a configured HTTPRoute
 - The certificate covers the requested hostname (check with `kubectl get certificate -n tailscale`)
 

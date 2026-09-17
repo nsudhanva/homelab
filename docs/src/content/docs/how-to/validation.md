@@ -50,11 +50,11 @@ Homer dashboard is available at `https://home.sudhanva.me` from a Tailnet client
 
 ### Validate split-horizon DNS
 
-On a tailnet client, `docs.sudhanva.me` should resolve to the Tailscale Gateway IP:
+On a tailnet client, `homelab.sudhanva.me` should resolve to the Tailscale Gateway IP:
 
 ```bash
-dig +short docs.sudhanva.me @100.100.100.100
-curl -I https://docs.sudhanva.me
+dig +short homelab.sudhanva.me @100.100.100.100
+curl -I https://homelab.sudhanva.me
 ```
 
 If you have other apps exposed through the Gateway, validate one of them as well:
@@ -67,8 +67,8 @@ curl -I https://home.sudhanva.me
 Off the tailnet, it should resolve to Cloudflare:
 
 ```bash
-dig +short docs.sudhanva.me @1.1.1.1
-curl -I https://docs.sudhanva.me
+dig +short homelab.sudhanva.me @1.1.1.1
+curl -I https://homelab.sudhanva.me
 ```
 
 ## Step 4: Validate External Secrets

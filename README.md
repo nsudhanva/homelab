@@ -251,7 +251,7 @@ docs/             Astro Starlight documentation
 
 | App | Purpose | Hostname |
 | --- | --- | --- |
-| Docs | Documentation site for cluster guides | `docs.sudhanva.me` |
+| Docs | Documentation site for cluster guides | `homelab.sudhanva.me` |
 | Headlamp | Kubernetes UI with OIDC support and metrics integration | `headlamp.sudhanva.me` |
 | Homer | Home dashboard with service shortcuts | `home.sudhanva.me` |
 | Jellyfin | Media streaming with NVIDIA GPU acceleration | `jellyfin.sudhanva.me` |

@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://docs.sudhanva.me/sitemap-index.xml
+Sitemap: https://homelab.sudhanva.me/sitemap-index.xml

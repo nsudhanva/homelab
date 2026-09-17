@@ -1,4 +1,4 @@
 [vars]
-DOCS_URL = "https://docs.sudhanva.me"
+DOCS_URL = "https://homelab.sudhanva.me"
 
 pages_build_output_dir = "dist"
