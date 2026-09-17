@@ -1,7 +1,9 @@
 import argparse
+import concurrent.futures
 import html
 import logging
 import sys
+import threading
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
@@ -53,6 +55,12 @@ def parse_arguments(args: list[str] | None = None) -> argparse.Namespace:
         default=None,
         help="Maximum number of messages to process.",
     )
+    parser.add_argument(
+        "--concurrency",
+        type=int,
+        default=None,
+        help="Number of concurrent classification workers (defaults to Settings.concurrency).",
+    )
     return parser.parse_args(args)
 
 
@@ -65,6 +73,7 @@ def run_pipeline(
     classifier: EmailClassifier | None = None,
     notifier: TelegramNotifier | None = None,
     inbox_mode: bool = False,
+    concurrency: int | None = None,
 ) -> int:
     """Execute classification pipeline for the given date or entire inbox."""
     run_label = "all inbox messages" if inbox_mode else f"date: {target_date}"
@@ -117,42 +126,74 @@ def run_pipeline(
             logger.info(f"Applying limit of {limit} messages (from {total_found})")
             message_ids = message_ids[:limit]
 
+    active_workers = concurrency if concurrency is not None else settings.concurrency
+    workers = max(1, min(active_workers, len(message_ids) or 1))
+    logger.info(f"Running classification pipeline with {workers} worker thread(s)")
+
     label_counts: dict[str, int] = {}
     quarantined_items: list[dict[str, Any]] = []
+    processed_count = 0
+    state_lock = threading.Lock()
+    gmail_lock = threading.Lock()
+    abort_event = threading.Event()
 
-    for index, msg_id in enumerate(message_ids, start=1):
+    def process_message(index: int, msg_id: str) -> None:
+        nonlocal processed_count
+        if abort_event.is_set():
+            return
+
         logger.info(f"[{index}/{len(message_ids)}] Processing message {msg_id}")
         try:
-            raw_msg = gmail.get_message_content(msg_id)
+            with gmail_lock:
+                raw_msg = gmail.get_message_content(msg_id)
             email = sanitize_message(raw_msg)
             result = classifier.classify_sync(email, candidate_labels)
 
-            label_counts[result.label] = label_counts.get(result.label, 0) + 1
-            logger.info(
-                f"Result for {msg_id}: label='{result.label}', conf={result.confidence:.2f}, "
-                f"reason='{result.reason}'"
-            )
-
-            if result.label == settings.quarantine_label:
-                quarantined_items.append(
-                    {
-                        "id": msg_id,
-                        "subject": email.subject,
-                        "sender": email.sender,
-                        "confidence": result.confidence,
-                        "reason": result.reason,
-                    }
+            with state_lock:
+                label_counts[result.label] = label_counts.get(result.label, 0) + 1
+                processed_count += 1
+                current_count = processed_count
+                logger.info(
+                    f"Result for {msg_id}: label='{result.label}', conf={result.confidence:.2f}, "
+                    f"reason='{result.reason}'"
                 )
+
+                if result.label == settings.quarantine_label:
+                    quarantined_items.append(
+                        {
+                            "id": msg_id,
+                            "subject": email.subject,
+                            "sender": email.sender,
+                            "confidence": result.confidence,
+                            "reason": result.reason,
+                        }
+                    )
 
             if not dry_run:
                 target_label_id = user_labels.get(result.label, quarantine_label_id)
                 add_labels = [target_label_id, processed_label_id]
-                gmail.apply_label(msg_id, add_label_ids=add_labels)
+                with gmail_lock:
+                    gmail.apply_label(msg_id, add_label_ids=add_labels)
             else:
                 logger.info(
                     f"[DRY RUN] Would apply labels {[result.label, settings.processed_label]}"
                 )
+
+            with state_lock:
+                if inbox_mode and current_count % 25 == 0 and current_count < len(message_ids):
+                    logger.info(
+                        "Dispatching interim progress checkpoint "
+                        f"({current_count}/{len(message_ids)})..."
+                    )
+                    notifier.send_daily_summary_sync(
+                        target_date=f"Inbox Progress ({current_count}/{len(message_ids)})",
+                        total_count=current_count,
+                        label_counts=dict(label_counts),
+                        quarantined_items=list(quarantined_items[-5:]),
+                        dry_run=dry_run,
+                    )
         except LLMConnectionError as exc:
+            abort_event.set()
             logger.critical(
                 f"Aborting batch run! LLM infrastructure failure at message {msg_id} "
                 f"[{index}/{len(message_ids)}]: {exc}"
@@ -169,29 +210,38 @@ def run_pipeline(
             raise
         except Exception as exc:
             logger.error(f"Failed to process message {msg_id}: {exc}", exc_info=True)
-            quarantined_items.append(
-                {
-                    "id": msg_id,
-                    "subject": "Error retrieving message",
-                    "sender": "Unknown",
-                    "confidence": 0.0,
-                    "reason": f"API / Processing error: {exc}",
-                }
-            )
-            label_counts[settings.quarantine_label] = (
-                label_counts.get(settings.quarantine_label, 0) + 1
-            )
+            with state_lock:
+                quarantined_items.append(
+                    {
+                        "id": msg_id,
+                        "subject": "Error retrieving message",
+                        "sender": "Unknown",
+                        "confidence": 0.0,
+                        "reason": f"API / Processing error: {exc}",
+                    }
+                )
+                label_counts[settings.quarantine_label] = (
+                    label_counts.get(settings.quarantine_label, 0) + 1
+                )
+                processed_count += 1
 
-        # For long runs, dispatch progress checkpoints to Telegram every 25 emails
-        if inbox_mode and index % 25 == 0 and index < len(message_ids):
-            logger.info(f"Dispatching interim progress checkpoint ({index}/{len(message_ids)})...")
-            notifier.send_daily_summary_sync(
-                target_date=f"Inbox Progress ({index}/{len(message_ids)})",
-                total_count=index,
-                label_counts=dict(label_counts),
-                quarantined_items=list(quarantined_items[-5:]),
-                dry_run=dry_run,
-            )
+    if workers <= 1:
+        for index, msg_id in enumerate(message_ids, start=1):
+            if abort_event.is_set():
+                break
+            process_message(index, msg_id)
+    else:
+        with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as executor:
+            futures = [
+                executor.submit(process_message, index, msg_id)
+                for index, msg_id in enumerate(message_ids, start=1)
+            ]
+            for future in concurrent.futures.as_completed(futures):
+                try:
+                    future.result()
+                except LLMConnectionError:
+                    executor.shutdown(wait=False, cancel_futures=True)
+                    raise
 
     # Dispatch final summary notification to Telegram
     final_header = "All Inbox Messages" if inbox_mode else (target_date or "Unknown")
@@ -229,6 +279,7 @@ def main() -> None:
                 limit=args.limit,
                 settings=settings,
                 inbox_mode=True,
+                concurrency=args.concurrency,
             )
         except Exception as exc:
             logger.exception(f"Unhandled error during inbox pipeline: {exc}")
@@ -252,6 +303,7 @@ def main() -> None:
                 dry_run=args.dry_run,
                 limit=args.limit,
                 settings=settings,
+                concurrency=args.concurrency,
             )
         except Exception as exc:
             logger.exception(f"Unhandled error during pipeline for date {target_date}: {exc}")

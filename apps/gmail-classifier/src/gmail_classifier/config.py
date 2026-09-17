@@ -64,3 +64,8 @@ class Settings(BaseSettings):
         validation_alias=AliasChoices("PROCESSED_LABEL", "processed_label"),
         description="Gmail label indicating the email was processed by the classifier",
     )
+    concurrency: int = Field(
+        default=2,
+        validation_alias=AliasChoices("CONCURRENCY", "concurrency"),
+        description="Number of concurrent message classification workers",
+    )
