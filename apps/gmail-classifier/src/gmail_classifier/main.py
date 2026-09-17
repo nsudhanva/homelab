@@ -232,7 +232,7 @@ def run_pipeline(
                 break
             process_message(index, msg_id)
             if index < len(message_ids) and not abort_event.is_set():
-                time.sleep(3.5)
+                time.sleep(1.5)
     else:
         with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as executor:
             futures = [
