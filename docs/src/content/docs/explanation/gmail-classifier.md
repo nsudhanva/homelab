@@ -232,7 +232,8 @@ stateDiagram-v2
         ApplyReviewLabel: Add ai-review Label ID
         ApplyProcessedQuarantine: Add ai-processed Label ID
         LogAlert: Queue Item for Telegram Digest
-        ApplyReviewLabel --> ApplyProcessedQuarantine --> LogAlert
+        ApplyReviewLabel --> ApplyProcessedQuarantine
+        ApplyProcessedQuarantine --> LogAlert
     }
 
     Approved --> Completed: Batch Continuation
