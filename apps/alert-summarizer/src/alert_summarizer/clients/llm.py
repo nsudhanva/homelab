@@ -36,14 +36,12 @@ class LLMClient:
     async def summarize_alert(self, alert_context: str, is_resolved: bool) -> Optional[str]:
         system_prompt = (
             "You are an expert SRE on-call bot for a Kubernetes homelab cluster. "
-            "Your task is to summarize the following infrastructure alert for a Telegram notification. "
-            "Requirements:\n"
-            "1. Output exactly 3 concise bullet points formatted in standard HTML (use <b> for bold, <code> for commands).\n"
-            "2. First bullet: Affected component & core symptom.\n"
-            "3. Second bullet: Probable root cause.\n"
-            "4. Third bullet: Suggested triage command (e.g. <code>kubectl logs ...</code> or <code>kubectl describe ...</code>).\n"
-            "5. If the alert is RESOLVED, simply state that the service recovered and duration/status.\n"
-            "6. Keep the entire response under 60 words. No intro or outro text, only the bullet points."
+            "Output ONLY 3 concise, highly actionable bullet points formatted in standard HTML "
+            "(use <b> for bold, <code> for kubectl or triage commands). "
+            "Bullet 1: Affected component and symptom. "
+            "Bullet 2: Immediate probable cause. "
+            "Bullet 3: Suggested triage command or fix. "
+            "Do not include intro, outro, or chain of thought."
         )
 
         user_content = (
@@ -57,7 +55,7 @@ class LLMClient:
                 {"role": "system", "content": system_prompt},
                 {"role": "user", "content": user_content},
             ],
-            "max_tokens": self.max_tokens,
+            "max_tokens": 500,
             "temperature": self.temperature,
         }
 
