@@ -25,7 +25,7 @@ spec:
           args:
             - --inbox
             - --concurrency
-            - "2"
+            - "1"
           securityContext:
             runAsNonRoot: true
             runAsUser: 10001

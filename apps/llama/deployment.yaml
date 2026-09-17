@@ -56,9 +56,9 @@ spec:
             - --n-gpu-layers
             - "99"
             - --ctx-size
-            - "16384"
+            - "8192"
             - --parallel
-            - "2"
+            - "1"
             - --threads
             - "2"
             - --threads-batch
@@ -73,7 +73,7 @@ spec:
               memory: 1536Mi
             limits:
               cpu: 2500m
-              memory: 5Gi
+              memory: 6Gi
               nvidia.com/gpu: "1"
           env:
             - name: NVIDIA_VISIBLE_DEVICES

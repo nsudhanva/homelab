@@ -4,6 +4,7 @@ import html
 import logging
 import sys
 import threading
+import time
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
@@ -230,6 +231,8 @@ def run_pipeline(
             if abort_event.is_set():
                 break
             process_message(index, msg_id)
+            if index < len(message_ids) and not abort_event.is_set():
+                time.sleep(1.5)
     else:
         with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as executor:
             futures = [
