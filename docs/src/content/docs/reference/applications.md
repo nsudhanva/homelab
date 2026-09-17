@@ -118,3 +118,13 @@ The `media` namespace is shared by Jellyfin and Filebrowser so they can use the 
 | Service | `apps/llama/service.yaml` | ClusterIP on port 8080 |
 | HTTPRoute | `apps/llama/httproute.yaml` | `ai.sudhanva.me` via tailnet gateway |
 | PVC | `apps/llama/pvc.yaml` | 15Gi local-path storage for `/models` |
+
+## Gmail Classifier
+
+| Item | Path | Notes |
+| --- | --- | --- |
+| Namespace | `apps/gmail-classifier/namespace.yaml` | Dedicated `gmail-classifier` namespace |
+| App config | `apps/gmail-classifier/app.yaml` | ArgoCD app definition |
+| CronJob | `apps/gmail-classifier/cronjob.yaml` | Daily schedule at `0 1 * * *` invoking `uv run gmail-classifier` |
+| ExternalSecret | `apps/gmail-classifier/secret.yaml` | Vault integration for Google OAuth client credentials and refresh token |
+| Python App | `apps/gmail-classifier/src/gmail_classifier/` | Automated Gmail triage engine using local Gemma 4 and Telegram alerts |
