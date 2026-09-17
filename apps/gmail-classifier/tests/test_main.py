@@ -191,3 +191,47 @@ def test_run_pipeline_handles_message_fetch_error(monkeypatch):
     call_kwargs = mock_notifier.send_daily_summary_sync.call_args.kwargs
     assert len(call_kwargs["quarantined_items"]) == 1
     assert "Transient Google API error" in call_kwargs["quarantined_items"][0]["reason"]
+
+
+def test_run_pipeline_concurrent(monkeypatch):
+    monkeypatch.setenv("GMAIL_CLIENT_ID", "cid")
+    monkeypatch.setenv("GMAIL_CLIENT_SECRET", "csecret")
+    monkeypatch.setenv("GMAIL_REFRESH_TOKEN", "rtoken")
+    settings = Settings()
+
+    mock_gmail = MagicMock()
+    mock_gmail.get_user_labels.return_value = {
+        "Work": "lbl-work",
+        "Personal": "lbl-personal",
+        "ai-processed": "lbl-proc",
+        "ai-review": "lbl-rev",
+    }
+    mock_gmail.ensure_label_exists.side_effect = lambda name: f"lbl-{name}"
+    mock_gmail.list_messages_for_date.return_value = ["msg-1", "msg-2", "msg-3", "msg-4"]
+    mock_gmail.get_message_content.side_effect = lambda mid: {"id": mid, "snippet": "Text"}
+
+    mock_classifier = MagicMock()
+    mock_classifier.filter_candidate_labels.return_value = ["Personal", "Work"]
+    mock_classifier.classify_sync.return_value = ClassificationResult(
+        label="Work", confidence=0.95, reason="Work email"
+    )
+
+    mock_notifier = MagicMock()
+
+    processed_count = run_pipeline(
+        target_date="2026-09-16",
+        dry_run=False,
+        limit=None,
+        settings=settings,
+        gmail=mock_gmail,
+        classifier=mock_classifier,
+        notifier=mock_notifier,
+        concurrency=2,
+    )
+
+    assert processed_count == 4
+    assert mock_gmail.apply_label.call_count == 4
+    mock_notifier.send_daily_summary_sync.assert_called_once()
+    call_kwargs = mock_notifier.send_daily_summary_sync.call_args.kwargs
+    assert call_kwargs["total_count"] == 4
+    assert call_kwargs["label_counts"] == {"Work": 4}

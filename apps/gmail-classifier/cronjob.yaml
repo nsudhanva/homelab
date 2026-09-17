@@ -58,6 +58,8 @@ spec:
                   value: "ai-review"
                 - name: PROCESSED_LABEL
                   value: "ai-processed"
+                - name: CONCURRENCY
+                  value: "2"
               volumeMounts:
                 - name: tmp
                   mountPath: /tmp
