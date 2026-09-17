@@ -15,6 +15,8 @@ spec:
   hostnames:
     - ai.sudhanva.me
   rules:
-    - backendRefs:
+    - timeouts:
+        request: 300s
+      backendRefs:
         - name: llama-server
           port: 8080
