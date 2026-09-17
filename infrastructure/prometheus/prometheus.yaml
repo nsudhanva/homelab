@@ -95,11 +95,9 @@ spec:
             receivers:
             - name: "null"
             - name: telegram
-              telegram_configs:
-              - bot_token_file: /etc/alertmanager/secrets/alertmanager-telegram/token
-                chat_id: 7341944813
+              webhook_configs:
+              - url: http://alert-summarizer.monitoring.svc.cluster.local:8000/webhook
                 send_resolved: true
-                api_url: https://api.telegram.org
         grafana:
           admin:
             existingSecret: grafana-admin
