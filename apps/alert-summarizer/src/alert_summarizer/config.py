@@ -1,6 +1,6 @@
 from pathlib import Path
-from typing import Optional
-from pydantic import HttpUrl, SecretStr
+
+from pydantic import SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -15,8 +15,10 @@ class Settings(BaseSettings):
     llm_temperature: float = 0.2
 
     # Telegram Settings
-    telegram_bot_token: Optional[SecretStr] = None
-    telegram_bot_token_file: Optional[Path] = Path("/etc/alertmanager/secrets/alertmanager-telegram/token")
+    telegram_bot_token: SecretStr | None = None
+    telegram_bot_token_file: Path | None = Path(
+        "/etc/alertmanager/secrets/alertmanager-telegram/token"
+    )
     telegram_chat_id: int = 7341944813
     telegram_timeout_seconds: float = 5.0
     telegram_api_url: str = "https://api.telegram.org"

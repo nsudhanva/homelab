@@ -1,5 +1,5 @@
 import logging
-from typing import Optional
+
 import httpx
 
 logger = logging.getLogger(__name__)
@@ -12,7 +12,7 @@ class TelegramClient:
         chat_id: int,
         api_url: str = "https://api.telegram.org",
         timeout_seconds: float = 5.0,
-        client: Optional[httpx.AsyncClient] = None,
+        client: httpx.AsyncClient | None = None,
     ):
         self.bot_token = bot_token
         self.chat_id = chat_id
@@ -45,6 +45,6 @@ class TelegramClient:
             resp = await client.post(url, json=payload, timeout=self.timeout)
             resp.raise_for_status()
             return True
-        except Exception as exc:
+        except (httpx.HTTPError, ValueError) as exc:
             logger.error(f"Failed to dispatch Telegram message: {exc}")
             return False

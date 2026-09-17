@@ -26,6 +26,13 @@ repos:
         files: \.(md|mdx)$
         exclude: ^docs/node_modules/
 
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.16.8
+    hooks:
+      - id: ruff-check
+        args: [--fix]
+      - id: ruff-format
+
   - repo: local
     hooks:
       - id: kubeconform

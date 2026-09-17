@@ -1,6 +1,7 @@
 import logging
+from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
-from typing import Any, AsyncIterator
+from typing import Any
 
 import httpx
 from fastapi import Depends, FastAPI, HTTPException, status
@@ -10,10 +11,7 @@ from .config import Settings
 from .models import AlertmanagerPayload
 from .service import AlertSummarizerService
 
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s [%(levelname)s] %(name)s: %(message)s"
-)
+logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
 logger = logging.getLogger("alert_summarizer")
 
 settings = Settings()
@@ -40,7 +38,6 @@ app = FastAPI(
 
 
 def get_service() -> AlertSummarizerService:
-    global http_client
     token = settings.get_telegram_token()
     llm = LLMClient(
         base_url=settings.llm_base_url,
@@ -70,17 +67,16 @@ async def readyz() -> dict[str, str]:
     try:
         settings.get_telegram_token()
         return {"status": "ready"}
-    except Exception as exc:
+    except (ValueError, OSError) as exc:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=f"Configuration not ready: {exc}"
-        )
+            detail=f"Configuration not ready: {exc}",
+        ) from exc
 
 
 @app.post("/webhook", status_code=status.HTTP_200_OK)
 async def webhook(
-    payload: AlertmanagerPayload,
-    service: AlertSummarizerService = Depends(get_service)
+    payload: AlertmanagerPayload, service: AlertSummarizerService = Depends(get_service)
 ) -> dict[str, Any]:
     count = await service.process_payload(payload)
     return {"status": "processed", "alerts_dispatched": count}

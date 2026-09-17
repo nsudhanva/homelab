@@ -1,5 +1,5 @@
 import logging
-from typing import Optional
+
 import httpx
 
 logger = logging.getLogger(__name__)
@@ -13,7 +13,7 @@ class LLMClient:
         timeout_seconds: float = 15.0,
         max_tokens: int = 400,
         temperature: float = 0.2,
-        client: Optional[httpx.AsyncClient] = None,
+        client: httpx.AsyncClient | None = None,
     ):
         self.base_url = base_url.rstrip("/")
         self.model = model
@@ -33,7 +33,7 @@ class LLMClient:
         if self._owns_client and self._client and not self._client.is_closed:
             await self._client.aclose()
 
-    async def summarize_alert(self, alert_context: str, is_resolved: bool) -> Optional[str]:
+    async def summarize_alert(self, alert_context: str, is_resolved: bool) -> str | None:
         system_prompt = (
             "You are an expert SRE on-call bot for a Kubernetes homelab cluster. "
             "Output ONLY 3 concise, highly actionable bullet points formatted in standard HTML "
@@ -67,6 +67,6 @@ class LLMClient:
             data = resp.json()
             content = data["choices"][0]["message"]["content"].strip()
             return content if content else None
-        except Exception as exc:
+        except (httpx.HTTPError, KeyError, IndexError, ValueError) as exc:
             logger.warning(f"LLM summarization failed: {exc}")
             return None

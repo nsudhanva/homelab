@@ -18,3 +18,20 @@ The AI Alert Summarizer receives Prometheus Alertmanager webhook payloads, sends
 - `GET /healthz`: Liveness probe
 - `GET /readyz`: Readiness probe (verifies configuration and tokens)
 - `POST /webhook`: Alertmanager v4 webhook receiver
+
+## Development & Quality Standards
+
+This project follows strict Astral-based toolchain standards:
+
+- Package and virtual environment management: `uv`
+- Code formatting and linting: `ruff`
+- Static type checking: `ty`
+- Testing: `pytest`
+
+### Commands
+
+- Install dependencies: `uv sync --dev`
+- Run linter: `uv run ruff check`
+- Format code: `uv run ruff format`
+- Check types: `uv run ty check`
+- Run test suite: `uv run pytest`

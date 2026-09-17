@@ -139,9 +139,21 @@ jobs:
     - name: Set up Python
       if: steps.changes.outputs.summarizer == 'true'
       run: uv python install 3.12
+    - name: Run ruff lint
+      if: steps.changes.outputs.summarizer == 'true'
+      run: uv run ruff check
+      working-directory: apps/alert-summarizer
+    - name: Run ruff format check
+      if: steps.changes.outputs.summarizer == 'true'
+      run: uv run ruff format --check
+      working-directory: apps/alert-summarizer
+    - name: Run ty type check
+      if: steps.changes.outputs.summarizer == 'true'
+      run: uv run ty check
+      working-directory: apps/alert-summarizer
     - name: Run unit tests
       if: steps.changes.outputs.summarizer == 'true'
-      run: uv run --extra dev pytest
+      run: uv run pytest
       working-directory: apps/alert-summarizer
 
   alert-summarizer-push:

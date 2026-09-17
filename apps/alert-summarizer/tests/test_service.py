@@ -1,4 +1,5 @@
-from unittest.mock import AsyncMock, patch
+from unittest.mock import AsyncMock
+
 import pytest
 
 from alert_summarizer.clients import LLMClient, TelegramClient

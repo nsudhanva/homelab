@@ -1,16 +1,14 @@
-from datetime import datetime
-from typing import Any, Dict, List, Optional
 from pydantic import BaseModel, Field
 
 
 class Alert(BaseModel):
     status: str
-    labels: Dict[str, str] = Field(default_factory=dict)
-    annotations: Dict[str, str] = Field(default_factory=dict)
-    startsAt: Optional[str] = None
-    endsAt: Optional[str] = None
-    generatorURL: Optional[str] = None
-    fingerprint: Optional[str] = None
+    labels: dict[str, str] = Field(default_factory=dict)
+    annotations: dict[str, str] = Field(default_factory=dict)
+    startsAt: str | None = None
+    endsAt: str | None = None
+    generatorURL: str | None = None
+    fingerprint: str | None = None
 
     @property
     def alertname(self) -> str:
@@ -38,12 +36,12 @@ class Alert(BaseModel):
 
 
 class AlertmanagerPayload(BaseModel):
-    version: Optional[str] = None
-    groupKey: Optional[str] = None
+    version: str | None = None
+    groupKey: str | None = None
     status: str
-    receiver: Optional[str] = None
-    groupLabels: Dict[str, str] = Field(default_factory=dict)
-    commonLabels: Dict[str, str] = Field(default_factory=dict)
-    commonAnnotations: Dict[str, str] = Field(default_factory=dict)
-    externalURL: Optional[str] = None
-    alerts: List[Alert] = Field(default_factory=list)
+    receiver: str | None = None
+    groupLabels: dict[str, str] = Field(default_factory=dict)
+    commonLabels: dict[str, str] = Field(default_factory=dict)
+    commonAnnotations: dict[str, str] = Field(default_factory=dict)
+    externalURL: str | None = None
+    alerts: list[Alert] = Field(default_factory=list)
