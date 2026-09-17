@@ -1,13 +1,15 @@
-import json
 import logging
-import re
-from typing import Any
+import os
 
-import httpx
+from openai import AsyncOpenAI
 from pydantic import BaseModel, Field
+from pydantic_ai import Agent
+from pydantic_ai.models.openai import OpenAIChatModel
+from pydantic_ai.providers.openai import OpenAIProvider
 
 from .sanitizer import SanitizedEmail
 
+os.environ.setdefault("PYDANTIC_AI_NO_BANNER", "1")
 logger = logging.getLogger(__name__)
 
 SYSTEM_LABELS: set[str] = {
@@ -29,26 +31,8 @@ class ClassificationResult(BaseModel):
     reason: str = Field(description="Brief explanation of classification decision")
 
 
-def extract_json_content(raw_content: str) -> dict[str, Any]:
-    """Extract and parse a JSON dictionary from LLM response content."""
-    clean = raw_content.strip()
-    if clean.startswith("```"):
-        clean = re.sub(r"^```(?:json)?\n?", "", clean)
-        clean = re.sub(r"\n?```$", "", clean).strip()
-
-    # Search for first curly-brace block if extra text exists
-    match = re.search(r"\{.*\}", clean, re.DOTALL)
-    if match:
-        clean = match.group(0)
-
-    parsed = json.loads(clean)
-    if not isinstance(parsed, dict):
-        raise ValueError(f"Expected JSON object, got {type(parsed)}")
-    return parsed
-
-
 class EmailClassifier:
-    """Classifies sanitized emails using a local OpenAI-compatible LLM endpoint."""
+    """Classifies sanitized emails using a Pydantic AI Agent backed by a local LLM."""
 
     def __init__(
         self,
@@ -57,7 +41,8 @@ class EmailClassifier:
         confidence_threshold: float = 0.80,
         quarantine_label: str = "ai-review",
         processed_label: str = "ai-processed",
-        timeout_seconds: float = 30.0,
+        timeout_seconds: float = 45.0,
+        agent: Agent[None, ClassificationResult] | None = None,
     ) -> None:
         self.base_url = base_url.rstrip("/")
         self.model_name = model_name
@@ -65,6 +50,28 @@ class EmailClassifier:
         self.quarantine_label = quarantine_label
         self.processed_label = processed_label
         self.timeout = timeout_seconds
+
+        if agent is not None:
+            self.agent = agent
+        else:
+            client = AsyncOpenAI(
+                base_url=self.base_url,
+                api_key="not-needed",
+                timeout=self.timeout,
+            )
+            provider = OpenAIProvider(openai_client=client)
+            model = OpenAIChatModel(self.model_name, provider=provider)
+            self.agent = Agent(
+                model=model,
+                output_type=ClassificationResult,
+                system_prompt=(
+                    "You are an automated email triage system.\n"
+                    "Categorize the provided email into EXACTLY ONE of the active user labels.\n"
+                    "If none of the candidate labels match with high confidence, "
+                    "choose 'QUARANTINE'.\n"
+                    "Keep your reasoning brief (1-2 sentences)."
+                ),
+            )
 
     def filter_candidate_labels(self, labels: dict[str, str] | list[str]) -> list[str]:
         """Filter out system and workflow labels to return active curated labels."""
@@ -79,33 +86,26 @@ class EmailClassifier:
             candidates.append(name)
         return sorted(candidates)
 
-    def _build_prompts(
+    def _build_prompt(
         self,
         email: SanitizedEmail,
         curated_labels: list[str],
-    ) -> tuple[str, str]:
+    ) -> str:
         labels_list_str = "\n".join(f"- {label}" for label in curated_labels)
-        system_prompt = (
-            "You are an automated email triage system.\n"
-            "Categorize the provided email into EXACTLY ONE of the following active user labels:\n"
-            f"{labels_list_str}\n\n"
-            "Rules:\n"
-            "1. Pick the single best-fitting label from the active user labels above.\n"
-            "2. If none of the allowed labels fit, or if you are uncertain, choose 'QUARANTINE'.\n"
-            "3. Provide a confidence score as a float between 0.0 and 1.0.\n"
-            "4. Provide a concise 1-sentence reasoning for your decision.\n"
-            "5. You MUST return ONLY a JSON object with this exact schema:\n"
-            '{"label": "<label or QUARANTINE>", "confidence": 0.95, "reason": "<brief rationale>"}'
-        )
-
-        user_prompt = (
+        return (
+            f"Active Allowed Labels:\n{labels_list_str}\n\n"
+            f"Email to Classify:\n"
             f"Subject: {email.subject}\n"
             f"From: {email.sender}\n"
             f"Date: {email.date}\n"
             f"Snippet: {email.snippet}\n\n"
-            f"Body:\n{email.body}"
+            f"Body:\n{email.body}\n\n"
+            "Instructions:\n"
+            "- Pick the single best-fitting label from the Active Allowed Labels above.\n"
+            "- If none fit or you are uncertain, select 'QUARANTINE'.\n"
+            "- Provide a confidence score between 0.0 and 1.0.\n"
+            "- Provide a brief 1-2 sentence reason."
         )
-        return system_prompt, user_prompt
 
     def _evaluate_result(
         self,
@@ -136,7 +136,7 @@ class EmailClassifier:
         email: SanitizedEmail,
         candidate_labels: list[str],
     ) -> ClassificationResult:
-        """Classify an email asynchronously using the OpenAI-compatible completions endpoint."""
+        """Classify an email asynchronously using the Pydantic AI Agent."""
         curated_labels = self.filter_candidate_labels(candidate_labels)
         if not curated_labels:
             logger.warning("No active curated user labels found. Falling back to quarantine.")
@@ -146,30 +146,13 @@ class EmailClassifier:
                 reason="No active curated user labels available",
             )
 
-        system_prompt, user_prompt = self._build_prompts(email, curated_labels)
-        payload = {
-            "model": self.model_name,
-            "messages": [
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_prompt},
-            ],
-            "temperature": 0.1,
-            "response_format": {"type": "json_object"},
-        }
-
-        endpoint = f"{self.base_url}/chat/completions"
+        prompt = self._build_prompt(email, curated_labels)
         try:
-            async with httpx.AsyncClient(timeout=self.timeout) as client:
-                resp = await client.post(endpoint, json=payload)
-                resp.raise_for_status()
-                data = resp.json()
-
-            content = data["choices"][0]["message"]["content"]
-            parsed_dict = extract_json_content(content)
-            raw_result = ClassificationResult.model_validate(parsed_dict)
+            run_result = await self.agent.run(prompt)
+            raw_result = run_result.output
             return self._evaluate_result(raw_result, set(curated_labels))
         except Exception as exc:
-            logger.error(f"Classification request failed for email {email.id}: {exc}")
+            logger.error(f"Pydantic AI classification failed for email {email.id}: {exc}")
             return ClassificationResult(
                 label=self.quarantine_label,
                 confidence=0.0,
@@ -181,7 +164,7 @@ class EmailClassifier:
         email: SanitizedEmail,
         candidate_labels: list[str],
     ) -> ClassificationResult:
-        """Synchronously classify an email."""
+        """Synchronously classify an email using the Pydantic AI Agent."""
         curated_labels = self.filter_candidate_labels(candidate_labels)
         if not curated_labels:
             logger.warning("No active curated user labels found. Falling back to quarantine.")
@@ -191,30 +174,13 @@ class EmailClassifier:
                 reason="No active curated user labels available",
             )
 
-        system_prompt, user_prompt = self._build_prompts(email, curated_labels)
-        payload = {
-            "model": self.model_name,
-            "messages": [
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": user_prompt},
-            ],
-            "temperature": 0.1,
-            "response_format": {"type": "json_object"},
-        }
-
-        endpoint = f"{self.base_url}/chat/completions"
+        prompt = self._build_prompt(email, curated_labels)
         try:
-            with httpx.Client(timeout=self.timeout) as client:
-                resp = client.post(endpoint, json=payload)
-                resp.raise_for_status()
-                data = resp.json()
-
-            content = data["choices"][0]["message"]["content"]
-            parsed_dict = extract_json_content(content)
-            raw_result = ClassificationResult.model_validate(parsed_dict)
+            run_result = self.agent.run_sync(prompt)
+            raw_result = run_result.output
             return self._evaluate_result(raw_result, set(curated_labels))
         except Exception as exc:
-            logger.error(f"Classification request failed for email {email.id}: {exc}")
+            logger.error(f"Pydantic AI classification failed for email {email.id}: {exc}")
             return ClassificationResult(
                 label=self.quarantine_label,
                 confidence=0.0,
