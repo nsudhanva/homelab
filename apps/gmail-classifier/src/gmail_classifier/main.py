@@ -1,10 +1,11 @@
 import argparse
+import html
 import logging
 import sys
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
-from .classifier import EmailClassifier
+from .classifier import EmailClassifier, LLMConnectionError
 from .config import Settings
 from .gmail_client import GmailClient
 from .notifier import TelegramNotifier
@@ -151,6 +152,21 @@ def run_pipeline(
                 logger.info(
                     f"[DRY RUN] Would apply labels {[result.label, settings.processed_label]}"
                 )
+        except LLMConnectionError as exc:
+            logger.critical(
+                f"Aborting batch run! LLM infrastructure failure at message {msg_id} "
+                f"[{index}/{len(message_ids)}]: {exc}"
+            )
+            if notifier:
+                msg_text = (
+                    "⚠️ <b>Gmail Classifier Halted</b>\n"
+                    f"LLM server crashed at message [{index}/{len(message_ids)}]:\n"
+                    f"<code>{html.escape(str(exc))}</code>\n\n"
+                    "<i>Exiting immediately without marking as processed "
+                    "for Kubernetes to restart.</i>"
+                )
+                notifier.send_message_sync(msg_text)
+            raise
         except Exception as exc:
             logger.error(f"Failed to process message {msg_id}: {exc}", exc_info=True)
             quarantined_items.append(

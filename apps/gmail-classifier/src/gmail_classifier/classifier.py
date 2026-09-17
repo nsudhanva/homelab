@@ -25,6 +25,12 @@ SYSTEM_LABELS: set[str] = {
 }
 
 
+class LLMConnectionError(RuntimeError):
+    """Raised when the LLM server is unreachable, timed out, or returned an infrastructure error."""
+
+    pass
+
+
 class ClassificationResult(BaseModel):
     label: str = Field(description="Selected Gmail label or quarantine fallback")
     confidence: float = Field(ge=0.0, le=1.0, description="Confidence score between 0.0 and 1.0")
@@ -212,9 +218,30 @@ class EmailClassifier:
             raw_result = run_result.output
             return self._evaluate_result(raw_result, set(curated_labels))
         except Exception as exc:
-            logger.error(f"Pydantic AI classification failed for email {email.id}: {exc}")
+            err_str = str(exc).lower()
+            if any(
+                term in err_str
+                for term in [
+                    "connection",
+                    "timeout",
+                    "timed out",
+                    "503",
+                    "502",
+                    "500",
+                    "refused",
+                    "reset by peer",
+                    "server disconnected",
+                    "remoteprotocolerror",
+                ]
+            ):
+                logger.critical(
+                    f"LLM infrastructure failure during inference for email {email.id}: {exc}"
+                )
+                raise LLMConnectionError(f"LLM endpoint unreachable or failed: {exc}") from exc
+
+            logger.error(f"Pydantic AI classification model failure for email {email.id}: {exc}")
             return ClassificationResult(
                 label=self.quarantine_label,
                 confidence=0.0,
-                reason=f"Classifier error: {exc}",
+                reason=f"Model output error: {exc}",
             )

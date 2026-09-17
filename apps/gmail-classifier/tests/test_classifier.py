@@ -2,7 +2,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-from gmail_classifier.classifier import ClassificationResult, EmailClassifier
+from gmail_classifier.classifier import ClassificationResult, EmailClassifier, LLMConnectionError
 from gmail_classifier.sanitizer import SanitizedEmail
 
 
@@ -105,7 +105,7 @@ async def test_classify_unmatched_label_fallback():
     assert "Unmatched label" in result.reason
 
 
-def test_classify_sync_error_handling():
+def test_classify_sync_llm_connection_error():
     mock_agent = MagicMock()
     mock_agent.run_sync.side_effect = RuntimeError("Connection timeout")
     classifier = EmailClassifier(quarantine_label="ai-review", agent=mock_agent)
@@ -116,10 +116,25 @@ def test_classify_sync_error_handling():
         body="Content",
     )
 
+    with pytest.raises(LLMConnectionError):
+        classifier.classify_sync(email, ["Work"])
+
+
+def test_classify_sync_error_handling():
+    mock_agent = MagicMock()
+    mock_agent.run_sync.side_effect = ValueError("Malformed model structure")
+    classifier = EmailClassifier(quarantine_label="ai-review", agent=mock_agent)
+    email = SanitizedEmail(
+        id="4",
+        subject="Error test",
+        sender="server@example.com",
+        body="Content",
+    )
+
     result = classifier.classify_sync(email, ["Work"])
     assert result.label == "ai-review"
     assert result.confidence == 0.0
-    assert "Classifier error" in result.reason
+    assert "Model output error" in result.reason
 
 
 def test_classify_no_curated_labels():
