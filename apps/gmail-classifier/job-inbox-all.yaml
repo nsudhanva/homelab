@@ -1,0 +1,58 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: gmail-classifier-inbox-all
+  namespace: gmail-classifier
+spec:
+  backoffLimit: 3
+  template:
+    metadata:
+      labels:
+        app: gmail-classifier
+    spec:
+      restartPolicy: OnFailure
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: gmail-classifier
+          image: ghcr.io/nsudhanva/homelab-gmail-classifier:latest
+          imagePullPolicy: Always
+          args:
+            - --inbox
+            - --concurrency
+            - "2"
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 10001
+            runAsGroup: 10001
+            readOnlyRootFilesystem: true
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+          resources:
+            requests:
+              cpu: 200m
+              memory: 256Mi
+            limits:
+              cpu: 1000m
+              memory: 512Mi
+          envFrom:
+            - secretRef:
+                name: gmail-credentials
+          env:
+            - name: LLM_BASE_URL
+              value: "http://llama-server.llama.svc.cluster.local:8080/v1"
+            - name: TELEGRAM_CHAT_ID
+              value: "7341944813"
+            - name: CONFIDENCE_THRESHOLD
+              value: "0.80"
+            - name: QUARANTINE_LABEL
+              value: "ai-review"
+            - name: PROCESSED_LABEL
+              value: "ai-processed"
