@@ -10,8 +10,8 @@ class LLMClient:
         self,
         base_url: str,
         model: str,
-        timeout_seconds: float = 4.0,
-        max_tokens: int = 160,
+        timeout_seconds: float = 15.0,
+        max_tokens: int = 400,
         temperature: float = 0.2,
         client: Optional[httpx.AsyncClient] = None,
     ):
