@@ -299,3 +299,94 @@ jobs:
         platforms: linux/amd64
         tags: ${{ steps.meta.outputs.tags }}
         labels: ${{ steps.meta.outputs.labels }}
+
+  drive-organizer-test:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v7
+    - name: Detect drive-organizer changes
+      id: changes
+      uses: dorny/paths-filter@v4
+      with:
+        filters: |
+          organizer:
+            - "apps/drive-organizer/**"
+            - ".github/workflows/ci.yaml"
+    - name: Install uv
+      if: steps.changes.outputs.organizer == 'true'
+      uses: astral-sh/setup-uv@v7
+      with:
+        version: "latest"
+    - name: Set up Python
+      if: steps.changes.outputs.organizer == 'true'
+      run: uv python install 3.12
+    - name: Run ruff lint
+      if: steps.changes.outputs.organizer == 'true'
+      run: uv run ruff check
+      working-directory: apps/drive-organizer
+    - name: Run ruff format check
+      if: steps.changes.outputs.organizer == 'true'
+      run: uv run ruff format --check
+      working-directory: apps/drive-organizer
+    - name: Run ty type check
+      if: steps.changes.outputs.organizer == 'true'
+      run: uv run ty check
+      working-directory: apps/drive-organizer
+    - name: Run unit tests
+      if: steps.changes.outputs.organizer == 'true'
+      run: uv run pytest
+      working-directory: apps/drive-organizer
+
+  drive-organizer-push:
+    if: github.event_name == 'push'
+    needs: drive-organizer-test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    env:
+      REGISTRY: ghcr.io
+      IMAGE_NAME: ${{ github.repository }}-drive-organizer
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v7
+    - name: Detect drive-organizer changes
+      id: changes
+      uses: dorny/paths-filter@v4
+      with:
+        filters: |
+          organizer:
+            - "apps/drive-organizer/**"
+            - ".github/workflows/ci.yaml"
+    - name: Set up QEMU
+      if: steps.changes.outputs.organizer == 'true'
+      uses: docker/setup-qemu-action@v4
+    - name: Set up Docker Buildx
+      if: steps.changes.outputs.organizer == 'true'
+      uses: docker/setup-buildx-action@v4
+    - name: Log in to the Container registry
+      if: steps.changes.outputs.organizer == 'true'
+      uses: docker/login-action@v4
+      with:
+        registry: ${{ env.REGISTRY }}
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    - name: Extract metadata
+      if: steps.changes.outputs.organizer == 'true'
+      id: meta
+      uses: docker/metadata-action@v6
+      with:
+        images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+        tags: |
+          type=raw,value=latest
+          type=sha,format=short
+    - name: Build and push drive-organizer image
+      if: steps.changes.outputs.organizer == 'true'
+      uses: docker/build-push-action@v7
+      with:
+        context: ./apps/drive-organizer
+        push: true
+        platforms: linux/amd64
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
