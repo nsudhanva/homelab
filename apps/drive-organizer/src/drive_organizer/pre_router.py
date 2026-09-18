@@ -89,6 +89,63 @@ class PreRouter:
             person = "Sudhanva"
 
         # 3. Category & Jurisdiction Resolution
+        # Colab / Jupyter Notebooks
+        if filename.lower().endswith(".ipynb") or "colaboratory" in combined:
+            return PreRouteSuggestion(
+                person=person or "Sudhanva",
+                jurisdiction="Global",
+                category="Notebooks",
+                clean_filename=filename,
+                is_joint=False,
+                confidence=0.98,
+                reason="Google Colaboratory or Jupyter notebook.",
+            )
+
+        # Google AI Studio / MakerSuite Prompts
+        if (
+            filename.lower().endswith((".prompt", ".applet", ".applet+zip"))
+            or "makersuite" in combined
+            or "google ai studio" in combined
+        ):
+            return PreRouteSuggestion(
+                person=person or "Sudhanva",
+                jurisdiction="Global",
+                category="AI Studio",
+                clean_filename=filename,
+                is_joint=False,
+                confidence=0.98,
+                reason="Google AI Studio / MakerSuite prompt experiment.",
+            )
+
+        # Machine Learning Model Weights
+        if filename.lower().endswith(
+            (".pt", ".pth", ".safetensors", ".onnx", ".bin", ".ckpt", ".h5")
+        ):
+            return PreRouteSuggestion(
+                person=person or "Sudhanva",
+                jurisdiction="Global",
+                category="Models",
+                clean_filename=filename,
+                is_joint=False,
+                confidence=0.98,
+                reason="Machine learning model weights / checkpoint.",
+            )
+
+        # Code archives and datasets
+        if filename.lower() in ["data.zip", "code.zip", "dataset.zip"] or (
+            filename.lower().endswith(".zip")
+            and any(k in filename.lower() for k in ["data", "code", "model", "repo"])
+        ):
+            return PreRouteSuggestion(
+                person=person or "Sudhanva",
+                jurisdiction="Global",
+                category="Code",
+                clean_filename=filename,
+                is_joint=False,
+                confidence=0.95,
+                reason="Code archive or ML dataset.",
+            )
+
         # Books (E-books, textbooks, z-lib downloads, epubs, mobi)
         if (
             filename.lower().endswith((".epub", ".mobi", ".azw3"))
