@@ -4,7 +4,7 @@ metadata:
   name: gmail-classifier-inbox-all
   namespace: gmail-classifier
 spec:
-  backoffLimit: 3
+  backoffLimit: 50
   template:
     metadata:
       labels:
