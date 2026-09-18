@@ -64,7 +64,7 @@ class TelegramNotifier:
         if stats.actions:
             lines.append("\n<b>Recent Actions:</b>")
             for action in stats.actions[-10:]:
-                lines.append(f"• {html.escape(action)}")
+                lines.append(f"• {action}")
 
         if stats.errors:
             lines.append("\n<b>Errors:</b>")

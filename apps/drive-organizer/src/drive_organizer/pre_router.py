@@ -56,25 +56,36 @@ class PreRouter:
             )
 
         # 2. Person Identification
-        person = None
-        if any(
+        if "sudhanva" in combined or "sudhanvva" in combined:
+            person = "Sudhanva"
+        elif any(
             alias in combined
-            for alias in ["maanasa narayan", "maanasa naryana", "maansi", "kayak", "momo"]
+            for alias in [
+                "maanasa narayan",
+                "maanasa naryana",
+                "maanasa",
+                "maansi",
+                "kayak",
+                "momo",
+            ]
         ):
             person = "Maanasa"
         elif any(
             alias in combined
-            for alias in ["narayana chandran", "chandran narayana", "bank of baroda", "bob "]
+            for alias in [
+                "narayana chandran",
+                "chandran narayana",
+                "narayana",
+                "bank of baroda",
+                "bob ",
+            ]
         ):
             person = "Narayana"
         elif any(alias in combined for alias in ["narmada m p", "narmada mp", "narmada"]):
             person = "Narmada"
         elif "rashmi narayana" in combined or "rashmi" in filename.lower():
             person = "Rashmi"
-        elif any(
-            alias in combined
-            for alias in ["sudhanva narayana", "sudhanvva", "montai", "northeastern", "pes "]
-        ):
+        else:
             person = "Sudhanva"
 
         # 3. Category & Jurisdiction Resolution
@@ -266,6 +277,106 @@ class PreRouter:
                 confidence=0.95,
                 reason="Clinical orthopedic MRI or diagnostic scan report.",
             )
+
+        # Education: Northeastern University (NEU), PES University, Bangalore University
+        if any(term in combined for term in ["neu", "northeastern"]):
+            p = person or "Sudhanva"
+            if "housing" in combined:
+                return PreRouteSuggestion(
+                    person=p,
+                    jurisdiction="USA",
+                    category="Housing",
+                    clean_filename="Northeastern Fall 2021 Housing",
+                    is_joint=False,
+                    confidence=0.95,
+                    reason="Northeastern University graduate student housing documentation.",
+                )
+            if any(term in combined for term in ["cost", "attendance", "tuition", "fee"]):
+                return PreRouteSuggestion(
+                    person=p,
+                    jurisdiction="USA",
+                    category="Education",
+                    subcategory="Northeastern University",
+                    clean_filename="Northeastern University - Cost of Attendance",
+                    is_joint=False,
+                    confidence=0.95,
+                    reason="Northeastern University graduate tuition and cost of attendance estimate.",
+                )
+            return PreRouteSuggestion(
+                person=p,
+                jurisdiction="USA",
+                category="Education",
+                subcategory="Northeastern University",
+                clean_filename=filename.replace(".pdf", ""),
+                is_joint=False,
+                confidence=0.92,
+                reason="Northeastern University academic documentation.",
+            )
+
+        if any(term in combined for term in ["pesit", "pes university", "pes college"]):
+            return PreRouteSuggestion(
+                person=person or "Sudhanva",
+                jurisdiction="India",
+                category="Education",
+                subcategory="PES University",
+                clean_filename=filename.replace(".pdf", ""),
+                is_joint=False,
+                confidence=0.95,
+                reason="PES University academic records.",
+            )
+
+        # Career: Leetcode, Coding Challenges, Lakshmi Research, Recruiting Resumes
+        if "leetcode" in combined:
+            return PreRouteSuggestion(
+                person="Sudhanva",
+                jurisdiction="Global",
+                category="Career",
+                subcategory="Interview Prep",
+                clean_filename="Leetcode Progress",
+                is_joint=False,
+                confidence=0.98,
+                reason="Technical interview preparation and coding challenge tracking.",
+            )
+
+        if "lakshmi" in combined:
+            return PreRouteSuggestion(
+                person="Sudhanva",
+                jurisdiction="USA",
+                category="Career",
+                subcategory="Lakshmi",
+                clean_filename="Lakshmi Stock Research Metaplan",
+                is_joint=False,
+                confidence=0.98,
+                reason="Quantitative financial architecture and stock research project.",
+            )
+
+        # Candidate CV / Resumes reviewed by Sudhanva for hiring
+        if any(
+            term in combined for term in ["_cv", "-cv", "cv.pdf", "resume.pdf", "curriculum vitae"]
+        ):
+            if not any(
+                fam in combined for fam in ["sudhanva", "maanasa", "narayana", "narmada", "rashmi"]
+            ):
+                candidate_name = (
+                    filename.replace(".pdf", "")
+                    .replace("_CV", "")
+                    .replace("-CV", "")
+                    .replace("_cv", "")
+                    .replace("-cv", "")
+                    .replace("_resume", "")
+                    .replace("_", " ")
+                    .strip()
+                )
+                return PreRouteSuggestion(
+                    person="Sudhanva",
+                    jurisdiction="USA",
+                    category="Career",
+                    subcategory="Recruiting",
+                    clean_filename=f"Candidate Resume - {candidate_name}.pdf",
+                    is_joint=False,
+                    confidence=0.95,
+                    reason=f"Candidate job application / CV for {candidate_name} under technical recruiting.",
+                )
 
         # Default fallback
         return PreRouteSuggestion(
