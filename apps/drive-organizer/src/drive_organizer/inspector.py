@@ -76,12 +76,12 @@ class FileInspector:
             or lower_name.endswith((".txt", ".csv", ".json", ".md"))
         ):
             try:
-                text = file_bytes[:4000].decode("utf-8", errors="replace")
+                text = file_bytes[:8000].decode("utf-8", errors="replace")
                 return DocumentInspection(
                     is_media=False,
                     page_count=1,
                     has_extractable_text=bool(text.strip()),
-                    extracted_text=text[:2000].strip(),
+                    extracted_text=text[:3500].strip(),
                 )
             except Exception as e:
                 logger.warning(f"Error decoding text for {filename}: {e}")
@@ -95,7 +95,7 @@ class FileInspector:
 
     @staticmethod
     def _inspect_pdf(file_bytes: bytes) -> DocumentInspection:
-        """Inspects PDF, streaming only Page 1 text to conserve CPU and memory."""
+        """Inspects PDF, extracting up to the first 3 pages of text for LLM content analysis."""
         try:
             stream = io.BytesIO(file_bytes)
             reader = PdfReader(stream)
@@ -103,18 +103,16 @@ class FileInspector:
             if num_pages == 0:
                 return DocumentInspection(is_media=False, page_count=0, has_extractable_text=False)
 
-            # Firecrawl pattern: inspect page 1 first
-            page_1 = reader.pages[0]
-            text = page_1.extract_text() or ""
+            extracted_chunks: list[str] = []
+            for p_idx in range(min(num_pages, 3)):
+                page_text = reader.pages[p_idx].extract_text() or ""
+                stripped = page_text.strip()
+                if stripped:
+                    extracted_chunks.append(f"[Page {p_idx + 1}]\n{stripped}")
 
-            # If page 1 has very little text (e.g. title page), peek at page 2
-            if len(text.strip()) < 100 and num_pages > 1:
-                page_2_text = reader.pages[1].extract_text() or ""
-                text = f"{text}\n{page_2_text}"
-
-            has_text = len(text.strip()) > 30
-            # Limit context window to 2,000 characters
-            truncated = text.strip()[:2000]
+            full_text = "\n\n".join(extracted_chunks)
+            has_text = len(full_text.strip()) > 30
+            truncated = full_text.strip()[:3500]
 
             return DocumentInspection(
                 is_media=False,
@@ -123,8 +121,8 @@ class FileInspector:
                 extracted_text=truncated,
             )
         except Exception as e:
-            logger.warning(f"PDF inspection error: {e}")
-            return DocumentInspection(is_media=False, page_count=1, has_extractable_text=False)
+            logger.warning(f"Error reading PDF bytes: {e}")
+            return DocumentInspection(is_media=False, has_extractable_text=False)
 
     @staticmethod
     def _extract_exif_date(file_bytes: bytes) -> datetime | None:

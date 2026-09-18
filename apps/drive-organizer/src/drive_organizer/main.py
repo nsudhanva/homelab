@@ -97,6 +97,16 @@ def run_pipeline(
                 continue
 
             # 3. Handle Documents (Classifier with Pydantic AI)
+            if inspection.has_extractable_text:
+                logger.info(
+                    f"[{idx}/{len(files)}] Extracted {len(inspection.extracted_text)} chars "
+                    f"from {inspection.page_count} page(s) of '{filename}'. Submitting to LLM..."
+                )
+            else:
+                logger.info(
+                    f"[{idx}/{len(files)}] No extractable text in '{filename}' ({mime_type}). Submitting metadata to LLM..."
+                )
+
             res = classifier.classify_sync(
                 filename=filename,
                 extracted_text=inspection.extracted_text,
@@ -106,9 +116,11 @@ def run_pipeline(
             target_folder = classifier.resolve_target_folder(res)
             clean_name = res.clean_filename or filename
             logger.info(
-                f"Classified '{filename}' -> '{clean_name}' in '{target_folder}' "
+                f"[{idx}/{len(files)}] LLM Classified '{filename}' -> '{clean_name}' in '{target_folder}' "
                 f"(person={res.person}, conf={res.confidence:.2f}, is_joint={res.is_joint})"
             )
+            logger.info(f"Summary: {res.summary}")
+            logger.info(f"Reasoning: {res.reasoning}")
 
             if res.category == "Review" or res.confidence < settings.confidence_threshold:
                 stats.total_quarantined += 1
@@ -146,6 +158,9 @@ def run_pipeline(
             stats.actions.append(action_desc)
 
             # Thermal pacing sleep between document inferences
+            logger.info(
+                f"Completed file [{idx}/{len(files)}]. Pacing pause of {settings.pacing_seconds}s before next file..."
+            )
             time.sleep(settings.pacing_seconds)
 
         except Exception as exc:
