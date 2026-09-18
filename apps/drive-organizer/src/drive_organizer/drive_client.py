@@ -39,6 +39,7 @@ class DriveClient:
         query = (
             f"not appProperties has {{ key='{self.app_property_key}' and value='true' }} "
             "and trashed = false "
+            "and 'me' in owners "
             f"and mimeType != '{FOLDER_MIME}'"
         )
         logger.info(f"Querying Drive files with filter: {query}")
@@ -136,7 +137,7 @@ class DriveClient:
         search_tags: list[str],
     ) -> None:
         """Atomically moves, renames, and enriches a file with metadata."""
-        remove_parents = ",".join(current_parents) if current_parents else None
+        parents_to_remove = [p for p in current_parents if p != target_folder_id]
         tag_str = " ".join(f"#{t.strip('#')}" for t in search_tags if t)
         full_desc = f"{description}\nTags: {tag_str}".strip()
 
@@ -152,11 +153,12 @@ class DriveClient:
         update_kwargs: dict[str, Any] = {
             "fileId": file_id,
             "body": body,
-            "addParents": target_folder_id,
             "fields": "id, name, parents, description, appProperties",
         }
-        if remove_parents:
-            update_kwargs["removeParents"] = remove_parents
+        if target_folder_id not in current_parents:
+            update_kwargs["addParents"] = target_folder_id
+        if parents_to_remove:
+            update_kwargs["removeParents"] = ",".join(parents_to_remove)
 
         self.service.files().update(**update_kwargs).execute()
         logger.info(
