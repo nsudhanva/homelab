@@ -40,6 +40,8 @@ A self-hosted bare-metal Kubernetes cluster on Ubuntu 26.04 LTS (node `legion`) 
 - Prometheus monitoring stack with Alertmanager and Grafana
 - Telegram alerting via @ManassuHomelabBot integrated with Alertmanager and Grafana
 - Local AI inference with Google Gemma 4 (E2B) on NVIDIA GTX 1050 Ti via llama.cpp
+- Autonomous Gmail classifier running daily triage with local Gemma 4 and Telegram summaries
+- Autonomous symmetrical Google Drive organizer with local Gemma 4 document classification and partner syncing
 - Automated container image updates with ArgoCD Image Updater
 - Envoy Gateway data plane for Kubernetes Gateway API
 - Kubescape operator for automated cluster security scanning
@@ -259,6 +261,8 @@ docs/             Astro Starlight documentation
 | Technitium DNS | Authoritative and recursive DNS server | `dns.sudhanva.me` |
 | Home Assistant | Smart home automation platform | `homeassistant.sudhanva.me` |
 | Gemma 4 AI | Local LLM inference on NVIDIA GPU | `ai.sudhanva.me` |
+| Gmail Classifier | Symmetrical local LLM email triage and daily briefing | Background CronJob |
+| Drive Organizer | Symmetrical family document organizer with local Gemma 4 | Background CronJob |
 | ArgoCD | GitOps control plane UI | `argocd.sudhanva.me` |
 | Vault | Centralized secrets management | `vault.sudhanva.me` |
 | Grafana | Metrics dashboards | `grafana.sudhanva.me` |
