@@ -67,6 +67,18 @@ def test_resolve_target_folder_symmetry():
     )
     assert DriveClassifier.resolve_target_folder(cls_book) == "Books/Computer Science"
 
+    # 6. CVs structure: CVs/
+    cls_cv = DocumentClassification(
+        person="Unknown",
+        jurisdiction="Global",
+        category="CVs",
+        clean_filename="Kimberly Do - CV.pdf",
+        confidence=0.95,
+        summary="Candidate resume",
+        reasoning="External candidate CV",
+    )
+    assert DriveClassifier.resolve_target_folder(cls_cv) == "CVs"
+
 
 def test_low_confidence_routes_to_review():
     cls_unknown = DocumentClassification(

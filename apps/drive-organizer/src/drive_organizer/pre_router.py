@@ -380,7 +380,7 @@ class PreRouter:
                 reason="Quantitative financial architecture and stock research project.",
             )
 
-        # Candidate CV / Resumes reviewed by Sudhanva for hiring
+        # Candidate CV / Resumes (External applicants / referrals)
         if any(
             term in combined for term in ["_cv", "-cv", "cv.pdf", "resume.pdf", "curriculum vitae"]
         ):
@@ -398,14 +398,14 @@ class PreRouter:
                     .strip()
                 )
                 return PreRouteSuggestion(
-                    person="Sudhanva",
-                    jurisdiction="USA",
-                    category="Career",
-                    subcategory="Recruiting",
-                    clean_filename=f"Candidate Resume - {candidate_name}.pdf",
+                    person="Unknown",
+                    jurisdiction="Global",
+                    category="CVs",
+                    subcategory=None,
+                    clean_filename=f"{candidate_name} - CV.pdf",
                     is_joint=False,
                     confidence=0.95,
-                    reason=f"Candidate job application / CV for {candidate_name} under technical recruiting.",
+                    reason=f"External candidate CV / resume for {candidate_name}.",
                 )
 
         # Default fallback

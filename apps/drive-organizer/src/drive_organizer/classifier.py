@@ -28,6 +28,7 @@ VALID_CATEGORIES = {
     "Career",
     "Education",
     "Books",
+    "CVs",
     "Review",
 }
 
@@ -130,6 +131,7 @@ class DriveClassifier:
                     "- 'Global': ONLY for completely borderless, generic files (e.g. open source code, theoretical computer science books, general philosophy notes).\n\n"
                     "CATEGORY & SUBCATEGORY RULES:\n"
                     "- 'Books': Published ebooks, textbooks, epubs, technical literature, computer science books, reading books. (Subcategory should be the topic e.g. 'Computer Science', 'Mathematics', 'Machine Learning', 'Data Science', 'Fiction', 'Non-Fiction'). Books are organized into the shared library under Books/[Topic]/.\n"
+                    "- 'CVs': Resumes, CVs, and portfolios belonging to OTHER people / external candidates / referrals / applicants (e.g. 'KimberlyDo_CV.pdf'). These do NOT belong to Sudhanva or household members. They route to the top-level shared folder CVs/ (e.g. 'CVs/Kimberly Do - CV.pdf'). Note: Sudhanva's or Maanasa's OWN personal resumes still go to {Person}/Career/Resumes/.\n"
                     "- 'Education': Academic degrees, university transcripts, course assignments, homework, worksheets, lecture notes, syllabus, course codes (e.g. 'CS 5170', 'CS 5800'), college applications, tuition fees, Northeastern University (NEU), PES University. Subcategory should be the institution e.g. 'Northeastern University'.\n"
                     "- 'Career': Job offers, employment agreements, compensation/equity, resumes/CVs, job applications, interview prep plans, LeetCode solutions, company project architectures (e.g. 'Lakshmi', 'Initiable', 'Montai', 'Autodesk', 'Pixxel'). Subcategory should be company name or area (e.g. 'Interview Prep', 'Lakshmi', 'Resumes', 'Startups').\n"
                     "- 'Identity': Passports, Driver's Licenses, State IDs, SSN, Aadhaar, PAN card, Birth Certificate, Marriage Certificate.\n"
@@ -263,6 +265,12 @@ class DriveClassifier:
         if cls.category == "Books":
             topic = cls.subcategory or "General"
             return f"Books/{topic}"
+
+        # External CVs & Resumes: shared top-level folder CVs/
+        if cls.category == "CVs":
+            if cls.subcategory:
+                return f"CVs/{cls.subcategory}"
+            return "CVs"
 
         if cls.person == "Unknown":
             return "Review/Needs Review"
