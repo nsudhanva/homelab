@@ -115,3 +115,25 @@ def test_books_pre_router():
     assert suggestion.subcategory == "Computer Science"
     assert "(z-lib.org)" not in (suggestion.clean_filename or "")
     assert suggestion.confidence >= 0.95
+
+
+def test_tech_artifacts_pre_router():
+    # 1. Colab notebook
+    s_nb = PreRouter.analyze("Learning NN.ipynb", "")
+    assert s_nb.category == "Notebooks"
+    assert s_nb.confidence >= 0.95
+
+    # 2. PyTorch model weights
+    s_model = PreRouter.analyze("WeatherMesh3.pt", "")
+    assert s_model.category == "Models"
+    assert s_model.confidence >= 0.95
+
+    # 3. Data archive
+    s_code = PreRouter.analyze("data.zip", "")
+    assert s_code.category == "Code"
+    assert s_code.confidence >= 0.95
+
+    # 4. Google AI Studio prompt
+    s_ais = PreRouter.analyze("De-Slop Docs & Refactor.prompt", "")
+    assert s_ais.category == "AI Studio"
+    assert s_ais.confidence >= 0.95

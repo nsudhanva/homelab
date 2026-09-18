@@ -29,6 +29,10 @@ VALID_CATEGORIES = {
     "Education",
     "Books",
     "CVs",
+    "Notebooks",
+    "AI Studio",
+    "Models",
+    "Code",
     "Review",
 }
 
@@ -130,6 +134,10 @@ class DriveClassifier:
                     "- 'India': Any document tied to India (Aadhaar, PAN, Indian passport, PES University, Bangalore, Indian banks like SBI/HDFC/BoB, Indian property, Indian taxes/ITR).\n"
                     "- 'Global': ONLY for completely borderless, generic files (e.g. open source code, theoretical computer science books, general philosophy notes).\n\n"
                     "CATEGORY & SUBCATEGORY RULES:\n"
+                    "- 'Notebooks': Jupyter and Google Colab notebooks (.ipynb, application/vnd.google.colaboratory). (Routes to 'Colab Notebooks/'). Do NOT classify notebooks as Career or Education!\n"
+                    "- 'AI Studio': Google AI Studio and MakerSuite prompts or applets (application/vnd.google-makersuite.*). (Routes to 'Google AI Studio/').\n"
+                    "- 'Models': Machine learning model checkpoints and weights (.pt, .pth, .safetensors, .onnx, .bin). (Routes to 'Models/').\n"
+                    "- 'Code': Code repositories, scripts, programming files, and dataset archives (.zip, .tar.gz, .py). (Routes to 'Code/').\n"
                     "- 'Books': Published ebooks, textbooks, epubs, technical literature, computer science books, reading books. (Subcategory should be the topic e.g. 'Computer Science', 'Mathematics', 'Machine Learning', 'Data Science', 'Fiction', 'Non-Fiction'). Books are organized into the shared library under Books/[Topic]/.\n"
                     "- 'CVs': Resumes, CVs, and portfolios belonging to OTHER people / external candidates / referrals / applicants (e.g. 'KimberlyDo_CV.pdf'). These do NOT belong to Sudhanva or household members. They route to the top-level shared folder CVs/ (e.g. 'CVs/Kimberly Do - CV.pdf'). Note: Sudhanva's or Maanasa's OWN personal resumes still go to {Person}/Career/Resumes/.\n"
                     "- 'Education': Academic degrees, university transcripts, course assignments, homework, worksheets, lecture notes, syllabus, course codes (e.g. 'CS 5170', 'CS 5800'), college applications, tuition fees, Northeastern University (NEU), PES University. Subcategory should be the institution e.g. 'Northeastern University'.\n"
@@ -271,6 +279,28 @@ class DriveClassifier:
             if cls.subcategory:
                 return f"CVs/{cls.subcategory}"
             return "CVs"
+
+        # Colab / Jupyter Notebooks: Colab Notebooks/
+        if cls.category == "Notebooks":
+            if cls.subcategory:
+                return f"Colab Notebooks/{cls.subcategory}"
+            return "Colab Notebooks"
+
+        # Google AI Studio / MakerSuite prompts: Google AI Studio/
+        if cls.category == "AI Studio":
+            return "Google AI Studio"
+
+        # Machine Learning Model Checkpoints: Models/
+        if cls.category == "Models":
+            if cls.subcategory:
+                return f"Models/{cls.subcategory}"
+            return "Models"
+
+        # Code repositories & dataset archives: Code/
+        if cls.category == "Code":
+            if cls.subcategory:
+                return f"Code/{cls.subcategory}"
+            return "Code"
 
         if cls.person == "Unknown":
             return "Review/Needs Review"

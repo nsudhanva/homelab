@@ -79,6 +79,42 @@ def test_resolve_target_folder_symmetry():
     )
     assert DriveClassifier.resolve_target_folder(cls_cv) == "CVs"
 
+    # 7. Colab Notebooks structure: Colab Notebooks/
+    cls_nb = DocumentClassification(
+        person="Sudhanva",
+        jurisdiction="Global",
+        category="Notebooks",
+        clean_filename="fine-tuning-llama-2.ipynb",
+        confidence=0.98,
+        summary="Jupyter notebook for Llama 2 fine-tuning",
+        reasoning="Colab notebook",
+    )
+    assert DriveClassifier.resolve_target_folder(cls_nb) == "Colab Notebooks"
+
+    # 8. Google AI Studio structure: Google AI Studio/
+    cls_ais = DocumentClassification(
+        person="Sudhanva",
+        jurisdiction="Global",
+        category="AI Studio",
+        clean_filename="Doc-Generator.prompt",
+        confidence=0.98,
+        summary="AI prompt experiment",
+        reasoning="MakerSuite prompt",
+    )
+    assert DriveClassifier.resolve_target_folder(cls_ais) == "Google AI Studio"
+
+    # 9. ML Models structure: Models/
+    cls_model = DocumentClassification(
+        person="Sudhanva",
+        jurisdiction="Global",
+        category="Models",
+        clean_filename="WeatherMesh3.pt",
+        confidence=0.98,
+        summary="PyTorch model weights",
+        reasoning="Model checkpoint",
+    )
+    assert DriveClassifier.resolve_target_folder(cls_model) == "Models"
+
 
 def test_low_confidence_routes_to_review():
     cls_unknown = DocumentClassification(
