@@ -70,3 +70,38 @@ def test_w2_tax_routing():
     assert suggestion.jurisdiction == "USA"
     assert suggestion.category == "Taxes"
     assert suggestion.subcategory == "2024"
+
+
+def test_leetcode_progress_routing():
+    suggestion = PreRouter.analyze("Leetcode Progress", "")
+    assert suggestion.person == "Sudhanva"
+    assert suggestion.category == "Career"
+    assert suggestion.subcategory == "Interview Prep"
+    assert suggestion.confidence >= 0.95
+
+
+def test_lakshmi_metaplan_routing():
+    suggestion = PreRouter.analyze("Lakshmi Stock Research Metaplan", "")
+    assert suggestion.person == "Sudhanva"
+    assert suggestion.category == "Career"
+    assert suggestion.subcategory == "Lakshmi"
+    assert suggestion.confidence >= 0.95
+
+
+def test_neu_education_and_housing():
+    s_edu = PreRouter.analyze("NEU Estimated Cost of Attendance (Archive)", "")
+    assert s_edu.person == "Sudhanva"
+    assert s_edu.category == "Education"
+    assert s_edu.subcategory == "Northeastern University"
+
+    s_house = PreRouter.analyze("NEU-Fall-2021-Housing (Archive)", "")
+    assert s_house.person == "Sudhanva"
+    assert s_house.category == "Housing"
+
+
+def test_candidate_resume_recruiting():
+    suggestion = PreRouter.analyze("KimberlyDo_CV.pdf", "Senior Machine Learning Engineer")
+    assert suggestion.person == "Sudhanva"
+    assert suggestion.category == "Career"
+    assert suggestion.subcategory == "Recruiting"
+    assert "Candidate Resume" in (suggestion.clean_filename or "")

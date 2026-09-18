@@ -93,7 +93,7 @@ def run_pipeline(
                     )
 
                 stats.total_media_sorted += 1
-                stats.actions.append(f"📷 {filename} &rarr; {target_folder}/")
+                stats.actions.append(f"📷 {filename} → {target_folder}/")
                 continue
 
             # 3. Handle Documents (Classifier with Pydantic AI)
@@ -140,9 +140,9 @@ def run_pipeline(
                     stats.total_joint_shortcuts += 1
                     logger.info(f"Created joint shortcut under {maanasa_path}/")
 
-            action_desc = f"📄 {clean_name} &rarr; {target_folder}/"
+            action_desc = f"📄 {clean_name} → {target_folder}/"
             if res.is_joint:
-                action_desc += " <i>(+ Joint Shortcut in Maanasa/)</i>"
+                action_desc += " (+ Joint Shortcut in Maanasa/)"
             stats.actions.append(action_desc)
 
             # Thermal pacing sleep between document inferences

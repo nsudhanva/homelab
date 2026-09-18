@@ -106,15 +106,20 @@ class DriveClassifier:
                 model=model,
                 output_type=DocumentClassification,
                 system_prompt=(
-                    "You are an expert personal document organizer for a dual-jurisdiction family.\n"
-                    "Your task is to classify incoming documents into a perfectly symmetrical, human-readable hierarchy.\n\n"
+                    "You are an expert personal document organizer for Sudhanva's household.\n"
+                    "IMPORTANT CONTEXT: This is SUDHANVA'S personal Google Drive (nsudhanva@gmail.com).\n"
+                    "DEFAULT PERSON RULE: Sudhanva is the primary user and default owner of this Drive. "
+                    "Unless a document specifically names or belongs to Maanasa (wife), Narayana (father), "
+                    "Narmada (mother), or Rashmi (sister), always assign person='Sudhanva'. "
+                    "Do NOT assign 'Unknown' simply because the document does not mention the name 'Sudhanva' - "
+                    "personal projects, career files, coding notes, finances, and general receipts default to Sudhanva.\n\n"
                     "ALLOWED PEOPLE:\n"
-                    "- 'Sudhanva' (Primary user)\n"
-                    "- 'Maanasa' (Wife)\n"
-                    "- 'Narayana' (Father)\n"
-                    "- 'Narmada' (Mother)\n"
-                    "- 'Rashmi' (Sister)\n"
-                    "- 'Unknown' (If cannot be determined)\n\n"
+                    "- 'Sudhanva': Default owner for all personal, career, education, finance, and household files\n"
+                    "- 'Maanasa': Wife (keywords: Maanasa, Maansi)\n"
+                    "- 'Narayana': Father (keywords: Narayana Chandran, Bank of Baroda)\n"
+                    "- 'Narmada': Mother (keywords: Narmada)\n"
+                    "- 'Rashmi': Sister (keywords: Rashmi)\n"
+                    "- 'Unknown': Only for completely ambiguous, corrupt, or unidentifiable external files\n\n"
                     "ALLOWED JURISDICTIONS:\n"
                     "- 'USA'\n"
                     "- 'India'\n"
@@ -127,8 +132,8 @@ class DriveClassifier:
                     "- 'Housing': Leases (Ironworks, JVue), utility bills (Xfinity, Eversource, National Grid)\n"
                     "- 'Health': Medical records, MRI scans, health insurance cards, doctor reports\n"
                     "- 'Vehicle': Car registration, insurance, RMV crash reports\n"
-                    "- 'Career': Resumes, employment contracts, offer letters\n"
-                    "- 'Education': University degrees, transcripts, marksheets\n"
+                    "- 'Career': Resumes, employment contracts, offer letters, coding challenges, Leetcode, project architectures (e.g. Lakshmi)\n"
+                    "- 'Education': University degrees, transcripts, marksheets, tuition, attendance costs (e.g. NEU, Northeastern, PES)\n"
                     "- 'Review': Fallback if ambiguous\n\n"
                     "JOINT RULES:\n"
                     "- Set is_joint=true if the document is shared equally between Sudhanva and Maanasa "
@@ -199,16 +204,23 @@ class DriveClassifier:
                 result = run_result.output
 
                 # Normalize and validate outputs
-                if result.person not in VALID_PEOPLE:
-                    result.person = "Unknown"
+                if result.person not in VALID_PEOPLE or result.person == "Unknown":
+                    if (
+                        result.category != "Review"
+                        and result.confidence >= self.confidence_threshold
+                    ):
+                        result.person = "Sudhanva"
+                    else:
+                        result.person = "Unknown"
+
                 if result.jurisdiction not in VALID_JURISDICTIONS:
                     result.jurisdiction = "USA"
                 if result.category not in VALID_CATEGORIES:
                     result.category = "Review"
 
-                if result.confidence < self.confidence_threshold or result.person == "Unknown":
+                if result.confidence < self.confidence_threshold:
                     logger.warning(
-                        f"Low confidence ({result.confidence:.2f}) or unknown person for '{filename}'. "
+                        f"Low confidence ({result.confidence:.2f}) for '{filename}'. "
                         "Routing to Review."
                     )
                     result.category = "Review"
