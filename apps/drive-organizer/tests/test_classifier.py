@@ -54,6 +54,19 @@ def test_resolve_target_folder_symmetry():
     )
     assert DriveClassifier.resolve_target_folder(cls_tax) == "Sudhanva/USA/Taxes/2024"
 
+    # 5. Books structure: Books/[Topic]
+    cls_book = DocumentClassification(
+        person="Sudhanva",
+        jurisdiction="Global",
+        category="Books",
+        subcategory="Computer Science",
+        clean_filename="The Algorithm Design Manual.pdf",
+        confidence=0.95,
+        summary="Skiena algorithms textbook",
+        reasoning="Technical book",
+    )
+    assert DriveClassifier.resolve_target_folder(cls_book) == "Books/Computer Science"
+
 
 def test_low_confidence_routes_to_review():
     cls_unknown = DocumentClassification(

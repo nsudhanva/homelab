@@ -27,6 +27,7 @@ VALID_CATEGORIES = {
     "Vehicle",
     "Career",
     "Education",
+    "Books",
     "Review",
 }
 
@@ -39,22 +40,22 @@ class LLMConnectionError(RuntimeError):
 
 class DocumentClassification(BaseModel):
     person: str = Field(
-        description="Whose document: Sudhanva, Maanasa, Narayana, Narmada, Rashmi, or Unknown"
+        description="The individual the document belongs to: 'Sudhanva', 'Maanasa', 'Narayana', 'Narmada', 'Rashmi', or 'Unknown'"
     )
-    jurisdiction: str = Field(description="Legal jurisdiction: USA, India, or Global")
+    jurisdiction: str = Field(description="Applicable jurisdiction: 'USA', 'India', or 'Global'")
     category: str = Field(
-        description="Category: Identity, Visas & Legal, Taxes, Banking, Housing, Health, Vehicle, Career, Education, or Review"
+        description="Document category: 'Identity', 'Visas & Legal', 'Taxes', 'Banking', 'Housing', 'Health', 'Vehicle', 'Career', 'Education', 'Books', 'Review'"
     )
     subcategory: str | None = Field(
         default=None,
-        description="Optional subfolder, e.g. '2024' or '2025' for Taxes, or company name for Career",
+        description="Subcategory: e.g. 4-digit tax year '2024', university 'Northeastern University', company name, or book topic 'Computer Science'",
     )
     clean_filename: str = Field(
-        description="Clean, human-readable filename, e.g. 'Maanasa - California Driver License.pdf'"
+        description="Clean, human-readable standardized filename without hashes or uuid"
     )
     is_joint: bool = Field(
         default=False,
-        description="True if document belongs jointly to both Sudhanva and Maanasa (e.g. Marriage cert, lease, joint 1040)",
+        description="True if document belongs to or names both Sudhanva and Maanasa (e.g. lease, marriage cert, joint taxes)",
     )
     confidence: float = Field(
         ge=0.0,
@@ -107,42 +108,40 @@ class DriveClassifier:
                 model=model,
                 output_type=DocumentClassification,
                 system_prompt=(
-                    "You are an expert personal document organizer for Sudhanva's household.\n"
-                    "IMPORTANT CONTEXT: This is SUDHANVA'S personal Google Drive (nsudhanva@gmail.com).\n"
-                    "DEFAULT PERSON RULE: Sudhanva is the primary user and default owner of this Drive. "
-                    "Unless a document specifically names or belongs to Maanasa (wife), Narayana (father), "
-                    "Narmada (mother), or Rashmi (sister), always assign person='Sudhanva'. "
-                    "Do NOT assign 'Unknown' simply because the document does not mention the name 'Sudhanva' - "
-                    "personal projects, career files, coding notes, finances, and general receipts default to Sudhanva.\n\n"
-                    "ALLOWED PEOPLE:\n"
-                    "- 'Sudhanva': Default owner for all personal, career, education, finance, and household files\n"
-                    "- 'Maanasa': Wife (keywords: Maanasa, Maansi)\n"
-                    "- 'Narayana': Father (keywords: Narayana Chandran, Bank of Baroda)\n"
-                    "- 'Narmada': Mother (keywords: Narmada)\n"
-                    "- 'Rashmi': Sister (keywords: Rashmi)\n"
-                    "- 'Unknown': Only for completely ambiguous, corrupt, or unidentifiable external files\n\n"
-                    "ALLOWED JURISDICTIONS:\n"
-                    "- 'USA'\n"
-                    "- 'India'\n"
-                    "- 'Global'\n\n"
-                    "ALLOWED CATEGORIES:\n"
-                    "- 'Identity': Passports, Driver Licenses, State IDs, SSN, Aadhaar, PAN card, Birth/Marriage certs\n"
-                    "- 'Visas & Legal': H-1B, I-797, I-94, Global Entry (GEP), DS-160, visitor visas\n"
-                    "- 'Taxes': W-2, Form 1040, 1099, Indian ITR, tax filings (subcategory should be the 4-digit tax year e.g. '2024')\n"
-                    "- 'Banking': Checking/savings statements, fixed deposits, credit cards\n"
-                    "- 'Housing': Leases (Ironworks, JVue), utility bills (Xfinity, Eversource, National Grid)\n"
-                    "- 'Health': Medical records, MRI scans, health insurance cards, doctor reports\n"
-                    "- 'Vehicle': Car registration, insurance, RMV crash reports\n"
-                    "- 'Career': Resumes, employment contracts, offer letters, coding challenges, Leetcode, project architectures (e.g. Lakshmi)\n"
-                    "- 'Education': University degrees, transcripts, marksheets, tuition, attendance costs (e.g. NEU, Northeastern, PES)\n"
-                    "- 'Review': Fallback if ambiguous\n\n"
-                    "JOINT RULES:\n"
-                    "- Set is_joint=true if the document is shared equally between Sudhanva and Maanasa "
-                    "(e.g. Marriage Certificate, Apartment Lease with co-tenants, Joint 1040 Tax Return).\n\n"
+                    "You are an expert personal document organizer for Sudhanva and Maanasa's household.\n\n"
+                    "IMPORTANT CONTEXT:\n"
+                    "- Primary Owner: Sudhanva (nsudhanva@gmail.com).\n"
+                    "- Household: Sudhanva & Maanasa (wife).\n"
+                    "- Extended Family: Narayana (father), Narmada (mother), Rashmi (sister).\n"
+                    "- Primary Locations: USA (current residence - California / Massachusetts / Boston) and India (origin).\n\n"
+                    "PERSON CLASSIFICATION RULES:\n"
+                    "- 'Sudhanva': Default owner for all personal, career, work, tech, university, coding, and general documents unless another person is named.\n"
+                    "- 'Maanasa': Wife (keywords: Maanasa, Maansi, Narayan).\n"
+                    "- 'Narayana': Father (keywords: Narayana Chandran, BoB).\n"
+                    "- 'Narmada': Mother (keywords: Narmada).\n"
+                    "- 'Rashmi': Sister (keywords: Rashmi).\n"
+                    "- 'Unknown': ONLY for external spam, third-party vendor noise, or unidentifiable files.\n\n"
+                    "JOINT DOCUMENT RULE (CRITICAL):\n"
+                    "- Set is_joint=true if the document mentions, pertains to, or belongs to BOTH Sudhanva and Maanasa.\n"
+                    "- Examples of joint documents: Marriage certificates, apartment rental leases (Ironworks, JVue, etc.), joint bank accounts, joint tax filings, health/travel insurance covering both, wedding planning/invitations.\n\n"
+                    "JURISDICTION RULES (Do NOT default to Global unless truly universal):\n"
+                    "- 'USA': Any document tied to US residency, US universities (Northeastern University / NEU / Boston / Silicon Valley), US employers, US taxes (W-2, 1040), US leases, US visas/immigration (H-1B, I-797, I-94), US health insurance, US driver's licenses (MA, CA).\n"
+                    "- 'India': Any document tied to India (Aadhaar, PAN, Indian passport, PES University, Bangalore, Indian banks like SBI/HDFC/BoB, Indian property, Indian taxes/ITR).\n"
+                    "- 'Global': ONLY for completely borderless, generic files (e.g. open source code, theoretical computer science books, general philosophy notes).\n\n"
+                    "CATEGORY & SUBCATEGORY RULES:\n"
+                    "- 'Books': Published ebooks, textbooks, epubs, technical literature, computer science books, reading books. (Subcategory should be the topic e.g. 'Computer Science', 'Mathematics', 'Machine Learning', 'Data Science', 'Fiction', 'Non-Fiction'). Books are organized into the shared library under Books/[Topic]/.\n"
+                    "- 'Education': Academic degrees, university transcripts, course assignments, homework, worksheets, lecture notes, syllabus, course codes (e.g. 'CS 5170', 'CS 5800'), college applications, tuition fees, Northeastern University (NEU), PES University. Subcategory should be the institution e.g. 'Northeastern University'.\n"
+                    "- 'Career': Job offers, employment agreements, compensation/equity, resumes/CVs, job applications, interview prep plans, LeetCode solutions, company project architectures (e.g. 'Lakshmi', 'Initiable', 'Montai', 'Autodesk', 'Pixxel'). Subcategory should be company name or area (e.g. 'Interview Prep', 'Lakshmi', 'Resumes', 'Startups').\n"
+                    "- 'Identity': Passports, Driver's Licenses, State IDs, SSN, Aadhaar, PAN card, Birth Certificate, Marriage Certificate.\n"
+                    "- 'Visas & Legal': H-1B, I-797, I-94, Global Entry (GEP), DS-160, US visas, visitor visas.\n"
+                    "- 'Taxes': W-2, 1040, 1099, Indian ITR, tax forms. Subcategory MUST be the 4-digit tax year (e.g. '2024', '2023').\n"
+                    "- 'Banking': Checking, savings, credit cards, investment statements, fixed deposits.\n"
+                    "- 'Housing': Apartment leases, landlord agreements, utility bills (Xfinity, National Grid, Eversource), rent receipts.\n"
+                    "- 'Health': Health insurance cards, medical tests, doctor visits, vaccination records, visitor medical insurance.\n"
+                    "- 'Vehicle': Auto title, registration, car insurance, RMV records.\n"
+                    "- 'Review': Scratch to-do lists, temporary shopping lists, corrupted files, or items with no permanent value.\n\n"
                     "NAMING RULES:\n"
-                    "- Clean, human names without hashes or numbers. Examples: "
-                    "'Maanasa - California Driver License.pdf', 'Sudhanva - Aadhaar Card.pdf', "
-                    "'2024 W-2 (Montai).pdf', 'Marriage Certificate.pdf'."
+                    "- Standardized, human-readable names without numbers or hashes. Strip annoying tags like '(z-lib.org)' or 'Copy of '."
                 ),
             )
         return self._local.agent
@@ -257,7 +256,15 @@ class DriveClassifier:
     @staticmethod
     def resolve_target_folder(cls: DocumentClassification) -> str:
         """Resolves the exact relative destination folder path in Google Drive."""
-        if cls.confidence < 0.80 or cls.category == "Review" or cls.person == "Unknown":
+        if cls.confidence < 0.80 or cls.category == "Review":
+            return "Review/Needs Review"
+
+        # Books structure: shared digital library under Books/[Topic]
+        if cls.category == "Books":
+            topic = cls.subcategory or "General"
+            return f"Books/{topic}"
+
+        if cls.person == "Unknown":
             return "Review/Needs Review"
 
         # Education & Career structures

@@ -105,3 +105,14 @@ def test_candidate_resume_recruiting():
     assert suggestion.category == "Career"
     assert suggestion.subcategory == "Recruiting"
     assert "Candidate Resume" in (suggestion.clean_filename or "")
+
+
+def test_books_pre_router():
+    suggestion = PreRouter.analyze(
+        "The Algorithm Design Manual (Texts in Computer Science) by Steven S. Skiena (z-lib.org).pdf",
+        "",
+    )
+    assert suggestion.category == "Books"
+    assert suggestion.subcategory == "Computer Science"
+    assert "(z-lib.org)" not in (suggestion.clean_filename or "")
+    assert suggestion.confidence >= 0.95

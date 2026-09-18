@@ -89,6 +89,36 @@ class PreRouter:
             person = "Sudhanva"
 
         # 3. Category & Jurisdiction Resolution
+        # Books (E-books, textbooks, z-lib downloads, epubs, mobi)
+        if (
+            filename.lower().endswith((".epub", ".mobi", ".azw3"))
+            or "(z-lib.org)" in combined
+            or "textbook" in combined
+            or "texts in computer science" in combined
+        ):
+            clean_bname = filename.replace("(z-lib.org)", "").strip()
+            if any(
+                k in combined for k in ["algorithm", "computer science", "programming", "python"]
+            ):
+                topic = "Computer Science"
+            elif any(k in combined for k in ["data science", "machine learning"]):
+                topic = "Data Science"
+            elif any(k in combined for k in ["algebra", "calculus", "mathematics", "linear"]):
+                topic = "Mathematics"
+            else:
+                topic = "General"
+
+            return PreRouteSuggestion(
+                person=person or "Sudhanva",
+                jurisdiction="Global",
+                category="Books",
+                subcategory=topic,
+                clean_filename=clean_bname,
+                is_joint=False,
+                confidence=0.95,
+                reason=f"Published book or technical literature in {topic}.",
+            )
+
         # India Identity
         if "aadhaar" in combined or "aadhar" in combined:
             p = person or "Sudhanva"
