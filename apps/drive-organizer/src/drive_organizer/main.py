@@ -138,23 +138,25 @@ def run_pipeline(
                     search_tags=res.search_tags,
                 )
 
-                # Handle Joint Documents: Create shortcut under Maanasa
-                if res.is_joint and res.person == "Sudhanva":
-                    # Determine equivalent path under Maanasa
-                    maanasa_path = target_folder.replace("Sudhanva/", "Maanasa/", 1)
-                    maanasa_folder_id = drive_client.get_or_create_path(maanasa_path)
-                    drive_client.create_shortcut(
-                        target_id=file_id,
-                        shortcut_name=clean_name,
-                        target_folder_id=maanasa_folder_id,
-                        description=f"Joint shortcut to {clean_name}",
+                # Handle Joint Documents: Create full independent copy under spouse folder
+                if res.is_joint and res.person in ("Sudhanva", "Maanasa"):
+                    spouse = "Maanasa" if res.person == "Sudhanva" else "Sudhanva"
+                    spouse_path = target_folder.replace(f"{res.person}/", f"{spouse}/", 1)
+                    spouse_folder_id = drive_client.get_or_create_path(spouse_path)
+                    drive_client.copy_file(
+                        file_id=file_id,
+                        new_name=clean_name,
+                        target_folder_id=spouse_folder_id,
+                        description=f"Joint copy for {spouse}: {res.summary}",
+                        search_tags=res.search_tags,
                     )
                     stats.total_joint_shortcuts += 1
-                    logger.info(f"Created joint shortcut under {maanasa_path}/")
+                    logger.info(f"Created joint copy under {spouse_path}/")
 
             action_desc = f"📄 {clean_name} → {target_folder}/"
             if res.is_joint:
-                action_desc += " (+ Joint Shortcut in Maanasa/)"
+                spouse = "Maanasa" if res.person == "Sudhanva" else "Sudhanva"
+                action_desc += f" (+ Joint Copy in {spouse}/)"
             stats.actions.append(action_desc)
 
             # Thermal pacing sleep between document inferences

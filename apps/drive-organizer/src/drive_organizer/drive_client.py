@@ -188,3 +188,31 @@ class DriveClient:
             f"Created shortcut '{shortcut_name}' in folder {target_folder_id} -> {target_id}"
         )
         return res["id"]
+
+    def copy_file(
+        self,
+        file_id: str,
+        new_name: str,
+        target_folder_id: str,
+        description: str = "",
+        search_tags: list[str] | None = None,
+    ) -> str:
+        """Creates an independent, standalone duplicate file in target_folder_id."""
+        tag_str = " ".join(f"#{t.strip('#')}" for t in search_tags if t) if search_tags else ""
+        full_desc = f"{description}\nTags: {tag_str}".strip()
+
+        body = {
+            "name": new_name,
+            "parents": [target_folder_id],
+            "description": full_desc,
+            "appProperties": {
+                self.app_property_key: "true",
+                "is_joint_copy": "true",
+                "processed_at": datetime.now().isoformat(),
+            },
+        }
+        res = self.service.files().copy(fileId=file_id, body=body, fields="id, name").execute()
+        logger.info(
+            f"Created joint file copy '{new_name}' in folder {target_folder_id} (ID: {res['id']})"
+        )
+        return res["id"]
