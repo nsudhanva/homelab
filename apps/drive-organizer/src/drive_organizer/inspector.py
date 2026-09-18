@@ -69,8 +69,12 @@ class FileInspector:
         if lower_mime == "application/pdf" or lower_name.endswith(".pdf"):
             return FileInspector._inspect_pdf(file_bytes)
 
-        # 3. Plain text / CSV
-        if lower_mime.startswith("text/") or lower_name.endswith((".txt", ".csv", ".json", ".md")):
+        # 3. Plain text / CSV / Google Workspace exports
+        if (
+            lower_mime.startswith("text/")
+            or lower_mime.startswith("application/vnd.google-apps.")
+            or lower_name.endswith((".txt", ".csv", ".json", ".md"))
+        ):
             try:
                 text = file_bytes[:4000].decode("utf-8", errors="replace")
                 return DocumentInspection(

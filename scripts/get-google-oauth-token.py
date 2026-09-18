@@ -2,9 +2,9 @@
 """Interactive script to generate Google OAuth refresh token with Drive and Gmail scopes."""
 
 import argparse
-import json
 import subprocess
 import sys
+
 from google_auth_oauthlib.flow import InstalledAppFlow
 
 SCOPES = [
@@ -48,7 +48,7 @@ def get_client_credentials(kubeconfig: str) -> tuple[str, str]:
         client_id = base64.b64decode(cid_b64).decode("utf-8")
         client_secret = base64.b64decode(csec_b64).decode("utf-8")
         return client_id, client_secret
-    except Exception as e:
+    except (subprocess.SubprocessError, KeyError, ValueError, Exception) as e:  # noqa: BLE001
         print(f"Failed to fetch credentials from cluster: {e}", file=sys.stderr)
         client_id = input("Enter Google Client ID: ").strip()
         client_secret = input("Enter Google Client Secret: ").strip()
@@ -56,7 +56,9 @@ def get_client_credentials(kubeconfig: str) -> tuple[str, str]:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Acquire Google Drive and Gmail OAuth tokens")
+    parser = argparse.ArgumentParser(
+        description="Acquire Google Drive and Gmail OAuth tokens"
+    )
     parser.add_argument(
         "--kubeconfig", default="k3s.kubeconfig", help="Path to k3s.kubeconfig"
     )
@@ -86,12 +88,16 @@ def main() -> None:
     flow = InstalledAppFlow.from_client_config(client_config, scopes=SCOPES)
     print("\nStarting local OAuth authentication flow...")
     print(f"Requested Scopes: {', '.join(SCOPES)}\n")
-    creds = flow.run_local_server(port=args.port, prompt="consent", access_type="offline")
+    creds = flow.run_local_server(
+        port=args.port, prompt="consent", access_type="offline"
+    )
 
     print("\nAuthentication successful!")
     print(f"Refresh Token: {creds.refresh_token}")
     print("\nUpdate Vault with the new refresh token:")
-    print("kubectl -n vault exec -it vault-0 -- vault kv patch kv/gmail/credentials refresh_token=\"<YOUR_NEW_REFRESH_TOKEN>\"")
+    print(
+        'kubectl -n vault exec -it vault-0 -- vault kv patch kv/gmail/credentials refresh_token="<YOUR_NEW_REFRESH_TOKEN>"'
+    )
 
 
 if __name__ == "__main__":
