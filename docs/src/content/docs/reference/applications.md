@@ -128,3 +128,13 @@ The `media` namespace is shared by Jellyfin and Filebrowser so they can use the 
 | CronJob | `apps/gmail-classifier/cronjob.yaml` | Daily schedule at `0 1 * * *` invoking `uv run gmail-classifier` |
 | ExternalSecret | `apps/gmail-classifier/secret.yaml` | Vault integration for Google OAuth client credentials and refresh token |
 | Python App | `apps/gmail-classifier/src/gmail_classifier/` | Automated Gmail triage engine using local Gemma 4 and Telegram alerts |
+
+## Drive Organizer
+
+| Item | Path | Notes |
+| --- | --- | --- |
+| Namespace | `apps/drive-organizer/namespace.yaml` | Dedicated `drive-organizer` namespace |
+| App config | `apps/drive-organizer/app.yaml` | ArgoCD app definition |
+| CronJob | `apps/drive-organizer/cronjob.yaml` | Daily schedule at `0 2 * * *` invoking `uv run drive-organizer` |
+| ExternalSecret | `apps/drive-organizer/secret.yaml` | Vault integration for Google OAuth credentials and Telegram bot token |
+| Python App | `apps/drive-organizer/src/drive_organizer/` | Symmetrical personal and family Google Drive organizer using local Gemma 4 |
