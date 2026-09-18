@@ -2,6 +2,7 @@ import logging
 import os
 import threading
 import time
+from typing import Any
 
 from openai import AsyncOpenAI
 from pydantic import BaseModel, Field
@@ -79,7 +80,7 @@ class DriveClassifier:
         model_name: str = "gemma-4-e2b-it",
         confidence_threshold: float = 0.80,
         timeout_seconds: float = 120.0,
-        agent: Agent[None, DocumentClassification] | None = None,
+        agent: Any = None,
     ) -> None:
         self.base_url = base_url.rstrip("/")
         self.model_name = model_name
@@ -152,46 +153,29 @@ class DriveClassifier:
         extracted_text: str = "",
         mime_type: str = "application/pdf",
     ) -> DocumentClassification:
-        """Classifies a document with deterministic pre-routing and LLM fallback/validation."""
-        # 1. Deterministic Pre-routing check
+        """Classifies a document by reading its content with the local LLM."""
+        # 1. Preliminary heuristic scan for contextual hints (non-binding)
         pre_route: PreRouteSuggestion = PreRouter.analyze(filename, extracted_text)
-        if (
-            pre_route.confidence >= 0.95
-            and pre_route.person
-            and pre_route.jurisdiction
-            and pre_route.category
-            and pre_route.clean_filename
-        ):
-            logger.info(
-                f"Deterministic pre-routing hit for '{filename}' -> "
-                f"{pre_route.person}/{pre_route.jurisdiction}/{pre_route.category} ({pre_route.reason})"
-            )
-            return DocumentClassification(
-                person=pre_route.person,
-                jurisdiction=pre_route.jurisdiction,
-                category=pre_route.category,
-                subcategory=pre_route.subcategory,
-                clean_filename=pre_route.clean_filename,
-                is_joint=pre_route.is_joint,
-                confidence=pre_route.confidence,
-                summary=pre_route.reason,
-                search_tags=[
-                    pre_route.person.lower(),
-                    pre_route.jurisdiction.lower(),
-                    pre_route.category.lower(),
-                ],
-                reasoning=pre_route.reason,
-            )
 
-        # 2. LLM Classification via Pydantic AI with retry
+        # 2. Construct LLM prompt with actual extracted document text
+        text_section = (
+            f"--- EXTRACTED DOCUMENT TEXT ---\n{extracted_text[:3500]}\n--- END DOCUMENT TEXT ---"
+            if extracted_text.strip()
+            else "[No extractable text found in document stream/header - rely on filename and metadata]"
+        )
+
         prompt_content = (
+            f"Please inspect and classify the following document:\n"
             f"Filename: {filename}\n"
             f"MIME Type: {mime_type}\n"
-            f"Pre-router hint: person={pre_route.person or 'unknown'}, "
-            f"category={pre_route.category or 'unknown'}\n"
-            f"Extracted First Page Text:\n"
-            f"---\n{extracted_text[:1800]}\n---\n"
-            "Classify this document following the symmetrical person and jurisdiction taxonomy."
+            f"Preliminary Scan Hint: suggested_person={pre_route.person or 'Sudhanva (default)'}, "
+            f"suggested_category={pre_route.category or 'unspecified'}\n\n"
+            f"{text_section}\n\n"
+            "Instructions:\n"
+            "1. Read the document text carefully to identify who it belongs to, what type of document it is, and its jurisdiction.\n"
+            "2. Follow the symmetrical family filing schema strictly.\n"
+            "3. If the document does not name anyone else, default person to 'Sudhanva'.\n"
+            "4. Generate a clean, descriptive human filename, a 1-2 sentence summary, and 3-5 search keywords."
         )
 
         max_attempts = 3
@@ -200,6 +184,9 @@ class DriveClassifier:
 
         for attempt in range(1, max_attempts + 1):
             try:
+                logger.info(
+                    f"Submitting '{filename}' to LLM for content analysis (attempt {attempt}/{max_attempts})..."
+                )
                 run_result = self.agent.run_sync(prompt_content)
                 result = run_result.output
 
@@ -235,10 +222,35 @@ class DriveClassifier:
                 )
                 if attempt < max_attempts:
                     time.sleep(backoff_seconds)
-                else:
-                    raise LLMConnectionError(
-                        f"LLM endpoint unreachable after {max_attempts} attempts: {exc}"
-                    ) from exc
+
+        # Fallback to pre-routing ONLY if LLM completely failed and pre-route is confident
+        if (
+            pre_route.confidence >= 0.90
+            and pre_route.person
+            and pre_route.jurisdiction
+            and pre_route.category
+            and pre_route.clean_filename
+        ):
+            logger.warning(
+                f"LLM call failed; using pre-routing fallback for '{filename}' -> "
+                f"{pre_route.person}/{pre_route.jurisdiction}/{pre_route.category}"
+            )
+            return DocumentClassification(
+                person=pre_route.person,
+                jurisdiction=pre_route.jurisdiction,
+                category=pre_route.category,
+                subcategory=pre_route.subcategory,
+                clean_filename=pre_route.clean_filename,
+                is_joint=pre_route.is_joint,
+                confidence=pre_route.confidence,
+                summary=pre_route.reason,
+                search_tags=[
+                    pre_route.person.lower(),
+                    pre_route.jurisdiction.lower(),
+                    pre_route.category.lower(),
+                ],
+                reasoning=f"LLM unreachable; pre-routing fallback: {pre_route.reason}",
+            )
 
         raise LLMConnectionError(f"LLM classification failed: {last_exc}")
 

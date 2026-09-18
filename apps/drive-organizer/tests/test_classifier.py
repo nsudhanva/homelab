@@ -66,3 +66,47 @@ def test_low_confidence_routes_to_review():
         reasoning="Could not identify owner",
     )
     assert DriveClassifier.resolve_target_folder(cls_unknown) == "Review/Needs Review"
+
+
+def test_classify_sync_feeds_extracted_text_to_llm():
+    mock_output = DocumentClassification(
+        person="Sudhanva",
+        jurisdiction="USA",
+        category="Career",
+        subcategory="Interview Prep",
+        clean_filename="LeetCode Solutions.pdf",
+        is_joint=False,
+        confidence=0.92,
+        summary="Sudhanva's coding challenge practice",
+        search_tags=["leetcode", "interview", "algorithms"],
+        reasoning="Document contains dynamic programming solutions",
+    )
+
+    class MockAgent:
+        def __init__(self, output: DocumentClassification):
+            self._output = output
+            self.last_prompt = ""
+
+        def run_sync(self, prompt: str):
+            self.last_prompt = prompt
+
+            class Res:
+                output = self._output
+
+            return Res()
+
+    mock_agent = MockAgent(mock_output)
+    classifier = DriveClassifier(agent=mock_agent)  # type: ignore[arg-type]
+
+    res = classifier.classify_sync(
+        filename="LeetCode Progress Notes.pdf",
+        extracted_text="Two Sum, 3Sum, LRU Cache implementation details and runtime analysis",
+        mime_type="application/pdf",
+    )
+
+    assert "Two Sum, 3Sum, LRU Cache" in mock_agent.last_prompt
+    assert "--- EXTRACTED DOCUMENT TEXT ---" in mock_agent.last_prompt
+    assert res.clean_filename == "LeetCode Solutions.pdf"
+    assert res.category == "Career"
+    assert res.subcategory == "Interview Prep"
+    assert res.confidence == 0.92
