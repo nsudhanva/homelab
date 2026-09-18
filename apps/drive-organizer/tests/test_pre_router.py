@@ -101,10 +101,9 @@ def test_neu_education_and_housing():
 
 def test_candidate_resume_recruiting():
     suggestion = PreRouter.analyze("KimberlyDo_CV.pdf", "Senior Machine Learning Engineer")
-    assert suggestion.person == "Sudhanva"
-    assert suggestion.category == "Career"
-    assert suggestion.subcategory == "Recruiting"
-    assert "Candidate Resume" in (suggestion.clean_filename or "")
+    assert suggestion.category == "CVs"
+    assert suggestion.clean_filename == "KimberlyDo - CV.pdf"
+    assert suggestion.confidence >= 0.95
 
 
 def test_books_pre_router():
