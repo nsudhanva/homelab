@@ -65,10 +65,17 @@ class DriveClient:
 
         return files[:limit] if limit else files
 
-    def download_file_header_bytes(self, file_id: str, max_bytes: int = 5_000_000) -> bytes:
-        """Downloads the file stream, capped at max_bytes for fast inspection."""
+    def download_file_header_bytes(
+        self, file_id: str, mime_type: str = "", max_bytes: int = 5_000_000
+    ) -> bytes:
+        """Downloads or exports the file stream, capped at max_bytes for fast inspection."""
         try:
-            req = self.service.files().get_media(fileId=file_id)
+            if mime_type.startswith("application/vnd.google-apps."):
+                export_mime = "text/csv" if "spreadsheet" in mime_type else "text/plain"
+                req = self.service.files().export_media(fileId=file_id, mimeType=export_mime)
+            else:
+                req = self.service.files().get_media(fileId=file_id)
+
             fh = io.BytesIO()
             downloader = MediaIoBaseDownload(fh, req, chunksize=1024 * 1024)
             done = False
@@ -77,7 +84,7 @@ class DriveClient:
             fh.seek(0)
             return fh.read(max_bytes)
         except Exception as e:
-            logger.warning(f"Could not download media for {file_id}: {e}")
+            logger.warning(f"Could not download or export media for {file_id}: {e}")
             return b""
 
     def get_or_create_folder(self, folder_name: str, parent_id: str = "root") -> str:

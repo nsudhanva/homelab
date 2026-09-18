@@ -65,7 +65,9 @@ def run_pipeline(
 
         try:
             # 1. Download initial bytes for inspection
-            file_bytes = drive_client.download_file_header_bytes(file_id, max_bytes=2_000_000)
+            file_bytes = drive_client.download_file_header_bytes(
+                file_id, mime_type=mime_type, max_bytes=2_000_000
+            )
             inspection = FileInspector.inspect_bytes(
                 filename=filename,
                 mime_type=mime_type,
