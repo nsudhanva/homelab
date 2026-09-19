@@ -18,6 +18,7 @@ logger = logging.getLogger("drive_organizer")
 
 def run_pipeline(
     settings: Settings,
+    scope: str = "root",
     limit: int | None = None,
     dry_run: bool = False,
 ) -> OrganizerRunStats:
@@ -45,12 +46,17 @@ def run_pipeline(
         confidence_threshold=settings.confidence_threshold,
     )
 
+    folder_id = "root" if scope == "root" else None
     logger.info(
-        f"Scanning for unprocessed Google Drive files (limit={limit}, dry_run={dry_run})..."
+        f"Scanning for unprocessed Google Drive files (scope={scope}, folder_id={folder_id}, limit={limit}, dry_run={dry_run})..."
     )
-    files = drive_client.list_unprocessed_files(limit=limit)
+    files = drive_client.list_unprocessed_files(folder_id=folder_id, limit=limit)
     stats.total_scanned = len(files)
     logger.info(f"Found {len(files)} file(s) to organize.")
+
+    if not files:
+        logger.info("No files to organize. Pipeline complete.")
+        return stats
 
     for idx, file_info in enumerate(files, start=1):
         file_id = file_info["id"]
@@ -179,18 +185,24 @@ def main() -> None:
     """CLI entrypoint for drive-organizer."""
     parser = argparse.ArgumentParser(description="Google Drive Symmetrical File Organizer")
     parser.add_argument(
+        "--scope",
+        choices=["root", "all"],
+        default="root",
+        help="Search scope: 'root' scans files dropped in My Drive root (default), 'all' scans entire drive",
+    )
+    parser.add_argument(
         "--dry-run", action="store_true", help="Inspect and classify without mutating Drive"
     )
     parser.add_argument(
         "--limit", type=int, default=None, help="Maximum number of files to process"
     )
-    parser.add_argument(
-        "--all", action="store_true", help="Process all available unprocessed files"
-    )
+    parser.add_argument("--all", action="store_true", help="Alias for --scope=all")
     args = parser.parse_args()
 
+    scope = "all" if args.all else args.scope
+
     settings = Settings()
-    stats = run_pipeline(settings=settings, limit=args.limit, dry_run=args.dry_run)
+    stats = run_pipeline(settings=settings, scope=scope, limit=args.limit, dry_run=args.dry_run)
 
     if stats.errors:
         sys.exit(1)

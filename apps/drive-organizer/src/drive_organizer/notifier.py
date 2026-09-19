@@ -49,6 +49,10 @@ class TelegramNotifier:
             return False
 
     def send_summary(self, stats: OrganizerRunStats, dry_run: bool = False) -> bool:
+        if stats.total_scanned == 0 and not stats.errors:
+            logger.info("No files scanned and no errors. Skipping empty Telegram message.")
+            return True
+
         mode_str = " <i>(DRY RUN)</i>" if dry_run else ""
         lines = [
             f"📂 <b>Google Drive Organizer Report</b>{mode_str}",

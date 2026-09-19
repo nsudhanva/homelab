@@ -34,14 +34,25 @@ class DriveClient:
         self.service = build("drive", "v3", credentials=self.credentials, cache_discovery=False)
         self._folder_cache: dict[str, str] = {}  # "Path/To/Folder" -> folder_id
 
-    def list_unprocessed_files(self, limit: int | None = None) -> list[dict[str, Any]]:
-        """Lists files that have not been processed by the organizer."""
-        query = (
-            f"not appProperties has {{ key='{self.app_property_key}' and value='true' }} "
-            "and trashed = false "
-            "and 'me' in owners "
-            f"and mimeType != '{FOLDER_MIME}'"
-        )
+    def list_unprocessed_files(
+        self, folder_id: str | None = "root", limit: int | None = None
+    ) -> list[dict[str, Any]]:
+        """Lists files that have not been processed by the organizer.
+
+        If folder_id is provided (default: 'root'), restricts search to files
+        directly in that folder (e.g., 'root' in parents).
+        If folder_id is None, searches globally across all folders.
+        """
+        query_parts = [
+            f"not appProperties has {{ key='{self.app_property_key}' and value='true' }}",
+            "trashed = false",
+            "'me' in owners",
+            f"mimeType != '{FOLDER_MIME}'",
+        ]
+        if folder_id:
+            query_parts.append(f"'{folder_id}' in parents")
+
+        query = " and ".join(query_parts)
         logger.info(f"Querying Drive files with filter: {query}")
 
         files: list[dict[str, Any]] = []
