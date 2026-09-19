@@ -28,7 +28,7 @@ spec:
             image: ghcr.io/nsudhanva/homelab-drive-organizer:latest
             imagePullPolicy: Always
             args:
-            - "--all"
+            - "--scope=root"
             envFrom:
             - secretRef:
                 name: drive-credentials
