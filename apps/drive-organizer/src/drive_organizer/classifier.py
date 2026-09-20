@@ -43,6 +43,27 @@ class LLMConnectionError(RuntimeError):
     pass
 
 
+class FolderTriageDecision(BaseModel):
+    action: str = Field(
+        description="Must be 'dismantle' for loose document/scan/receipt batches, or 'keep_intact' for code projects, repos, software environments, or datasets"
+    )
+    is_code: bool = Field(
+        description="True if folder contains a software repository, code project, programming scripts, or dev environment"
+    )
+    target_folder: str | None = Field(
+        default=None,
+        description="Destination path if keep_intact (e.g. 'Code/<Folder_Name>' or 'Colab Notebooks/<Folder_Name>')",
+    )
+    confidence: float = Field(
+        ge=0.0,
+        le=1.0,
+        description="Confidence score between 0.0 and 1.0",
+    )
+    reasoning: str = Field(
+        description="Brief 1-2 sentence explanation of whether this is code/project to preserve intact or a document batch to dismantle"
+    )
+
+
 class DocumentClassification(BaseModel):
     person: str = Field(
         description="The individual the document belongs to: 'Sudhanva', 'Maanasa', 'Narayana', 'Narmada', 'Rashmi', or 'Unknown'"
@@ -87,13 +108,155 @@ class DriveClassifier:
         confidence_threshold: float = 0.80,
         timeout_seconds: float = 120.0,
         agent: Any = None,
+        triage_agent: Any = None,
     ) -> None:
         self.base_url = base_url.rstrip("/")
         self.model_name = model_name
         self.confidence_threshold = confidence_threshold
         self.timeout = timeout_seconds
         self._explicit_agent = agent
+        self._explicit_triage_agent = triage_agent
         self._local = threading.local()
+
+    @property
+    def triage_agent(self) -> Agent[None, FolderTriageDecision]:
+        """Return the folder triage agent, isolated per thread."""
+        if self._explicit_triage_agent is not None:
+            return self._explicit_triage_agent
+
+        if not hasattr(self._local, "triage_agent"):
+            client = AsyncOpenAI(
+                base_url=self.base_url,
+                api_key="not-needed",
+                timeout=self.timeout,
+            )
+            provider = OpenAIProvider(openai_client=client)
+            model = OpenAIChatModel(self.model_name, provider=provider)
+            self._local.triage_agent = Agent(
+                model=model,
+                output_type=FolderTriageDecision,
+                system_prompt=(
+                    "You are an automated file system classifier.\n"
+                    "Determine whether the provided Google Drive folder should be:\n"
+                    "1. KEPT INTACT ('keep_intact'): For software projects, code repositories, "
+                    "development scripts, programming environments, Jupyter notebooks, or datasets.\n"
+                    "CRITICAL: NEVER dismantle code projects, as separating scripts from configs/assets breaks the codebase.\n"
+                    "If keep_intact, set target_folder='Code/<FolderName>' (or 'Colab Notebooks/<FolderName>' for Jupyter/Colab projects).\n"
+                    "2. DISMANTLED ('dismantle'): For unstructured document batches, loose PDFs, "
+                    "scanned receipts, tax records, medical files, invoices, or personal paperwork.\n"
+                    "These files should be individually extracted, classified, and sorted into the personal taxonomy.\n"
+                    "Provide confidence (0.0 to 1.0) and a concise 1-sentence reason."
+                ),
+            )
+        return self._local.triage_agent
+
+    def triage_folder_sync(
+        self,
+        folder_name: str,
+        sample_files: list[str],
+        tree_summary: str,
+    ) -> FolderTriageDecision:
+        """Determines whether a root folder is code/project (keep intact) or document batch (dismantle)."""
+        code_exts = {
+            ".py",
+            ".ts",
+            ".js",
+            ".jsx",
+            ".tsx",
+            ".go",
+            ".rs",
+            ".java",
+            ".cpp",
+            ".c",
+            ".h",
+            ".cs",
+            ".rb",
+            ".php",
+            ".sh",
+            ".swift",
+            ".kt",
+            ".scala",
+            ".lua",
+            ".zig",
+        }
+        code_files = {
+            "package.json",
+            "pyproject.toml",
+            "cargo.toml",
+            "go.mod",
+            "gemfile",
+            "pom.xml",
+            "build.gradle",
+            "cmakelists.txt",
+            "makefile",
+            "dockerfile",
+            ".gitignore",
+        }
+        has_code_signature = any(
+            any(f.lower().endswith(ext) for ext in code_exts)
+            or f.lower().split("/")[-1] in code_files
+            for f in sample_files
+        )
+        has_notebook_signature = any(f.lower().endswith(".ipynb") for f in sample_files)
+
+        prompt_content = (
+            f"Please evaluate the following Google Drive folder to decide if it is code/project (keep intact) "
+            f"or an unstructured document batch (dismantle):\n\n"
+            f"Folder Name: {folder_name}\n"
+            f"Sample Files: {', '.join(sample_files[:20]) if sample_files else 'None'}\n\n"
+            f"Folder Manifest:\n{tree_summary}\n\n"
+            "Decision Rules:\n"
+            "- If it represents a software repo, code project, script collection, or dev environment, "
+            f"choose 'keep_intact' and target_folder='Code/{folder_name}'.\n"
+            "- If it represents Jupyter/Colab notebooks, choose 'keep_intact' and "
+            f"target_folder='Colab Notebooks/{folder_name}'.\n"
+            "- If it contains loose personal records, tax forms, receipts, scans, identity documents, bills, "
+            "or miscellaneous PDFs/documents, choose 'dismantle'.\n"
+        )
+
+        max_attempts = 2
+        for attempt in range(1, max_attempts + 1):
+            try:
+                run_result = self.triage_agent.run_sync(prompt_content)
+                decision = run_result.output
+                if decision.action not in ("dismantle", "keep_intact"):
+                    decision.action = (
+                        "keep_intact"
+                        if (has_code_signature or has_notebook_signature)
+                        else "dismantle"
+                    )
+                if decision.action == "keep_intact" and not decision.target_folder:
+                    target_parent = "Colab Notebooks" if has_notebook_signature else "Code"
+                    decision.target_folder = f"{target_parent}/{folder_name}"
+                return decision
+            except Exception as exc:
+                logger.warning(f"LLM folder triage attempt {attempt} failed: {exc}")
+
+        # Fallback to deterministic heuristics
+        if has_notebook_signature:
+            return FolderTriageDecision(
+                action="keep_intact",
+                is_code=True,
+                target_folder=f"Colab Notebooks/{folder_name}",
+                confidence=0.95,
+                reasoning="Folder contains Jupyter notebooks; preserving intact in Colab Notebooks.",
+            )
+        if has_code_signature:
+            return FolderTriageDecision(
+                action="keep_intact",
+                is_code=True,
+                target_folder=f"Code/{folder_name}",
+                confidence=0.95,
+                reasoning="Folder contains programming code or build files; preserving intact in Code/.",
+            )
+
+        return FolderTriageDecision(
+            action="dismantle",
+            is_code=False,
+            target_folder=None,
+            confidence=0.90,
+            reasoning="Folder contains personal files/documents; dismantling and organizing files individually.",
+        )
 
     @property
     def agent(self) -> Agent[None, DocumentClassification]:
@@ -161,10 +324,13 @@ class DriveClassifier:
         filename: str,
         extracted_text: str = "",
         mime_type: str = "application/pdf",
+        folder_breadcrumbs: list[str] | None = None,
     ) -> DocumentClassification:
         """Classifies a document by reading its content with the local LLM."""
         # 1. Preliminary heuristic scan for contextual hints (non-binding)
-        pre_route: PreRouteSuggestion = PreRouter.analyze(filename, extracted_text)
+        pre_route: PreRouteSuggestion = PreRouter.analyze(
+            filename, extracted_text, folder_breadcrumbs=folder_breadcrumbs
+        )
 
         # 2. Construct LLM prompt with actual extracted document text
         text_section = (
@@ -173,10 +339,17 @@ class DriveClassifier:
             else "[No extractable text found in document stream/header - rely on filename and metadata]"
         )
 
+        folder_context = (
+            f"Original Folder Path: {' / '.join(folder_breadcrumbs)}\n"
+            if folder_breadcrumbs
+            else ""
+        )
+
         prompt_content = (
             f"Please inspect and classify the following document:\n"
             f"Filename: {filename}\n"
             f"MIME Type: {mime_type}\n"
+            f"{folder_context}"
             f"Preliminary Scan Hint: suggested_person={pre_route.person or 'Sudhanva (default)'}, "
             f"suggested_category={pre_route.category or 'unspecified'}\n\n"
             f"{text_section}\n\n"

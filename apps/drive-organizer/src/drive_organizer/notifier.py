@@ -14,6 +14,9 @@ class OrganizerRunStats:
     total_docs_classified: int = 0
     total_joint_shortcuts: int = 0
     total_quarantined: int = 0
+    total_folders_dismantled: int = 0
+    total_folders_kept_intact: int = 0
+    total_folders_pruned: int = 0
     actions: list[str] = field(default_factory=list)
     errors: list[str] = field(default_factory=list)
 
@@ -49,8 +52,15 @@ class TelegramNotifier:
             return False
 
     def send_summary(self, stats: OrganizerRunStats, dry_run: bool = False) -> bool:
-        if stats.total_scanned == 0 and not stats.errors:
-            logger.info("No files scanned and no errors. Skipping empty Telegram message.")
+        if (
+            stats.total_scanned == 0
+            and stats.total_folders_dismantled == 0
+            and stats.total_folders_kept_intact == 0
+            and not stats.errors
+        ):
+            logger.info(
+                "No files or folders processed and no errors. Skipping empty Telegram message."
+            )
             return True
 
         mode_str = " <i>(DRY RUN)</i>" if dry_run else ""
@@ -61,6 +71,15 @@ class TelegramNotifier:
             f"• <b>Media Chrono-Sorted:</b> {stats.total_media_sorted}",
             f"• <b>Joint Shortcuts Created:</b> {stats.total_joint_shortcuts}",
         ]
+
+        if stats.total_folders_dismantled > 0:
+            lines.append(f"• 🗂️ <b>Folder Batches Dismantled:</b> {stats.total_folders_dismantled}")
+        if stats.total_folders_kept_intact > 0:
+            lines.append(
+                f"• 💻 <b>Code Projects Kept Intact:</b> {stats.total_folders_kept_intact}"
+            )
+        if stats.total_folders_pruned > 0:
+            lines.append(f"• 🗑️ <b>Empty Folder Shells Pruned:</b> {stats.total_folders_pruned}")
 
         if stats.total_quarantined > 0:
             lines.append(f"• ⚠️ <b>Needs Review:</b> {stats.total_quarantined}")

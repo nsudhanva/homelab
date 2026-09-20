@@ -1,6 +1,6 @@
 import io
 import logging
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any
 
@@ -18,6 +18,7 @@ class DocumentInspection:
     has_extractable_text: bool = False
     extracted_text: str = ""
     suggested_ext: str = ""
+    folder_breadcrumbs: list[str] = field(default_factory=list)
 
 
 class FileInspector:
@@ -25,8 +26,13 @@ class FileInspector:
 
     @staticmethod
     def inspect_bytes(
-        filename: str, mime_type: str, file_bytes: bytes, created_time_str: str | None = None
+        filename: str,
+        mime_type: str,
+        file_bytes: bytes,
+        created_time_str: str | None = None,
+        folder_breadcrumbs: list[str] | None = None,
     ) -> DocumentInspection:
+        breadcrumbs = folder_breadcrumbs or []
         lower_name = filename.lower()
         lower_mime = mime_type.lower()
 
@@ -63,11 +69,14 @@ class FileInspector:
                     media_date=exif_date or datetime.now(),
                     has_extractable_text=False,
                     extracted_text="",
+                    folder_breadcrumbs=breadcrumbs,
                 )
 
         # 2. PDF inspection (Firecrawl single-page pattern)
         if lower_mime == "application/pdf" or lower_name.endswith(".pdf"):
-            return FileInspector._inspect_pdf(file_bytes)
+            inspection = FileInspector._inspect_pdf(file_bytes)
+            inspection.folder_breadcrumbs = breadcrumbs
+            return inspection
 
         # 3. Plain text / CSV / Google Workspace exports
         if (
@@ -82,6 +91,7 @@ class FileInspector:
                     page_count=1,
                     has_extractable_text=bool(text.strip()),
                     extracted_text=text[:3500].strip(),
+                    folder_breadcrumbs=breadcrumbs,
                 )
             except Exception as e:
                 logger.warning(f"Error decoding text for {filename}: {e}")
@@ -91,6 +101,7 @@ class FileInspector:
             is_media=False,
             has_extractable_text=False,
             extracted_text="",
+            folder_breadcrumbs=breadcrumbs,
         )
 
     @staticmethod

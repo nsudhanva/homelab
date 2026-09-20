@@ -18,8 +18,14 @@ class PreRouter:
     """Performs deterministic pattern matching and rule-based pre-routing."""
 
     @classmethod
-    def analyze(cls, filename: str, extracted_text: str = "") -> PreRouteSuggestion:
-        combined = f"{filename} {extracted_text}".lower()
+    def analyze(
+        cls,
+        filename: str,
+        extracted_text: str = "",
+        folder_breadcrumbs: list[str] | None = None,
+    ) -> PreRouteSuggestion:
+        breadcrumbs_str = " ".join(folder_breadcrumbs) if folder_breadcrumbs else ""
+        combined = f"{filename} {breadcrumbs_str} {extracted_text}".lower()
 
         # 1. Joint Documents (Marriage cert, joint lease, joint taxes)
         if any(term in combined for term in ["marriage cert", "marriage certificate", "form-mrg"]):
