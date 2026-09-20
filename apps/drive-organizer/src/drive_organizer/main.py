@@ -173,6 +173,12 @@ def run_pipeline(
         base_url=settings.llm_base_url,
         model_name=settings.llm_model_name,
         confidence_threshold=settings.confidence_threshold,
+        timeout_seconds=settings.llm_timeout_seconds,
+        primary_llm_provider=settings.primary_llm_provider,
+        fallback_llm_provider=settings.fallback_llm_provider,
+        openrouter_api_key=settings.openrouter_api_key,
+        openrouter_base_url=settings.openrouter_base_url,
+        openrouter_model_name=settings.openrouter_model_name,
     )
 
     # 1. Process loose files in root (or target folder)

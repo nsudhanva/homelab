@@ -1,3 +1,5 @@
+from typing import Literal
+
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -37,7 +39,15 @@ class Settings(BaseSettings):
         validation_alias="GMAIL_REFRESH_TOKEN",
     )
 
-    # LLM Settings
+    # LLM Provider Routing Settings
+    primary_llm_provider: Literal["local", "openrouter"] = Field(
+        default="local",
+        validation_alias="PRIMARY_LLM_PROVIDER",
+    )
+    fallback_llm_provider: Literal["local", "openrouter", "none"] = Field(
+        default="openrouter",
+        validation_alias="FALLBACK_LLM_PROVIDER",
+    )
     llm_base_url: str = Field(
         default="http://llama-server.llama.svc.cluster.local:8080/v1",
         validation_alias="LLM_BASE_URL",
@@ -46,9 +56,27 @@ class Settings(BaseSettings):
         default="gemma-4-e2b-it",
         validation_alias="LLM_MODEL_NAME",
     )
+    llm_timeout_seconds: float = Field(
+        default=120.0,
+        validation_alias="LLM_TIMEOUT_SECONDS",
+    )
     confidence_threshold: float = Field(
         default=0.80,
         validation_alias="CONFIDENCE_THRESHOLD",
+    )
+
+    # OpenRouter Fallback Settings
+    openrouter_api_key: str = Field(
+        default="",
+        validation_alias="OPENROUTER_API_KEY",
+    )
+    openrouter_base_url: str = Field(
+        default="https://openrouter.ai/api/v1",
+        validation_alias="OPENROUTER_BASE_URL",
+    )
+    openrouter_model_name: str = Field(
+        default="google/gemma-4-31b-it",
+        validation_alias="OPENROUTER_MODEL_NAME",
     )
 
     # Telegram alerts

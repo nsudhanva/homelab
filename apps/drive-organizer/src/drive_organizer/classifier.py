@@ -7,8 +7,12 @@ from typing import Any
 from openai import AsyncOpenAI
 from pydantic import BaseModel, Field
 from pydantic_ai import Agent
+from pydantic_ai.exceptions import FallbackExceptionGroup, ModelAPIError
+from pydantic_ai.models.fallback import FallbackModel
 from pydantic_ai.models.openai import OpenAIChatModel
+from pydantic_ai.models.openrouter import OpenRouterModel
 from pydantic_ai.providers.openai import OpenAIProvider
+from pydantic_ai.providers.openrouter import OpenRouterProvider
 
 from .pre_router import PreRouter, PreRouteSuggestion
 
@@ -109,6 +113,15 @@ class DriveClassifier:
         timeout_seconds: float = 120.0,
         agent: Any = None,
         triage_agent: Any = None,
+        primary_llm_provider: str = "local",
+        fallback_llm_provider: str = "openrouter",
+        openrouter_api_key: str = "",
+        openrouter_base_url: str = "https://openrouter.ai/api/v1",
+        openrouter_model_name: str = "google/gemma-4-31b-it",
+        fallback_model: Any = None,
+        fallback_triage_model: Any = None,
+        primary_model: Any = None,
+        primary_triage_model: Any = None,
     ) -> None:
         self.base_url = base_url.rstrip("/")
         self.model_name = model_name
@@ -116,7 +129,85 @@ class DriveClassifier:
         self.timeout = timeout_seconds
         self._explicit_agent = agent
         self._explicit_triage_agent = triage_agent
+        self.primary_llm_provider = (primary_llm_provider or "local").lower().strip()
+        self.fallback_llm_provider = (fallback_llm_provider or "openrouter").lower().strip()
+        self.openrouter_api_key = openrouter_api_key
+        self.openrouter_base_url = openrouter_base_url.rstrip("/")
+        self.openrouter_model_name = openrouter_model_name
+        self._fallback_model = fallback_model
+        self._fallback_triage_model = fallback_triage_model
+        self._primary_model = primary_model
+        self._primary_triage_model = primary_triage_model
         self._local = threading.local()
+
+    def _build_model(
+        self,
+        primary_override: Any = None,
+        fallback_override: Any = None,
+    ) -> Any:
+        """Constructs primary and fallback models using Pydantic AI FallbackModel routing."""
+        # 1. Build Local Model
+        local_model = (
+            primary_override
+            if self.primary_llm_provider == "local" and primary_override is not None
+            else None
+        )
+        if local_model is None:
+            local_client = AsyncOpenAI(
+                base_url=self.base_url,
+                api_key="not-needed",
+                timeout=self.timeout,
+            )
+            local_provider = OpenAIProvider(openai_client=local_client)
+            local_model = OpenAIChatModel(self.model_name, provider=local_provider)
+
+        # 2. Build OpenRouter Model (if API key provided or override given)
+        openrouter_model = (
+            primary_override
+            if self.primary_llm_provider == "openrouter" and primary_override is not None
+            else None
+        )
+        if openrouter_model is None and self.openrouter_api_key:
+            or_client = AsyncOpenAI(
+                base_url=self.openrouter_base_url,
+                api_key=self.openrouter_api_key,
+                timeout=self.timeout,
+                default_headers={
+                    "HTTP-Referer": "https://github.com/nsudhanva/homelab",
+                    "X-Title": "homelab-drive-organizer",
+                },
+            )
+            openrouter_provider = OpenRouterProvider(openai_client=or_client)
+            openrouter_model = OpenRouterModel(
+                self.openrouter_model_name,
+                provider=openrouter_provider,
+            )
+
+        # 3. Fallback override resolution
+        fb = fallback_override if fallback_override is not None else self._fallback_model
+
+        # 4. Resolve Primary and Fallback based on configuration
+        if self.primary_llm_provider == "openrouter":
+            if not openrouter_model:
+                logger.warning(
+                    "Primary provider is openrouter but OPENROUTER_API_KEY is not set! Falling back to local."
+                )
+                if fb is not None:
+                    return FallbackModel(local_model, fb, fallback_on=(ModelAPIError,))
+                return local_model
+
+            if fb is not None:
+                return FallbackModel(openrouter_model, fb, fallback_on=(ModelAPIError,))
+            if self.fallback_llm_provider == "local":
+                return FallbackModel(openrouter_model, local_model, fallback_on=(ModelAPIError,))
+            return openrouter_model
+
+        else:  # primary_llm_provider == "local"
+            if fb is not None:
+                return FallbackModel(local_model, fb, fallback_on=(ModelAPIError,))
+            if self.fallback_llm_provider == "openrouter" and openrouter_model:
+                return FallbackModel(local_model, openrouter_model, fallback_on=(ModelAPIError,))
+            return local_model
 
     @property
     def triage_agent(self) -> Agent[None, FolderTriageDecision]:
@@ -125,13 +216,10 @@ class DriveClassifier:
             return self._explicit_triage_agent
 
         if not hasattr(self._local, "triage_agent"):
-            client = AsyncOpenAI(
-                base_url=self.base_url,
-                api_key="not-needed",
-                timeout=self.timeout,
+            model = self._build_model(
+                primary_override=self._primary_triage_model,
+                fallback_override=self._fallback_triage_model,
             )
-            provider = OpenAIProvider(openai_client=client)
-            model = OpenAIChatModel(self.model_name, provider=provider)
             self._local.triage_agent = Agent(
                 model=model,
                 output_type=FolderTriageDecision,
@@ -230,6 +318,11 @@ class DriveClassifier:
                     decision.target_folder = f"{target_parent}/{folder_name}"
                 return decision
             except Exception as exc:
+                if isinstance(exc, FallbackExceptionGroup):
+                    for idx, sub_exc in enumerate(exc.exceptions):
+                        logger.warning(
+                            f"  Fallback candidate {idx + 1} failed ({type(sub_exc).__name__}): {sub_exc}"
+                        )
                 logger.warning(f"LLM folder triage attempt {attempt} failed: {exc}")
 
         # Fallback to deterministic heuristics
@@ -265,13 +358,10 @@ class DriveClassifier:
             return self._explicit_agent
 
         if not hasattr(self._local, "agent"):
-            client = AsyncOpenAI(
-                base_url=self.base_url,
-                api_key="not-needed",
-                timeout=self.timeout,
+            model = self._build_model(
+                primary_override=self._primary_model,
+                fallback_override=self._fallback_model,
             )
-            provider = OpenAIProvider(openai_client=client)
-            model = OpenAIChatModel(self.model_name, provider=provider)
             self._local.agent = Agent(
                 model=model,
                 output_type=DocumentClassification,
@@ -360,8 +450,8 @@ class DriveClassifier:
             "4. Generate a clean, descriptive human filename, a 1-2 sentence summary, and 3-5 search keywords."
         )
 
-        max_attempts = 3
-        backoff_seconds = 10.0
+        max_attempts = 2
+        backoff_seconds = 5.0
         last_exc: Exception | None = None
 
         for attempt in range(1, max_attempts + 1):
@@ -398,6 +488,11 @@ class DriveClassifier:
 
             except Exception as exc:
                 last_exc = exc
+                if isinstance(exc, FallbackExceptionGroup):
+                    for idx, sub_exc in enumerate(exc.exceptions):
+                        logger.warning(
+                            f"  Fallback candidate {idx + 1} failed ({type(sub_exc).__name__}): {sub_exc}"
+                        )
                 err_msg = str(exc)
                 logger.warning(
                     f"LLM classify attempt {attempt}/{max_attempts} failed for '{filename}': {err_msg}"

@@ -76,6 +76,47 @@ kubectl -n drive-organizer run drive-dry-run \
   -- python -m drive_organizer.main --dry-run --limit 10
 ```
 
-## Step 5: Reviewing Quarantined Files
+## Step 5: Model Fallback Routing and Provider Toggling
+
+The organizer uses Pydantic AI's `FallbackModel` to guarantee high availability across local and cloud inference:
+
+- **Primary Model**: Defaults to local **Google Gemma 4 E2B** (`http://llama-server.llama.svc.cluster.local:8080/v1`).
+- **Fallback Model**: Seamlessly routes requests to **OpenRouter Google Gemma 4 31B** (`google/gemma-4-31b-it`) if the local server experiences connection drops, timeouts, or OOM errors.
+- **Zero-Secret Vault Integration**: The OpenRouter API key is managed via HashiCorp Vault at `kv/openrouter` (`api_key`) and synchronized via Kubernetes `ExternalSecret` into `openrouter-credentials`.
+
+### Provisioning the OpenRouter Key in Vault
+
+Before enabling OpenRouter fallback in a new cluster environment, write the API key to Vault:
+
+```bash
+vault kv put kv/openrouter api_key="sk-or-v1-xxxxxxxxxxxxxxxx"
+```
+
+### Switching the Default Model
+
+To toggle between local inference and OpenRouter without rebuilding containers, adjust `PRIMARY_LLM_PROVIDER` and `FALLBACK_LLM_PROVIDER` in `apps/drive-organizer/cronjob.yaml`:
+
+```yaml
+            env:
+            - name: PRIMARY_LLM_PROVIDER
+              value: "openrouter"
+            - name: FALLBACK_LLM_PROVIDER
+              value: "local"
+```
+
+Or switch it dynamically using `kubectl`:
+
+```bash
+# Make OpenRouter Gemma 4 31B primary
+kubectl -n drive-organizer set env cronjob/drive-organizer PRIMARY_LLM_PROVIDER=openrouter FALLBACK_LLM_PROVIDER=local
+
+# Revert to local SLM as primary
+kubectl -n drive-organizer set env cronjob/drive-organizer PRIMARY_LLM_PROVIDER=local FALLBACK_LLM_PROVIDER=openrouter
+
+# Disable fallback entirely (offline mode)
+kubectl -n drive-organizer set env cronjob/drive-organizer FALLBACK_LLM_PROVIDER=none
+```
+
+## Step 6: Reviewing Quarantined Files
 
 If a document has a low confidence score or ambiguous entity, the classifier routes it to `Review/Needs Review/` and dispatches an alert to the Telegram bot (`@ManassuHomelabBot`).
