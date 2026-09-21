@@ -91,7 +91,10 @@ async def test_classify_unmatched_label_fallback():
         )
     )
     classifier = EmailClassifier(
-        confidence_threshold=0.80, quarantine_label="ai-review", agent=mock_agent
+        confidence_threshold=0.80,
+        quarantine_label="ai-review",
+        allow_label_creation=False,
+        agent=mock_agent,
     )
     email = SanitizedEmail(
         id="3",
@@ -103,6 +106,66 @@ async def test_classify_unmatched_label_fallback():
     result = await classifier.classify(email, ["Work", "Personal"])
     assert result.label == "ai-review"
     assert "Unmatched label" in result.reason
+
+
+@pytest.mark.asyncio
+async def test_classify_autonomous_label_creation():
+    mock_agent = MagicMock()
+    mock_agent.run = AsyncMock(
+        return_value=MagicMock(
+            output=ClassificationResult(
+                label="Newsletters",
+                confidence=0.95,
+                reason="Digest of news articles.",
+            )
+        )
+    )
+    classifier = EmailClassifier(
+        confidence_threshold=0.80,
+        quarantine_label="ai-review",
+        allow_label_creation=True,
+        agent=mock_agent,
+    )
+    email = SanitizedEmail(
+        id="3b",
+        subject="Daily Tech Digest",
+        sender="digest@example.com",
+        body="Here is your tech newsletter.",
+    )
+
+    result = await classifier.classify(email, ["Work", "Personal"])
+    assert result.label == "Newsletters"
+    assert result.confidence == 0.95
+
+
+@pytest.mark.asyncio
+async def test_classify_explicit_quarantine():
+    mock_agent = MagicMock()
+    mock_agent.run = AsyncMock(
+        return_value=MagicMock(
+            output=ClassificationResult(
+                label="QUARANTINE",
+                confidence=0.95,
+                reason="Phishing attempt detected.",
+            )
+        )
+    )
+    classifier = EmailClassifier(
+        confidence_threshold=0.80,
+        quarantine_label="ai-review",
+        allow_label_creation=True,
+        agent=mock_agent,
+    )
+    email = SanitizedEmail(
+        id="3c",
+        subject="Suspicious link",
+        sender="phish@example.com",
+        body="Click here now.",
+    )
+
+    result = await classifier.classify(email, ["Work", "Personal"])
+    assert result.label == "ai-review"
+    assert "Quarantined" in result.reason
 
 
 def test_classify_sync_llm_connection_error():
@@ -139,10 +202,36 @@ def test_classify_sync_error_handling():
 
 def test_classify_no_curated_labels():
     mock_agent = MagicMock()
-    classifier = EmailClassifier(quarantine_label="ai-review", agent=mock_agent)
+    classifier = EmailClassifier(
+        quarantine_label="ai-review",
+        allow_label_creation=False,
+        agent=mock_agent,
+    )
     email = SanitizedEmail(id="5", subject="Empty", body="Empty")
 
     result = classifier.classify_sync(email, ["INBOX", "SPAM"])
     assert result.label == "ai-review"
     assert "No active curated user labels available" in result.reason
     mock_agent.run_sync.assert_not_called()
+
+
+def test_classify_no_curated_labels_with_creation_enabled():
+    mock_agent = MagicMock()
+    mock_agent.run_sync.return_value = MagicMock(
+        output=ClassificationResult(
+            label="Newsletters",
+            confidence=0.92,
+            reason="Digest newsletter.",
+        )
+    )
+    classifier = EmailClassifier(
+        quarantine_label="ai-review",
+        allow_label_creation=True,
+        agent=mock_agent,
+    )
+    email = SanitizedEmail(id="5b", subject="Digest", body="Latest updates")
+
+    result = classifier.classify_sync(email, ["INBOX", "SPAM"])
+    assert result.label == "Newsletters"
+    assert result.confidence == 0.92
+    mock_agent.run_sync.assert_called_once()

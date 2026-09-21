@@ -47,6 +47,7 @@ def test_settings_defaults(monkeypatch):
     assert settings.auto_archive_enabled is True
     assert settings.account_name == "primary"
     assert settings.telegram_topic_id is None
+    assert settings.allow_label_creation is True
 
 
 def test_settings_archive_custom_values(monkeypatch):

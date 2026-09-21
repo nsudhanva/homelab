@@ -92,6 +92,8 @@ spec:
                   value: "90"
                 - name: AUTO_ARCHIVE_ENABLED
                   value: "true"
+                - name: ALLOW_LABEL_CREATION
+                  value: "true"
               volumeMounts:
                 - name: tmp
                   mountPath: /tmp

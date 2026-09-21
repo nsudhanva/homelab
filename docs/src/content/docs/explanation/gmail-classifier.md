@@ -196,9 +196,18 @@ self.agent = Agent(
 
 ---
 
-## Label Safety & Quarantine State Machine
+## Label Safety & Autonomous Taxonomy Discovery
 
-User labels are protected against corruption or unintended root modifications. The state machine illustrates the decision logic applied to every message.
+User labels are protected against corruption while allowing intelligent taxonomy evolution for accounts with sparse labels.
+
+### Autonomous Label Discovery
+
+When an account possesses few or no pre-existing user labels, or when incoming emails do not match any candidate labels, the classifier activates autonomous label discovery (`ALLOW_LABEL_CREATION=true`):
+
+- **Canonical Proposing**: The model is instructed to propose concise, high-level canonical category labels (such as `Newsletters`, `Travel`, `Entertainment`, `Shopping`, `Finance`, `Social`) based on primary sender intent rather than dumping legitimate mail into quarantine.
+- **Strict Guardrails**: New labels must be Title Case and broad (one to two words). Sender-specific company names (such as `Netflix` or `Uber`) are barred to avoid taxonomy fragmentation. Labels are trimmed, bounded to $\le 40$ characters, and forbidden from using reserved prefixes like `CATEGORY_`.
+- **Dynamic Provisioning**: Once sanitized, the classifier calls `ensure_label_exists` on the Gmail API, creates the label if absent, and caches its label ID for subsequent batch operations.
+- **Preserved Quarantine Safety**: Emails identified as unsolicited spam, phishing, or ambiguous noise continue to receive the explicit `QUARANTINE` label, mapping safely to `ai-review`.
 
 ```mermaid
 stateDiagram-v2
@@ -215,17 +224,34 @@ stateDiagram-v2
     Inferring --> ConfidenceCheck: Valid ClassificationResult
 
     state ConfidenceCheck <<choice>>
-    ConfidenceCheck --> LabelCheck: Confidence >= 0.80
+    ConfidenceCheck --> LabelEvaluation: Confidence >= 0.80
     ConfidenceCheck --> Quarantined: Confidence < 0.80
 
-    state LabelCheck <<choice>>
-    LabelCheck --> Approved: Label in Allowed User Taxonomy
-    LabelCheck --> Quarantined: Label not in Taxonomy or QUARANTINE
+    state LabelEvaluation <<choice>>
+    LabelEvaluation --> ApprovedExisting: Label in Existing Taxonomy
+    LabelEvaluation --> DynamicProvisioning: New Canonical Label Proposed
+    LabelEvaluation --> Quarantined: QUARANTINE or Invalid Label
 
-    state Approved {
-        ApplyUserLabel: Add Selected User Label ID
-        ApplyProcessedApproved: Add ai-processed Label ID
-        ApplyUserLabel --> ApplyProcessedApproved
+    state DynamicProvisioning {
+        SanitizeLabel: Clean Whitespace & Check Length
+        EnsureGmailLabel: Gmail API createLabel If Missing
+        CacheLabelId: Cache ID in User Labels Matrix
+        SanitizeLabel --> EnsureGmailLabel
+        EnsureGmailLabel --> CacheLabelId
+    }
+
+    DynamicProvisioning --> ApprovedNew: Label Created / Verified
+
+    state ApprovedExisting {
+        ApplyExistingLabel: Add Existing User Label ID
+        ApplyExistingProcessed: Add ai-processed Label ID
+        ApplyExistingLabel --> ApplyExistingProcessed
+    }
+
+    state ApprovedNew {
+        ApplyCreatedLabel: Add Newly Provisioned Label ID
+        ApplyCreatedProcessed: Add ai-processed Label ID
+        ApplyCreatedLabel --> ApplyCreatedProcessed
     }
 
     state Quarantined {
@@ -236,7 +262,8 @@ stateDiagram-v2
         ApplyProcessedQuarantine --> LogAlert
     }
 
-    Approved --> Completed: Batch Continuation
+    ApprovedExisting --> Completed: Batch Continuation
+    ApprovedNew --> Completed: Batch Continuation
     Quarantined --> Completed: Batch Continuation
     Completed --> [*]: All Emails Tagged & Alert Dispatched
 ```

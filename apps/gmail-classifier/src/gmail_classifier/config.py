@@ -122,6 +122,11 @@ class Settings(BaseSettings):
         validation_alias=AliasChoices("TELEGRAM_TOPIC_ID", "telegram_topic_id"),
         description="Optional Telegram forum thread/topic ID for notification delivery",
     )
+    allow_label_creation: bool = Field(
+        default=True,
+        validation_alias=AliasChoices("ALLOW_LABEL_CREATION", "allow_label_creation"),
+        description="Whether to autonomously discover and provision canonical labels",
+    )
 
     def to_llm_client_config(self) -> LLMClientConfig:
         return LLMClientConfig(

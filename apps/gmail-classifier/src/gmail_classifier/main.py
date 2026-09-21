@@ -161,6 +161,7 @@ def run_pipeline(
             quarantine_label=settings.quarantine_label,
             processed_label=settings.processed_label,
             timeout_seconds=settings.llm_timeout_seconds,
+            allow_label_creation=settings.allow_label_creation,
             config=settings.to_llm_client_config(),
         )
 
@@ -240,9 +241,20 @@ def run_pipeline(
                     )
 
             if not dry_run:
-                target_label_id = user_labels.get(result.label, quarantine_label_id)
-                add_labels = [target_label_id, processed_label_id]
                 with gmail_lock:
+                    if result.label not in user_labels:
+                        target_label_id = gmail.ensure_label_exists(result.label)
+                        user_labels[result.label] = target_label_id
+                        if result.label not in candidate_labels:
+                            candidate_labels.append(result.label)
+                        logger.info(
+                            f"[{settings.account_name}] Provisioned new label '{result.label}' "
+                            f"(ID: {target_label_id})"
+                        )
+                    else:
+                        target_label_id = user_labels[result.label]
+
+                    add_labels = [target_label_id, processed_label_id]
                     gmail.apply_label(msg_id, add_label_ids=add_labels)
             else:
                 logger.info(

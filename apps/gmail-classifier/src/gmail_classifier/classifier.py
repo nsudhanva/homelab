@@ -42,6 +42,7 @@ class EmailClassifier:
         quarantine_label: str = "ai-review",
         processed_label: str = "ai-processed",
         timeout_seconds: float = 120.0,
+        allow_label_creation: bool = True,
         agent: Agent[None, ClassificationResult] | None = None,
         config: LLMClientConfig | None = None,
         router: ModelRouter | None = None,
@@ -52,6 +53,7 @@ class EmailClassifier:
         self.quarantine_label = quarantine_label
         self.processed_label = processed_label
         self.timeout = timeout_seconds
+        self.allow_label_creation = allow_label_creation
         self._explicit_agent = agent
         self.config = config or LLMClientConfig(
             llm_base_url=self.base_url,
@@ -73,13 +75,18 @@ class EmailClassifier:
                 output_type=ClassificationResult,
                 system_prompt=(
                     "You are an automated email triage system.\n"
-                    "Categorize each email into EXACTLY ONE active user label based on "
+                    "Categorize each email into EXACTLY ONE canonical label based on "
                     "PRIMARY INTENT.\n"
                     "CRITICAL: Do NOT fall into keyword traps. The mention of a company "
                     "or product name does NOT determine the label if the primary intent "
                     "is different.\n"
+                    "If candidate labels exist and match the primary intent, prefer them.\n"
                     "If none of the candidate labels match the primary intent with high "
-                    "confidence, choose 'QUARANTINE'.\n"
+                    "confidence, propose a concise, high-level canonical category label "
+                    "(e.g. 'Newsletters', 'Travel', 'Entertainment', 'Shopping', 'Finance', "
+                    "'Personal', 'Education', 'Social').\n"
+                    "Only choose 'QUARANTINE' if the email is unsolicited spam, phishing, "
+                    "or completely ambiguous noise.\n"
                     "Keep your reasoning brief (1-2 sentences)."
                 ),
             )
@@ -107,9 +114,14 @@ class EmailClassifier:
         email: SanitizedEmail,
         curated_labels: list[str],
     ) -> str:
-        labels_list_str = "\n".join(f"- {label}" for label in curated_labels)
+        if curated_labels:
+            labels_list_str = "\n".join(f"- {label}" for label in curated_labels)
+            labels_section = f"Active Allowed Labels:\n{labels_list_str}\n\n"
+        else:
+            labels_section = "Active Allowed Labels: None (propose a clean canonical label)\n\n"
+
         return (
-            f"Active Allowed Labels:\n{labels_list_str}\n\n"
+            f"{labels_section}"
             f"Email to Classify:\n"
             f"Subject: {email.subject}\n"
             f"From: {email.sender}\n"
@@ -143,12 +155,15 @@ class EmailClassifier:
             "     over generic parent labels ('Companies', 'Personal').\n"
             "   - Legitimate personal subscriptions or service accounts without a dedicated child\n"
             "     label (e.g. car subscriptions, utilities) should map to 'Personal'.\n"
-            "   - Only use 'QUARANTINE' if the email is unsolicited spam, completely irrelevant\n"
-            "     noise, or truly ambiguous.\n"
-            "6. MANDATORY OUTPUT:\n"
-            "   - Choose EXACTLY ONE label from the Active Allowed Labels above or 'QUARANTINE'.\n"
-            "   - Provide confidence (0.0 to 1.0) and a concise 1-sentence reason focusing on "
-            "sender intent."
+            "6. LABEL SELECTION & AUTONOMOUS DISCOVERY:\n"
+            "   - Prefer an existing active label if it matches sender intent.\n"
+            "   - If NO active label fits, propose a concise, high-level canonical category label\n"
+            "     (e.g. 'Newsletters', 'Travel', 'Entertainment', 'Shopping', 'Finance',\n"
+            "     'Social').\n"
+            "   - New labels must be Title Case and broad (1-2 words).\n"
+            "   - Do NOT create sender-specific labels (e.g. do not name after 'Netflix').\n"
+            "   - Only choose 'QUARANTINE' if the email is unsolicited spam, phishing, or noise.\n"
+            "   - Provide confidence (0.0 to 1.0) and a concise 1-sentence reason."
         )
 
     def _evaluate_result(
@@ -166,14 +181,30 @@ class EmailClassifier:
                 ),
             )
 
-        if raw_result.label == "QUARANTINE" or raw_result.label not in allowed_labels:
+        if raw_result.label == "QUARANTINE":
             return ClassificationResult(
                 label=self.quarantine_label,
                 confidence=raw_result.confidence,
-                reason=f"Unmatched label '{raw_result.label}': {raw_result.reason}",
+                reason=f"Quarantined: {raw_result.reason}",
             )
 
-        return raw_result
+        if raw_result.label in allowed_labels:
+            return raw_result
+
+        if self.allow_label_creation:
+            cleaned = raw_result.label.strip().strip("/")
+            if cleaned and len(cleaned) <= 40 and not cleaned.upper().startswith("CATEGORY_"):
+                return ClassificationResult(
+                    label=cleaned,
+                    confidence=raw_result.confidence,
+                    reason=raw_result.reason,
+                )
+
+        return ClassificationResult(
+            label=self.quarantine_label,
+            confidence=raw_result.confidence,
+            reason=f"Unmatched label '{raw_result.label}': {raw_result.reason}",
+        )
 
     async def classify(
         self,
@@ -182,7 +213,7 @@ class EmailClassifier:
     ) -> ClassificationResult:
         """Classify an email asynchronously using the Pydantic AI Agent."""
         curated_labels = self.filter_candidate_labels(candidate_labels)
-        if not curated_labels:
+        if not curated_labels and not self.allow_label_creation:
             logger.warning("No active curated user labels found. Falling back to quarantine.")
             return ClassificationResult(
                 label=self.quarantine_label,
@@ -232,7 +263,7 @@ class EmailClassifier:
     ) -> ClassificationResult:
         """Synchronously classify an email using the Pydantic AI Agent."""
         curated_labels = self.filter_candidate_labels(candidate_labels)
-        if not curated_labels:
+        if not curated_labels and not self.allow_label_creation:
             logger.warning("No active curated user labels found. Falling back to quarantine.")
             return ClassificationResult(
                 label=self.quarantine_label,
