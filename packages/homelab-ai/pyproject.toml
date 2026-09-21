@@ -1,26 +1,22 @@
 [project]
-name = "gmail-classifier"
+name = "homelab-ai"
 version = "0.1.0"
-description = "Daily AI-powered Gmail triage and classification runner"
+description = "High-availability LLM routing, fallback models, and agent factories for homelab"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
     "pydantic>=2.9.0",
     "pydantic-settings>=2.5.0",
-    "httpx>=0.27.0",
-    "google-api-python-client>=2.150.0",
-    "google-auth>=2.35.0",
-    "google-auth-oauthlib>=1.2.0",
     "pydantic-ai>=2.43.0",
-    "homelab-ai",
+    "openai>=1.50.0",
 ]
-
-[tool.uv.sources]
-homelab-ai = { path = "../../packages/homelab-ai", editable = true }
 
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/homelab_ai"]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
@@ -54,7 +50,7 @@ ignore = [
 ]
 
 [tool.ruff.lint.isort]
-known-first-party = ["gmail_classifier"]
+known-first-party = ["homelab_ai"]
 
 [tool.ty]
 [tool.ty.environment]

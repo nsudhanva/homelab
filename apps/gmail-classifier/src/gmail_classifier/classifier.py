@@ -3,11 +3,9 @@ import os
 import threading
 import time
 
-from openai import AsyncOpenAI
+from homelab_ai import LLMClientConfig, LLMConnectionError, ModelRouter
 from pydantic import BaseModel, Field
 from pydantic_ai import Agent
-from pydantic_ai.models.openai import OpenAIChatModel
-from pydantic_ai.providers.openai import OpenAIProvider
 
 from .sanitizer import SanitizedEmail
 
@@ -27,12 +25,6 @@ SYSTEM_LABELS: set[str] = {
 }
 
 
-class LLMConnectionError(RuntimeError):
-    """Raised when the LLM server is unreachable, timed out, or returned an infrastructure error."""
-
-    pass
-
-
 class ClassificationResult(BaseModel):
     label: str = Field(description="Selected Gmail label or quarantine fallback")
     confidence: float = Field(ge=0.0, le=1.0, description="Confidence score between 0.0 and 1.0")
@@ -40,7 +32,7 @@ class ClassificationResult(BaseModel):
 
 
 class EmailClassifier:
-    """Classifies sanitized emails using a Pydantic AI Agent backed by a local LLM."""
+    """Classifies sanitized emails using a Pydantic AI Agent backed by a local LLM or fallback."""
 
     def __init__(
         self,
@@ -51,6 +43,8 @@ class EmailClassifier:
         processed_label: str = "ai-processed",
         timeout_seconds: float = 120.0,
         agent: Agent[None, ClassificationResult] | None = None,
+        config: LLMClientConfig | None = None,
+        router: ModelRouter | None = None,
     ) -> None:
         self.base_url = base_url.rstrip("/")
         self.model_name = model_name
@@ -59,6 +53,13 @@ class EmailClassifier:
         self.processed_label = processed_label
         self.timeout = timeout_seconds
         self._explicit_agent = agent
+        self.config = config or LLMClientConfig(
+            llm_base_url=self.base_url,
+            llm_model_name=self.model_name,
+            llm_timeout_seconds=self.timeout,
+            app_name="homelab-gmail-classifier",
+        )
+        self.router = router or ModelRouter(self.config)
         self._local = threading.local()
 
     @property
@@ -68,15 +69,7 @@ class EmailClassifier:
             return self._explicit_agent
 
         if not hasattr(self._local, "agent"):
-            client = AsyncOpenAI(
-                base_url=self.base_url,
-                api_key="not-needed",
-                timeout=self.timeout,
-            )
-            provider = OpenAIProvider(openai_client=client)
-            model = OpenAIChatModel(self.model_name, provider=provider)
-            self._local.agent = Agent(
-                model=model,
+            self._local.agent = self.router.create_agent(
                 output_type=ClassificationResult,
                 system_prompt=(
                     "You are an automated email triage system.\n"

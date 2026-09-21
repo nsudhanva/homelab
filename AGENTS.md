@@ -44,6 +44,7 @@ homelab/
 │   └── root.yaml            # Entrypoint
 ├── infrastructure/          # Cluster components (storage, networking, etc.)
 ├── apps/                    # User workloads
+├── packages/                # Shared monorepo libraries (e.g. homelab-ai)
 ├── ansible/                # Ansible automation playbooks, roles, and inventory
 ├── scripts/                # Setup scripts (referenced by README)
 └── README.md                # Single source of truth for setup

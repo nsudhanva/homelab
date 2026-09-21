@@ -47,7 +47,14 @@ spec:
               envFrom:
                 - secretRef:
                     name: gmail-credentials
+                - secretRef:
+                    name: openrouter-credentials
+                    optional: true
               env:
+                - name: PRIMARY_LLM_PROVIDER
+                  value: "local"
+                - name: FALLBACK_LLM_PROVIDER
+                  value: "openrouter"
                 - name: LLM_BASE_URL
                   value: "http://llama-server.llama.svc.cluster.local:8080/v1"
                 - name: TELEGRAM_CHAT_ID

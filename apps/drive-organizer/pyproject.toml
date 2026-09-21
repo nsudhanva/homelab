@@ -15,7 +15,11 @@ dependencies = [
     "pydantic-ai>=2.43.0",
     "pydantic-settings>=2.5.0",
     "pypdf>=5.0.0",
+    "homelab-ai",
 ]
+
+[tool.uv.sources]
+homelab-ai = { path = "../../packages/homelab-ai", editable = true }
 
 [project.scripts]
 drive-organizer = "drive_organizer.main:main"

@@ -4,4 +4,5 @@ namespace: gmail-classifier
 resources:
   - namespace.yaml
   - secret.yaml
+  - openrouter-secret.yaml
   - cronjob.yaml

@@ -209,6 +209,44 @@ jobs:
         tags: ${{ steps.meta.outputs.tags }}
         labels: ${{ steps.meta.outputs.labels }}
 
+  homelab-ai-test:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v7
+    - name: Detect homelab-ai changes
+      id: changes
+      uses: dorny/paths-filter@v4
+      with:
+        filters: |
+          homelab_ai:
+            - "packages/homelab-ai/**"
+            - ".github/workflows/ci.yaml"
+    - name: Install uv
+      if: steps.changes.outputs.homelab_ai == 'true'
+      uses: astral-sh/setup-uv@v7
+      with:
+        version: "latest"
+    - name: Set up Python
+      if: steps.changes.outputs.homelab_ai == 'true'
+      run: uv python install 3.12
+    - name: Run ruff lint
+      if: steps.changes.outputs.homelab_ai == 'true'
+      run: uv run ruff check
+      working-directory: packages/homelab-ai
+    - name: Run ruff format check
+      if: steps.changes.outputs.homelab_ai == 'true'
+      run: uv run ruff format --check
+      working-directory: packages/homelab-ai
+    - name: Run ty type check
+      if: steps.changes.outputs.homelab_ai == 'true'
+      run: uv run ty check
+      working-directory: packages/homelab-ai
+    - name: Run unit tests
+      if: steps.changes.outputs.homelab_ai == 'true'
+      run: uv run pytest
+      working-directory: packages/homelab-ai
+
   gmail-classifier-test:
     runs-on: ubuntu-latest
     steps:
@@ -221,6 +259,7 @@ jobs:
         filters: |
           classifier:
             - "apps/gmail-classifier/**"
+            - "packages/homelab-ai/**"
             - ".github/workflows/ci.yaml"
     - name: Install uv
       if: steps.changes.outputs.classifier == 'true'
@@ -267,6 +306,7 @@ jobs:
         filters: |
           classifier:
             - "apps/gmail-classifier/**"
+            - "packages/homelab-ai/**"
             - ".github/workflows/ci.yaml"
     - name: Set up QEMU
       if: steps.changes.outputs.classifier == 'true'
@@ -294,7 +334,8 @@ jobs:
       if: steps.changes.outputs.classifier == 'true'
       uses: docker/build-push-action@v7
       with:
-        context: ./apps/gmail-classifier
+        context: .
+        file: ./apps/gmail-classifier/Dockerfile
         push: true
         platforms: linux/amd64
         tags: ${{ steps.meta.outputs.tags }}
@@ -312,6 +353,7 @@ jobs:
         filters: |
           organizer:
             - "apps/drive-organizer/**"
+            - "packages/homelab-ai/**"
             - ".github/workflows/ci.yaml"
     - name: Install uv
       if: steps.changes.outputs.organizer == 'true'
@@ -358,6 +400,7 @@ jobs:
         filters: |
           organizer:
             - "apps/drive-organizer/**"
+            - "packages/homelab-ai/**"
             - ".github/workflows/ci.yaml"
     - name: Set up QEMU
       if: steps.changes.outputs.organizer == 'true'
@@ -385,7 +428,8 @@ jobs:
       if: steps.changes.outputs.organizer == 'true'
       uses: docker/build-push-action@v7
       with:
-        context: ./apps/drive-organizer
+        context: .
+        file: ./apps/drive-organizer/Dockerfile
         push: true
         platforms: linux/amd64
         tags: ${{ steps.meta.outputs.tags }}

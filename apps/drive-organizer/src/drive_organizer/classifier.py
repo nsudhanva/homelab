@@ -2,17 +2,18 @@ import logging
 import os
 import threading
 import time
-from typing import Any
+from typing import Any, cast
 
-from openai import AsyncOpenAI
+from homelab_ai import (
+    FallbackProviderType,
+    LLMClientConfig,
+    LLMConnectionError,
+    LLMProviderType,
+    ModelRouter,
+)
 from pydantic import BaseModel, Field
 from pydantic_ai import Agent
-from pydantic_ai.exceptions import FallbackExceptionGroup, ModelAPIError
-from pydantic_ai.models.fallback import FallbackModel
-from pydantic_ai.models.openai import OpenAIChatModel
-from pydantic_ai.models.openrouter import OpenRouterModel
-from pydantic_ai.providers.openai import OpenAIProvider
-from pydantic_ai.providers.openrouter import OpenRouterProvider
+from pydantic_ai.exceptions import FallbackExceptionGroup
 
 from .pre_router import PreRouter, PreRouteSuggestion
 
@@ -41,65 +42,43 @@ VALID_CATEGORIES = {
 }
 
 
-class LLMConnectionError(RuntimeError):
-    """Raised when the LLM server is unreachable or times out."""
-
-    pass
-
-
 class FolderTriageDecision(BaseModel):
     action: str = Field(
         description="Must be 'dismantle' for loose document/scan/receipt batches, or 'keep_intact' for code projects, repos, software environments, or datasets"
     )
     is_code: bool = Field(
-        description="True if folder contains a software repository, code project, programming scripts, or dev environment"
+        default=False,
+        description="True if folder contains a software repo, scripts, git workspace, or Jupyter notebooks",
     )
     target_folder: str | None = Field(
         default=None,
-        description="Destination path if keep_intact (e.g. 'Code/<Folder_Name>' or 'Colab Notebooks/<Folder_Name>')",
+        description="Destination parent taxonomy folder if keep_intact is selected (e.g. 'Code/<Folder_Name>')",
     )
-    confidence: float = Field(
-        ge=0.0,
-        le=1.0,
-        description="Confidence score between 0.0 and 1.0",
-    )
-    reasoning: str = Field(
-        description="Brief 1-2 sentence explanation of whether this is code/project to preserve intact or a document batch to dismantle"
-    )
+    confidence: float = Field(ge=0.0, le=1.0, description="Confidence score between 0.0 and 1.0")
+    reasoning: str = Field(description="1-2 sentences justifying triage decision")
 
 
 class DocumentClassification(BaseModel):
+    """Output schema for document classification."""
+
     person: str = Field(
-        description="The individual the document belongs to: 'Sudhanva', 'Maanasa', 'Narayana', 'Narmada', 'Rashmi', or 'Unknown'"
+        description="Identified owner: Sudhanva, Maanasa, Narayana, Narmada, Rashmi, or Unknown"
     )
     jurisdiction: str = Field(description="Applicable jurisdiction: 'USA', 'India', or 'Global'")
-    category: str = Field(
-        description="Document category: 'Identity', 'Visas & Legal', 'Taxes', 'Banking', 'Housing', 'Health', 'Vehicle', 'Career', 'Education', 'Books', 'Review'"
-    )
-    subcategory: str | None = Field(
-        default=None,
-        description="Subcategory: e.g. 4-digit tax year '2024', university 'Northeastern University', company name, or book topic 'Computer Science'",
-    )
-    clean_filename: str = Field(
-        description="Clean, human-readable standardized filename without hashes or uuid"
-    )
+    category: str = Field(description="Top-level category from standard taxonomy")
+    subcategory: str | None = Field(default=None, description="Optional subfolder")
+    clean_filename: str = Field(description="Descriptive name preserving original file extension")
     is_joint: bool = Field(
         default=False,
-        description="True if document belongs to or names both Sudhanva and Maanasa (e.g. lease, marriage cert, joint taxes)",
+        description="True if document belongs to both Sudhanva and Maanasa",
     )
-    confidence: float = Field(
-        ge=0.0,
-        le=1.0,
-        description="Confidence score between 0.0 and 1.0",
-    )
-    summary: str = Field(
-        description="1-2 sentence human summary for Drive description and search indexing"
-    )
+    confidence: float = Field(ge=0.0, le=1.0, description="Confidence score between 0.0 and 1.0")
+    summary: str = Field(description="1-2 sentence description of document contents")
     search_tags: list[str] = Field(
         default_factory=list,
-        description="3-5 search keywords for Drive search bar indexing",
+        description="3-5 relevant keywords for Drive full-text search",
     )
-    reasoning: str = Field(description="Brief explanation of the classification decision")
+    reasoning: str = Field(description="1-2 sentences explaining categorization choice")
 
 
 class DriveClassifier:
@@ -113,11 +92,12 @@ class DriveClassifier:
         timeout_seconds: float = 120.0,
         agent: Any = None,
         triage_agent: Any = None,
-        primary_llm_provider: str = "local",
-        fallback_llm_provider: str = "openrouter",
+        primary_llm_provider: LLMProviderType = "local",
+        fallback_llm_provider: FallbackProviderType = "openrouter",
         openrouter_api_key: str = "",
         openrouter_base_url: str = "https://openrouter.ai/api/v1",
         openrouter_model_name: str = "google/gemma-4-31b-it",
+        openrouter_timeout_seconds: float = 60.0,
         fallback_model: Any = None,
         fallback_triage_model: Any = None,
         primary_model: Any = None,
@@ -127,10 +107,15 @@ class DriveClassifier:
         self.model_name = model_name
         self.confidence_threshold = confidence_threshold
         self.timeout = timeout_seconds
+        self.openrouter_timeout = openrouter_timeout_seconds
         self._explicit_agent = agent
         self._explicit_triage_agent = triage_agent
-        self.primary_llm_provider = (primary_llm_provider or "local").lower().strip()
-        self.fallback_llm_provider = (fallback_llm_provider or "openrouter").lower().strip()
+        self.primary_llm_provider = cast(
+            LLMProviderType, (primary_llm_provider or "local").lower().strip()
+        )
+        self.fallback_llm_provider = cast(
+            FallbackProviderType, (fallback_llm_provider or "openrouter").lower().strip()
+        )
         self.openrouter_api_key = openrouter_api_key
         self.openrouter_base_url = openrouter_base_url.rstrip("/")
         self.openrouter_model_name = openrouter_model_name
@@ -138,6 +123,19 @@ class DriveClassifier:
         self._fallback_triage_model = fallback_triage_model
         self._primary_model = primary_model
         self._primary_triage_model = primary_triage_model
+        self.config = LLMClientConfig(
+            primary_provider=self.primary_llm_provider,
+            fallback_provider=self.fallback_llm_provider,
+            llm_base_url=self.base_url,
+            llm_model_name=self.model_name,
+            llm_timeout_seconds=self.timeout,
+            openrouter_base_url=self.openrouter_base_url,
+            openrouter_model_name=self.openrouter_model_name,
+            openrouter_api_key=self.openrouter_api_key,
+            openrouter_timeout_seconds=self.openrouter_timeout,
+            app_name="homelab-drive-organizer",
+        )
+        self.router = ModelRouter(self.config)
         self._local = threading.local()
 
     def _build_model(
@@ -145,69 +143,13 @@ class DriveClassifier:
         primary_override: Any = None,
         fallback_override: Any = None,
     ) -> Any:
-        """Constructs primary and fallback models using Pydantic AI FallbackModel routing."""
-        # 1. Build Local Model
-        local_model = (
-            primary_override
-            if self.primary_llm_provider == "local" and primary_override is not None
-            else None
-        )
-        if local_model is None:
-            local_client = AsyncOpenAI(
-                base_url=self.base_url,
-                api_key="not-needed",
-                timeout=self.timeout,
-            )
-            local_provider = OpenAIProvider(openai_client=local_client)
-            local_model = OpenAIChatModel(self.model_name, provider=local_provider)
-
-        # 2. Build OpenRouter Model (if API key provided or override given)
-        openrouter_model = (
-            primary_override
-            if self.primary_llm_provider == "openrouter" and primary_override is not None
-            else None
-        )
-        if openrouter_model is None and self.openrouter_api_key:
-            or_client = AsyncOpenAI(
-                base_url=self.openrouter_base_url,
-                api_key=self.openrouter_api_key,
-                timeout=self.timeout,
-                default_headers={
-                    "HTTP-Referer": "https://github.com/nsudhanva/homelab",
-                    "X-Title": "homelab-drive-organizer",
-                },
-            )
-            openrouter_provider = OpenRouterProvider(openai_client=or_client)
-            openrouter_model = OpenRouterModel(
-                self.openrouter_model_name,
-                provider=openrouter_provider,
-            )
-
-        # 3. Fallback override resolution
+        """Constructs primary and fallback models using homelab-ai ModelRouter."""
+        p = primary_override if primary_override is not None else self._primary_model
         fb = fallback_override if fallback_override is not None else self._fallback_model
-
-        # 4. Resolve Primary and Fallback based on configuration
-        if self.primary_llm_provider == "openrouter":
-            if not openrouter_model:
-                logger.warning(
-                    "Primary provider is openrouter but OPENROUTER_API_KEY is not set! Falling back to local."
-                )
-                if fb is not None:
-                    return FallbackModel(local_model, fb, fallback_on=(ModelAPIError,))
-                return local_model
-
-            if fb is not None:
-                return FallbackModel(openrouter_model, fb, fallback_on=(ModelAPIError,))
-            if self.fallback_llm_provider == "local":
-                return FallbackModel(openrouter_model, local_model, fallback_on=(ModelAPIError,))
-            return openrouter_model
-
-        else:  # primary_llm_provider == "local"
-            if fb is not None:
-                return FallbackModel(local_model, fb, fallback_on=(ModelAPIError,))
-            if self.fallback_llm_provider == "openrouter" and openrouter_model:
-                return FallbackModel(local_model, openrouter_model, fallback_on=(ModelAPIError,))
-            return local_model
+        return self.router.build_routed_model(
+            primary_override=p,
+            fallback_override=fb,
+        )
 
     @property
     def triage_agent(self) -> Agent[None, FolderTriageDecision]:

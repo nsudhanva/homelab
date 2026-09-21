@@ -95,6 +95,8 @@ def run_pipeline(
             confidence_threshold=settings.confidence_threshold,
             quarantine_label=settings.quarantine_label,
             processed_label=settings.processed_label,
+            timeout_seconds=settings.llm_timeout_seconds,
+            config=settings.to_llm_client_config(),
         )
 
     if notifier is None:
