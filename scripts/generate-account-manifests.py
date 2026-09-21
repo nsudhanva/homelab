@@ -290,7 +290,7 @@ def main() -> None:
         data = yaml.safe_load(f)
 
     accounts = data.get("accounts", [])
-    account_ids = [acc["id"] for acc in accounts]
+    account_ids = [acc.get("nickname") or acc.get("id") for acc in accounts]
 
     targets = [
         {
@@ -322,7 +322,7 @@ def main() -> None:
         expected_files: dict[Path, str] = {}
 
         for acc in accounts:
-            aid = acc["id"]
+            aid = acc.get("nickname") or acc.get("id")
             sched = acc["schedule"][sched_key]
             vpath = acc["vault_path"]
 

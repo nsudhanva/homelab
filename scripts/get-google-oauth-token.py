@@ -76,8 +76,8 @@ def main() -> None:
     )
     parser.add_argument(
         "--account",
-        default="secondary",
-        help="Account identifier (e.g. secondary, tertiary)",
+        default="account",
+        help="Account nickname (e.g. personal, work, family)",
     )
     parser.add_argument(
         "--kubeconfig", default=None, help="Path to optional kubeconfig"
