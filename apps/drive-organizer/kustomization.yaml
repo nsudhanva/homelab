@@ -8,3 +8,5 @@ resources:
 - cronjob-primary.yaml
 - secret-secondary.yaml
 - cronjob-secondary.yaml
+- secret-tertiary.yaml
+- cronjob-tertiary.yaml

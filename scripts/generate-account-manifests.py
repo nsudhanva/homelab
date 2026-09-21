@@ -7,8 +7,9 @@ and apps/drive-organizer/.
 """
 
 import argparse
-from pathlib import Path
 import sys
+from pathlib import Path
+
 import yaml
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
@@ -267,8 +268,14 @@ resources:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Generate multi-account Google Kubernetes manifests")
-    parser.add_argument("--check", action="store_true", help="Check if manifests are up to date without writing")
+    parser = argparse.ArgumentParser(
+        description="Generate multi-account Google Kubernetes manifests"
+    )
+    parser.add_argument(
+        "--check",
+        action="store_true",
+        help="Check if manifests are up to date without writing",
+    )
     args = parser.parse_args()
 
     if not ACCOUNTS_FILE.exists():
@@ -354,7 +361,10 @@ def main() -> None:
                 print(f"Wrote {file_path.relative_to(REPO_ROOT)}")
 
     if args.check and dirty:
-        print("Manifests drift detected. Run `python3 scripts/generate-account-manifests.py` to reconcile.", file=sys.stderr)
+        print(
+            "Manifests drift detected. Run `python3 scripts/generate-account-manifests.py` to reconcile.",
+            file=sys.stderr,
+        )
         sys.exit(1)
     elif args.check:
         print("All account manifests are in sync.")

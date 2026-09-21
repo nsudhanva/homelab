@@ -9,3 +9,8 @@ accounts:
       gmail: "15 1 * * *"
       drive: "15 2 * * *"
     vault_path: google/accounts/secondary
+  - id: tertiary
+    schedule:
+      gmail: "30 1 * * *"
+      drive: "30 2 * * *"
+    vault_path: google/accounts/tertiary
