@@ -13,6 +13,16 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
+    # Account identity
+    account_name: str = Field(
+        default="personal",
+        validation_alias="ACCOUNT_NAME",
+    )
+    telegram_topic_id: int | None = Field(
+        default=None,
+        validation_alias="TELEGRAM_TOPIC_ID",
+    )
+
     # Google OAuth credentials (supports both DRIVE_* and GMAIL_* env vars)
     drive_client_id: str = Field(
         default="",

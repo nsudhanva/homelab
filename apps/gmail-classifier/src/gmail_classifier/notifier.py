@@ -16,11 +16,15 @@ class TelegramNotifier:
         self,
         bot_token: str | None,
         chat_id: int,
+        topic_id: int | None = None,
+        account_name: str = "personal",
         api_url: str = "https://api.telegram.org",
         timeout: float = 10.0,
     ) -> None:
         self.bot_token = bot_token
         self.chat_id = chat_id
+        self.topic_id = topic_id
+        self.account_name = account_name
         self.api_url = api_url.rstrip("/")
         self.timeout = timeout
 
@@ -32,14 +36,16 @@ class TelegramNotifier:
         quarantined_items: list[dict[str, Any]],
         dry_run: bool = False,
         archived_count: int = 0,
+        account_name: str | None = None,
     ) -> list[str]:
         """Format daily summary into one or more HTML messages respecting Telegram limits."""
+        acct = (account_name or self.account_name).title()
         dry_run_badge = " <b>[DRY RUN]</b>" if dry_run else ""
         archived_line = (
             f"📦 <b>Archived from Inbox:</b> {archived_count}\n" if archived_count > 0 else ""
         )
         header = (
-            f"📬 <b>Gmail Daily Classifier Summary</b>{dry_run_badge}\n"
+            f"📬 <b>Gmail Daily Classifier Summary [{acct}]</b>{dry_run_badge}\n"
             f"📅 <b>Date:</b> <code>{html.escape(target_date)}</code>\n"
             f"🔢 <b>Total Processed:</b> {total_count}\n"
             f"{archived_line}"
@@ -105,12 +111,14 @@ class TelegramNotifier:
             return True
 
         endpoint = f"{self.api_url}/bot{self.bot_token}/sendMessage"
-        payload = {
+        payload: dict[str, Any] = {
             "chat_id": self.chat_id,
             "text": text,
             "parse_mode": parse_mode,
             "disable_web_page_preview": True,
         }
+        if self.topic_id is not None:
+            payload["message_thread_id"] = self.topic_id
 
         try:
             async with httpx.AsyncClient(timeout=self.timeout) as client:
@@ -128,12 +136,14 @@ class TelegramNotifier:
             return True
 
         endpoint = f"{self.api_url}/bot{self.bot_token}/sendMessage"
-        payload = {
+        payload: dict[str, Any] = {
             "chat_id": self.chat_id,
             "text": text,
             "parse_mode": parse_mode,
             "disable_web_page_preview": True,
         }
+        if self.topic_id is not None:
+            payload["message_thread_id"] = self.topic_id
 
         try:
             with httpx.Client(timeout=self.timeout) as client:

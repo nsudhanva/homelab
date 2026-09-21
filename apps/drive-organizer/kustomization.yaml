@@ -4,5 +4,7 @@ namespace: drive-organizer
 resources:
 - namespace.yaml
 - secret.yaml
+- secret-family.yaml
 - openrouter-secret.yaml
 - cronjob.yaml
+- cronjob-family.yaml

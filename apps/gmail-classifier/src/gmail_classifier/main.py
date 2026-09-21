@@ -74,6 +74,12 @@ def parse_arguments(args: list[str] | None = None) -> argparse.Namespace:
         default=False,
         help="Run only the archive sweep for older emails without classifying new emails.",
     )
+    parser.add_argument(
+        "--account",
+        type=str,
+        default=None,
+        help="Account identifier (e.g. personal, family). Overrides Settings.account_name.",
+    )
     return parser.parse_args(args)
 
 
@@ -87,7 +93,7 @@ def run_archive_sweep(
     """Archive classified emails in INBOX older than archive_days, protecting quarantine_label."""
     days = archive_days if archive_days is not None else settings.archive_older_than_days
     if not settings.auto_archive_enabled and archive_days is None:
-        logger.info("Auto-archiving is disabled in settings.")
+        logger.info(f"[{settings.account_name}] Auto-archiving is disabled in settings.")
         return 0
 
     if gmail is None:
@@ -99,7 +105,7 @@ def run_archive_sweep(
         )
 
     logger.info(
-        f"Starting archive sweep for classified emails older than {days} days "
+        f"[{settings.account_name}] Starting archive sweep for emails older than {days} days "
         f"(protecting '{settings.quarantine_label}')..."
     )
     archive_ids = gmail.list_messages_to_archive(
@@ -108,16 +114,16 @@ def run_archive_sweep(
         limit=limit,
     )
     if not archive_ids:
-        logger.info("No eligible emails found for archiving.")
+        logger.info(f"[{settings.account_name}] No eligible emails found for archiving.")
         return 0
 
-    logger.info(f"Found {len(archive_ids)} eligible email(s) to archive from INBOX.")
+    logger.info(f"[{settings.account_name}] Found {len(archive_ids)} eligible email(s) to archive.")
     if not dry_run:
         archived_count = gmail.batch_archive_messages(archive_ids)
-        logger.info(f"Successfully archived {archived_count} email(s) from INBOX.")
+        logger.info(f"[{settings.account_name}] Successfully archived {archived_count} email(s).")
         return archived_count
 
-    logger.info(f"[DRY RUN] Would archive {len(archive_ids)} email(s) from INBOX.")
+    logger.info(f"[{settings.account_name}] [DRY RUN] Would archive {len(archive_ids)} email(s).")
     return len(archive_ids)
 
 
@@ -134,7 +140,10 @@ def run_pipeline(
 ) -> int:
     """Execute classification pipeline for the given date or entire inbox."""
     run_label = "all inbox messages" if inbox_mode else f"date: {target_date}"
-    logger.info(f"Starting Gmail classification for {run_label} (dry_run={dry_run})")
+    logger.info(
+        f"Starting Gmail classification for account '{settings.account_name}' "
+        f"({run_label}, dry_run={dry_run})"
+    )
 
     if gmail is None:
         gmail = GmailClient(
@@ -159,6 +168,8 @@ def run_pipeline(
         notifier = TelegramNotifier(
             bot_token=settings.telegram_bot_token,
             chat_id=settings.telegram_chat_id,
+            topic_id=settings.telegram_topic_id,
+            account_name=settings.account_name,
         )
 
     # Fetch and ensure required labels exist
@@ -341,6 +352,8 @@ def main() -> None:
 
     try:
         settings = Settings()
+        if args.account:
+            settings.account_name = args.account
     except Exception as exc:
         logger.error(f"Failed to load application settings from environment: {exc}")
         sys.exit(1)

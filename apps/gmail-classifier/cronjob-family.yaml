@@ -1,10 +1,10 @@
 apiVersion: batch/v1
 kind: CronJob
 metadata:
-  name: gmail-classifier
+  name: gmail-classifier-family
   namespace: gmail-classifier
 spec:
-  schedule: "0 1 * * *"
+  schedule: "15 1 * * *"
   concurrencyPolicy: Forbid
   successfulJobsHistoryLimit: 3
   failedJobsHistoryLimit: 3
@@ -14,7 +14,7 @@ spec:
       template:
         metadata:
           labels:
-            app: gmail-classifier
+            app: gmail-classifier-family
         spec:
           restartPolicy: OnFailure
           securityContext:
@@ -46,13 +46,13 @@ spec:
                   memory: 384Mi
               envFrom:
                 - secretRef:
-                    name: gmail-credentials
+                    name: gmail-credentials-family
                 - secretRef:
                     name: openrouter-credentials
                     optional: true
               env:
                 - name: ACCOUNT_NAME
-                  value: "personal"
+                  value: "family"
                 - name: PRIMARY_LLM_PROVIDER
                   value: "local"
                 - name: FALLBACK_LLM_PROVIDER

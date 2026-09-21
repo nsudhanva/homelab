@@ -238,9 +238,10 @@ def test_run_pipeline_concurrent(monkeypatch):
 
 
 def test_parse_arguments_archive_flags():
-    args = parse_arguments(["--archive-only", "--archive-days", "60"])
+    args = parse_arguments(["--archive-only", "--archive-days", "60", "--account", "family"])
     assert args.archive_only is True
     assert args.archive_days == 60
+    assert args.account == "family"
 
 
 def test_run_archive_sweep_enabled(monkeypatch):

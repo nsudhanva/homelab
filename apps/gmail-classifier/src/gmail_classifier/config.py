@@ -112,6 +112,16 @@ class Settings(BaseSettings):
         validation_alias=AliasChoices("AUTO_ARCHIVE_ENABLED", "auto_archive_enabled"),
         description="Whether to run the archive sweep for older classified emails",
     )
+    account_name: str = Field(
+        default="personal",
+        validation_alias=AliasChoices("ACCOUNT_NAME", "account_name"),
+        description="Friendly identifier for this Google account (e.g. personal, family)",
+    )
+    telegram_topic_id: int | None = Field(
+        default=None,
+        validation_alias=AliasChoices("TELEGRAM_TOPIC_ID", "telegram_topic_id"),
+        description="Optional Telegram forum thread/topic ID for notification delivery",
+    )
 
     def to_llm_client_config(self) -> LLMClientConfig:
         return LLMClientConfig(

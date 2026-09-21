@@ -153,10 +153,15 @@ def run_pipeline(
 ) -> OrganizerRunStats:
     """Executes the end-to-end drive organization pipeline."""
     stats = OrganizerRunStats()
-    notifier = TelegramNotifier(settings.telegram_bot_token, settings.telegram_chat_id)
+    notifier = TelegramNotifier(
+        bot_token=settings.telegram_bot_token,
+        chat_id=settings.telegram_chat_id,
+        account_name=settings.account_name,
+        topic_id=settings.telegram_topic_id,
+    )
 
     if not settings.client_id or not settings.client_secret or not settings.refresh_token:
-        err = "Missing Google Drive credentials in environment."
+        err = f"[{settings.account_name}] Missing Google Drive credentials in environment."
         logger.error(err)
         stats.errors.append(err)
         notifier.send_summary(stats, dry_run=dry_run)
@@ -184,7 +189,7 @@ def run_pipeline(
     # 1. Process loose files in root (or target folder)
     folder_id = "root" if scope == "root" else None
     logger.info(
-        f"Scanning for unprocessed Google Drive files (scope={scope}, folder_id={folder_id}, limit={limit}, dry_run={dry_run})..."
+        f"[{settings.account_name}] Scanning for unprocessed Google Drive files (scope={scope}, folder_id={folder_id}, limit={limit}, dry_run={dry_run})..."
     )
     files = drive_client.list_unprocessed_files(folder_id=folder_id, limit=limit)
     stats.total_scanned += len(files)
@@ -295,11 +300,19 @@ def main() -> None:
         "--limit", type=int, default=None, help="Maximum number of files to process"
     )
     parser.add_argument("--all", action="store_true", help="Alias for --scope=all")
+    parser.add_argument(
+        "--account",
+        type=str,
+        default=None,
+        help="Account identifier (e.g. personal, family)",
+    )
     args = parser.parse_args()
 
     scope = "all" if args.all else args.scope
 
     settings = Settings()
+    if args.account:
+        settings.account_name = args.account
     stats = run_pipeline(settings=settings, scope=scope, limit=args.limit, dry_run=args.dry_run)
 
     if stats.errors:

@@ -1,6 +1,7 @@
 import html
 import logging
 from dataclasses import dataclass, field
+from typing import Any
 
 import httpx
 
@@ -24,9 +25,17 @@ class OrganizerRunStats:
 class TelegramNotifier:
     """Sends notifications to Telegram bot."""
 
-    def __init__(self, bot_token: str, chat_id: str) -> None:
+    def __init__(
+        self,
+        bot_token: str,
+        chat_id: str,
+        account_name: str = "personal",
+        topic_id: int | None = None,
+    ) -> None:
         self.bot_token = bot_token
         self.chat_id = chat_id
+        self.account_name = account_name
+        self.topic_id = topic_id
         self.base_url = f"https://api.telegram.org/bot{bot_token}"
 
     def send_message_sync(self, text: str) -> bool:
@@ -35,12 +44,14 @@ class TelegramNotifier:
             return False
 
         url = f"{self.base_url}/sendMessage"
-        payload = {
+        payload: dict[str, Any] = {
             "chat_id": self.chat_id,
             "text": text,
             "parse_mode": "HTML",
             "disable_web_page_preview": True,
         }
+        if self.topic_id is not None:
+            payload["message_thread_id"] = self.topic_id
 
         try:
             with httpx.Client(timeout=15.0) as client:
@@ -63,9 +74,10 @@ class TelegramNotifier:
             )
             return True
 
+        acct_badge = f" [{self.account_name.capitalize()}]" if self.account_name else ""
         mode_str = " <i>(DRY RUN)</i>" if dry_run else ""
         lines = [
-            f"📂 <b>Google Drive Organizer Report</b>{mode_str}",
+            f"📂 <b>Google Drive Organizer Report{acct_badge}</b>{mode_str}",
             f"• <b>Files Scanned:</b> {stats.total_scanned}",
             f"• <b>Documents Classified:</b> {stats.total_docs_classified}",
             f"• <b>Media Chrono-Sorted:</b> {stats.total_media_sorted}",

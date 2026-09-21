@@ -45,6 +45,8 @@ def test_settings_defaults(monkeypatch):
     assert settings.llm_model == "gemma-4-e2b-it"
     assert settings.archive_older_than_days == 90
     assert settings.auto_archive_enabled is True
+    assert settings.account_name == "personal"
+    assert settings.telegram_topic_id is None
 
 
 def test_settings_archive_custom_values(monkeypatch):
@@ -57,3 +59,15 @@ def test_settings_archive_custom_values(monkeypatch):
     settings = Settings()
     assert settings.archive_older_than_days == 60
     assert settings.auto_archive_enabled is False
+
+
+def test_settings_account_and_topic_custom_values(monkeypatch):
+    monkeypatch.setenv("GMAIL_CLIENT_ID", "cid")
+    monkeypatch.setenv("GMAIL_CLIENT_SECRET", "csecret")
+    monkeypatch.setenv("GMAIL_REFRESH_TOKEN", "rtoken")
+    monkeypatch.setenv("ACCOUNT_NAME", "family")
+    monkeypatch.setenv("TELEGRAM_TOPIC_ID", "101")
+
+    settings = Settings()
+    assert settings.account_name == "family"
+    assert settings.telegram_topic_id == 101

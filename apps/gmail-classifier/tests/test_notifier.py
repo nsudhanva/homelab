@@ -23,13 +23,25 @@ def test_format_daily_summary_single():
     )
     assert len(msgs) == 1
     text = msgs[0]
-    assert "Gmail Daily Classifier Summary" in text
+    assert "Gmail Daily Classifier Summary [Personal]" in text
     assert "2026-09-16" in text
     assert "Total Processed:</b> 10" in text
     assert "Work</code>: 6" in text
     assert "ai-review</code>: 1" in text
     assert "Phishing Attempt?" in text
     assert "Suspicious link detected (conf: 0.45)" in text
+
+
+def test_format_daily_summary_custom_account():
+    notifier = TelegramNotifier(bot_token="fake-token", chat_id=123, account_name="family")
+    msgs = notifier.format_daily_summary(
+        target_date="2026-09-16",
+        total_count=3,
+        label_counts={"Personal": 3},
+        quarantined_items=[],
+    )
+    assert len(msgs) == 1
+    assert "Gmail Daily Classifier Summary [Family]" in msgs[0]
 
 
 def test_format_daily_summary_with_archived_count():
@@ -116,3 +128,15 @@ async def test_send_daily_summary_async(monkeypatch):
         quarantined_items=[],
     )
     assert success is True
+
+
+def test_send_message_with_topic_id(monkeypatch):
+    notifier = TelegramNotifier(bot_token="token123", chat_id=12345, topic_id=99)
+
+    def fake_post(self, url, json=None, **kwargs):
+        assert json is not None
+        assert json["message_thread_id"] == 99
+        return httpx.Response(200, json={"ok": True}, request=httpx.Request("POST", url))
+
+    monkeypatch.setattr(httpx.Client, "post", fake_post)
+    assert notifier.send_message_sync("Topic test") is True
