@@ -6,7 +6,7 @@ from drive_organizer.notifier import OrganizerRunStats, TelegramNotifier
 
 def test_settings_account_name_default() -> None:
     settings = Settings()
-    assert settings.account_name == "personal"
+    assert settings.account_name == "primary"
     assert settings.telegram_topic_id is None
 
 

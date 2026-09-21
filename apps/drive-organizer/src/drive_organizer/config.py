@@ -15,7 +15,7 @@ class Settings(BaseSettings):
 
     # Account identity
     account_name: str = Field(
-        default="personal",
+        default="primary",
         validation_alias="ACCOUNT_NAME",
     )
     telegram_topic_id: int | None = Field(

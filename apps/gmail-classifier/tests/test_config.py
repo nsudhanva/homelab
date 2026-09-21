@@ -45,7 +45,7 @@ def test_settings_defaults(monkeypatch):
     assert settings.llm_model == "gemma-4-e2b-it"
     assert settings.archive_older_than_days == 90
     assert settings.auto_archive_enabled is True
-    assert settings.account_name == "personal"
+    assert settings.account_name == "primary"
     assert settings.telegram_topic_id is None
 
 

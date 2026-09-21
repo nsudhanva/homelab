@@ -1,123 +1,115 @@
 ---
-title: How to Add Multiple Google Accounts
-description: Configure, securely store, and deploy multiple isolated Google accounts (personal and family) for Gmail Classifier and Drive Organizer via GitOps and HashiCorp Vault.
+title: How to Manage Multi-Account Google Workloads with Declarative IaC
+description: Configure, securely store, and deploy multiple isolated Google accounts for Gmail Classifier and Drive Organizer using a declarative account matrix, HashiCorp Vault, and GitOps.
 keywords:
   - multi-account google
-  - gmail classifier family
+  - declarative account matrix
+  - gmail classifier accounts
   - drive organizer multi-account
   - vault google oauth
-  - kubernetes cronjob gitops
+  - kubernetes gitops
 sidebar:
   order: 21
 ---
 
-# How to Add Multiple Google Accounts
+# How to Manage Multi-Account Google Workloads with Declarative IaC
 
-This problem-oriented guide explains how to configure, store secrets for, and operate multiple Google accounts (such as `personal` and `family`) across the homelab AI pipeline (`apps/gmail-classifier` and `apps/drive-organizer`).
+This problem-oriented guide explains how to declaratively configure, store credentials for, and deploy multiple Google accounts across the homelab AI pipeline (`apps/gmail-classifier` and `apps/drive-organizer`).
 
-## Architectural Isolation Model
+All Google accounts are treated uniformly as identical peer entities. Account configuration is managed purely through Infrastructure as Code (IaC) without manual or ad-hoc workload commands.
 
-To guarantee strict security boundaries and system resilience, accounts are isolated according to Senior Staff SWE principles:
+## Architecture and Design Principles
 
-- **Fault-Domain Isolation**: Monolithic loops across accounts are strictly avoided. Each account executes in a dedicated Pod and CronJob (`gmail-classifier` for personal, `gmail-classifier-family` for family).
-- **Least-Privilege Secret Isolation**: Each account mounts its own dedicated Kubernetes Secret (`gmail-credentials` vs `gmail-credentials-family`) synchronized from isolated paths in HashiCorp Vault. The family account pod never has access to personal OAuth tokens, and vice versa.
-- **Independent Failure Domains**: A token revocation or rate limit on one account never blocks or impacts the execution of another account.
-- **Resource Staggering**: Cron schedules are staggered by fifteen minutes (`01:00 UTC` for personal Gmail, `01:15 UTC` for family Gmail; `02:00 UTC` for personal Drive, `02:15 UTC` for family Drive) to prevent GPU slot contention on the local Gemma 4 LLM server (`llama-server`).
-- **Telegram Routing & Badging**: Notifications include account-specific badges (`[Personal]` or `[Family]`) and optionally target distinct Telegram forum topics via `TELEGRAM_TOPIC_ID`.
+The multi-account architecture is built around three core principles:
+
+- **Declarative Single Source of Truth**: The complete cluster account matrix is defined in `apps/accounts.yaml`. Symmetrical Kubernetes manifests (`CronJob` and `ExternalSecret`) are generated deterministically via `scripts/generate-account-manifests.py`.
+- **Fault-Domain & Secret Isolation**: Every account executes in an isolated non-root Pod and distinct CronJob instance. Each account mounts only its own Kubernetes secret synchronized from a dedicated Vault path (`kv/google/accounts/<id>`), preventing cross-account token access or cascaded failures.
+- **Resource Staggering**: Cron schedules are staggered across fifteen-minute intervals (for example, `01:00 UTC` for primary Gmail, `01:15 UTC` for secondary Gmail) to eliminate GPU slot contention on the local Gemma 4 model server (`llama-server`).
+- **Notification Routing**: Notifications include account-specific header badges (`[Primary]`, `[Secondary]`) and optionally target distinct Telegram forum topics via `TELEGRAM_TOPIC_ID`.
 
 ## Step 1: Obtain Google OAuth Credentials
 
-Create an OAuth 2.0 Client in the Google Cloud Console for the target account:
+Create an OAuth 2.0 Client in the Google Cloud Console for the target Google account:
 
 - Navigate to the Google Cloud Console APIs & Services Credentials page.
 - Create an OAuth Client ID with application type **Desktop app**.
-- Ensure the following scopes are enabled:
-  - For Gmail Classifier: `https://www.googleapis.com/auth/gmail.modify`
-  - For Drive Organizer: `https://www.googleapis.com/auth/drive`
-- Generate an authorization code and exchange it for a long-lived `refresh_token`.
+- Ensure the required scopes are enabled:
+  - Gmail Classifier: `https://www.googleapis.com/auth/gmail.modify`
+  - Drive Organizer: `https://www.googleapis.com/auth/drive`
+- Run `scripts/get-google-oauth-token.py` to generate the initial `refresh_token`.
 
 ## Step 2: Store Credentials in HashiCorp Vault
 
-All sensitive OAuth credentials are stored in HashiCorp Vault and synchronized into Kubernetes via the External Secrets Operator. Never commit plain-text credentials or `.env` files to git.
-
-Log into Vault and write the credentials for the personal and family accounts:
+Store the credentials in HashiCorp Vault under the standard account path. Never commit credentials to git:
 
 ```bash
-# Personal account credentials
+# Store credentials for the primary account
 vault kv put kv/gmail/credentials \
-  client_id="YOUR_PERSONAL_CLIENT_ID" \
-  client_secret="YOUR_PERSONAL_CLIENT_SECRET" \
-  refresh_token="YOUR_PERSONAL_REFRESH_TOKEN"
+  client_id="YOUR_PRIMARY_CLIENT_ID" \
+  client_secret="YOUR_PRIMARY_CLIENT_SECRET" \
+  refresh_token="YOUR_PRIMARY_REFRESH_TOKEN"
 
-# Family account credentials
-vault kv put kv/gmail/family \
-  client_id="YOUR_FAMILY_CLIENT_ID" \
-  client_secret="YOUR_FAMILY_CLIENT_SECRET" \
-  refresh_token="YOUR_FAMILY_REFRESH_TOKEN"
+# Store credentials for secondary or additional accounts
+vault kv put kv/google/accounts/secondary \
+  client_id="YOUR_SECONDARY_CLIENT_ID" \
+  client_secret="YOUR_SECONDARY_CLIENT_SECRET" \
+  refresh_token="YOUR_SECONDARY_REFRESH_TOKEN"
 
-# Shared Telegram notification credentials
+# Store shared Telegram notification bot token
 vault kv put kv/telegram/bot \
   token="YOUR_TELEGRAM_BOT_TOKEN"
 ```
 
-## Step 3: Verify ExternalSecrets Synchronization
+## Step 3: Declare Accounts in the Account Matrix
 
-The GitOps repository defines `ExternalSecret` manifests (`secret.yaml` and `secret-family.yaml`) in each application directory. Once ArgoCD synchronizes the repository, verify that the Kubernetes secrets have been generated:
+Add the account entry to `apps/accounts.yaml`:
 
-```bash
-# Check ExternalSecret synchronization status in gmail-classifier
-kubectl -n gmail-classifier get externalsecret,secret
-
-# Check ExternalSecret synchronization status in drive-organizer
-kubectl -n drive-organizer get externalsecret,secret
+```yaml
+accounts:
+  - id: primary
+    schedule:
+      gmail: "0 1 * * *"
+      drive: "0 2 * * *"
+    vault_path: gmail/credentials
+  - id: secondary
+    schedule:
+      gmail: "15 1 * * *"
+      drive: "15 2 * * *"
+    vault_path: google/accounts/secondary
 ```
 
-Each ExternalSecret should report `STATUS: SecretSynced` with a matching secret name.
+## Step 4: Reconcile Manifests via Code
 
-## Step 4: Verify CronJob Configurations
-
-List the active CronJobs to verify that both personal and family accounts are configured with staggered schedules:
+Run the manifest generator script to produce the symmetrical Kubernetes manifests:
 
 ```bash
-# Gmail Classifier CronJobs
-kubectl -n gmail-classifier get cronjobs
+uv run --with pyyaml scripts/generate-account-manifests.py
+```
 
-# Drive Organizer CronJobs
+To verify that all manifests in git are in sync with `apps/accounts.yaml` without writing changes:
+
+```bash
+uv run --with pyyaml scripts/generate-account-manifests.py --check
+```
+
+The generator produces:
+
+- Symmetrical CronJobs: `cronjob-primary.yaml`, `cronjob-secondary.yaml`
+- Symmetrical ExternalSecrets: `secret-primary.yaml`, `secret-secondary.yaml`
+- Updated `kustomization.yaml` resource lists
+
+## Step 5: Verify GitOps Synchronization
+
+Commit the updated matrix and generated manifests to git. ArgoCD automatically synchronizes the resources into the cluster:
+
+```bash
+# Check ExternalSecret sync status
+kubectl -n gmail-classifier get externalsecrets
+kubectl -n drive-organizer get externalsecrets
+
+# Check active CronJob schedules
+kubectl -n gmail-classifier get cronjobs
 kubectl -n drive-organizer get cronjobs
 ```
 
-Expected output confirms the schedules:
-
-- `gmail-classifier`: `0 1 * * *` (`ACCOUNT_NAME: personal`)
-- `gmail-classifier-family`: `15 1 * * *` (`ACCOUNT_NAME: family`)
-- `drive-organizer`: `0 2 * * *` (`ACCOUNT_NAME: personal`)
-- `drive-organizer-family`: `15 2 * * *` (`ACCOUNT_NAME: family`)
-
-## Step 5: Trigger Ad-Hoc Test Runs
-
-Trigger a manual test job for each family account pipeline to verify authentication, inference, and Telegram dispatch:
-
-```bash
-# Trigger Gmail Classifier test job for family account
-kubectl -n gmail-classifier create job --from=cronjob/gmail-classifier-family test-gmail-family
-
-# Monitor the logs
-kubectl -n gmail-classifier logs -f job/test-gmail-family
-
-# Trigger Drive Organizer test job for family account
-kubectl -n drive-organizer create job --from=cronjob/drive-organizer-family test-drive-family
-
-# Monitor the logs
-kubectl -n drive-organizer logs -f job/test-drive-family
-```
-
-Inspect the log output to confirm:
-
-- Log lines are tagged with `[family]`.
-- Messages dispatched to Telegram display the `[Family]` header badge.
-- When finished, clean up the test jobs:
-
-```bash
-kubectl -n gmail-classifier delete job test-gmail-family
-kubectl -n drive-organizer delete job test-drive-family
-```
+Both apps report active schedules with zero manual intervention required.

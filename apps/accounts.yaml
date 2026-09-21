@@ -1,0 +1,11 @@
+accounts:
+  - id: primary
+    schedule:
+      gmail: "0 1 * * *"
+      drive: "0 2 * * *"
+    vault_path: gmail/credentials
+  - id: secondary
+    schedule:
+      gmail: "15 1 * * *"
+      drive: "15 2 * * *"
+    vault_path: google/accounts/secondary

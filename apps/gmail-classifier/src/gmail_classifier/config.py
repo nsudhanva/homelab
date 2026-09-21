@@ -113,9 +113,9 @@ class Settings(BaseSettings):
         description="Whether to run the archive sweep for older classified emails",
     )
     account_name: str = Field(
-        default="personal",
+        default="primary",
         validation_alias=AliasChoices("ACCOUNT_NAME", "account_name"),
-        description="Friendly identifier for this Google account (e.g. personal, family)",
+        description="Account identifier for this Google workload (e.g. primary, secondary)",
     )
     telegram_topic_id: int | None = Field(
         default=None,

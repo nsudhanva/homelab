@@ -1,10 +1,10 @@
 apiVersion: batch/v1
 kind: CronJob
 metadata:
-  name: drive-organizer
+  name: drive-organizer-secondary
   namespace: drive-organizer
 spec:
-  schedule: "0 2 * * *"
+  schedule: "15 2 * * *"
   concurrencyPolicy: Forbid
   successfulJobsHistoryLimit: 3
   failedJobsHistoryLimit: 3
@@ -14,7 +14,7 @@ spec:
       template:
         metadata:
           labels:
-            app: drive-organizer
+            app: drive-organizer-secondary
         spec:
           restartPolicy: OnFailure
           securityContext:
@@ -31,13 +31,13 @@ spec:
             - "--scope=root"
             envFrom:
             - secretRef:
-                name: drive-credentials
+                name: drive-credentials-secondary
             - secretRef:
                 name: openrouter-credentials
                 optional: true
             env:
             - name: ACCOUNT_NAME
-              value: "personal"
+              value: "secondary"
             - name: PRIMARY_LLM_PROVIDER
               value: "local"
             - name: FALLBACK_LLM_PROVIDER

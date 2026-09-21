@@ -3,8 +3,8 @@ kind: Kustomization
 namespace: drive-organizer
 resources:
 - namespace.yaml
-- secret.yaml
-- secret-family.yaml
 - openrouter-secret.yaml
-- cronjob.yaml
-- cronjob-family.yaml
+- secret-primary.yaml
+- cronjob-primary.yaml
+- secret-secondary.yaml
+- cronjob-secondary.yaml
