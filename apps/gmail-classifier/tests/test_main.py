@@ -235,3 +235,53 @@ def test_run_pipeline_concurrent(monkeypatch):
     call_kwargs = mock_notifier.send_daily_summary_sync.call_args.kwargs
     assert call_kwargs["total_count"] == 4
     assert call_kwargs["label_counts"] == {"Work": 4}
+
+
+def test_parse_arguments_archive_flags():
+    args = parse_arguments(["--archive-only", "--archive-days", "60"])
+    assert args.archive_only is True
+    assert args.archive_days == 60
+
+
+def test_run_archive_sweep_enabled(monkeypatch):
+    monkeypatch.setenv("GMAIL_CLIENT_ID", "cid")
+    monkeypatch.setenv("GMAIL_CLIENT_SECRET", "csecret")
+    monkeypatch.setenv("GMAIL_REFRESH_TOKEN", "rtoken")
+    settings = Settings(archive_older_than_days=90, auto_archive_enabled=True)
+
+    mock_gmail = MagicMock()
+    mock_gmail.list_messages_to_archive.return_value = ["arch-1", "arch-2", "arch-3"]
+    mock_gmail.batch_archive_messages.return_value = 3
+
+    from gmail_classifier.main import run_archive_sweep
+
+    # Normal execution
+    count = run_archive_sweep(settings=settings, gmail=mock_gmail, dry_run=False)
+    assert count == 3
+    mock_gmail.list_messages_to_archive.assert_called_once_with(
+        older_than_days=90,
+        quarantine_label="ai-review",
+        limit=None,
+    )
+    mock_gmail.batch_archive_messages.assert_called_once_with(["arch-1", "arch-2", "arch-3"])
+
+    # Dry-run execution
+    mock_gmail.reset_mock()
+    mock_gmail.list_messages_to_archive.return_value = ["arch-1", "arch-2"]
+    count_dry = run_archive_sweep(settings=settings, gmail=mock_gmail, dry_run=True)
+    assert count_dry == 2
+    mock_gmail.batch_archive_messages.assert_not_called()
+
+
+def test_run_archive_sweep_disabled(monkeypatch):
+    monkeypatch.setenv("GMAIL_CLIENT_ID", "cid")
+    monkeypatch.setenv("GMAIL_CLIENT_SECRET", "csecret")
+    monkeypatch.setenv("GMAIL_REFRESH_TOKEN", "rtoken")
+    settings = Settings(auto_archive_enabled=False)
+
+    mock_gmail = MagicMock()
+    from gmail_classifier.main import run_archive_sweep
+
+    count = run_archive_sweep(settings=settings, gmail=mock_gmail)
+    assert count == 0
+    mock_gmail.list_messages_to_archive.assert_not_called()

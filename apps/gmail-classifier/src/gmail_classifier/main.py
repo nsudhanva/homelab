@@ -62,7 +62,63 @@ def parse_arguments(args: list[str] | None = None) -> argparse.Namespace:
         default=None,
         help="Number of concurrent classification workers (defaults to Settings.concurrency).",
     )
+    parser.add_argument(
+        "--archive-days",
+        type=int,
+        default=None,
+        help="Override archive age threshold (defaults to Settings.archive_older_than_days).",
+    )
+    parser.add_argument(
+        "--archive-only",
+        action="store_true",
+        default=False,
+        help="Run only the archive sweep for older emails without classifying new emails.",
+    )
     return parser.parse_args(args)
+
+
+def run_archive_sweep(
+    settings: Settings,
+    gmail: GmailClient | None = None,
+    archive_days: int | None = None,
+    dry_run: bool = False,
+    limit: int | None = None,
+) -> int:
+    """Archive classified emails in INBOX older than archive_days, protecting quarantine_label."""
+    days = archive_days if archive_days is not None else settings.archive_older_than_days
+    if not settings.auto_archive_enabled and archive_days is None:
+        logger.info("Auto-archiving is disabled in settings.")
+        return 0
+
+    if gmail is None:
+        gmail = GmailClient(
+            client_id=settings.gmail_client_id,
+            client_secret=settings.gmail_client_secret,
+            refresh_token=settings.gmail_refresh_token,
+            processed_label=settings.processed_label,
+        )
+
+    logger.info(
+        f"Starting archive sweep for classified emails older than {days} days "
+        f"(protecting '{settings.quarantine_label}')..."
+    )
+    archive_ids = gmail.list_messages_to_archive(
+        older_than_days=days,
+        quarantine_label=settings.quarantine_label,
+        limit=limit,
+    )
+    if not archive_ids:
+        logger.info("No eligible emails found for archiving.")
+        return 0
+
+    logger.info(f"Found {len(archive_ids)} eligible email(s) to archive from INBOX.")
+    if not dry_run:
+        archived_count = gmail.batch_archive_messages(archive_ids)
+        logger.info(f"Successfully archived {archived_count} email(s) from INBOX.")
+        return archived_count
+
+    logger.info(f"[DRY RUN] Would archive {len(archive_ids)} email(s) from INBOX.")
+    return len(archive_ids)
 
 
 def run_pipeline(
@@ -248,6 +304,18 @@ def run_pipeline(
                     executor.shutdown(wait=False, cancel_futures=True)
                     raise
 
+    # Run archive sweep for older classified messages if enabled
+    archived_count = 0
+    if settings.auto_archive_enabled and settings.archive_older_than_days > 0:
+        try:
+            archived_count = run_archive_sweep(
+                settings=settings,
+                gmail=gmail,
+                dry_run=dry_run,
+            )
+        except Exception as exc:
+            logger.error(f"Archive sweep encountered an error: {exc}", exc_info=True)
+
     # Dispatch final summary notification to Telegram
     final_header = "All Inbox Messages" if inbox_mode else (target_date or "Unknown")
     logger.info("Dispatching summary to Telegram...")
@@ -257,11 +325,12 @@ def run_pipeline(
         label_counts=label_counts,
         quarantined_items=quarantined_items,
         dry_run=dry_run,
+        archived_count=archived_count,
     )
 
     logger.info(
         f"Classification run completed. Total: {len(message_ids)}, "
-        f"Quarantined: {len(quarantined_items)}"
+        f"Quarantined: {len(quarantined_items)}, Archived: {archived_count}"
     )
     return len(message_ids)
 
@@ -275,6 +344,19 @@ def main() -> None:
     except Exception as exc:
         logger.error(f"Failed to load application settings from environment: {exc}")
         sys.exit(1)
+
+    if args.archive_only:
+        try:
+            run_archive_sweep(
+                settings=settings,
+                archive_days=args.archive_days,
+                dry_run=args.dry_run,
+                limit=args.limit,
+            )
+        except Exception as exc:
+            logger.exception(f"Unhandled error during archive-only sweep: {exc}")
+            sys.exit(1)
+        return
 
     if args.inbox:
         try:

@@ -238,8 +238,24 @@ stateDiagram-v2
 
     Approved --> Completed: Batch Continuation
     Quarantined --> Completed: Batch Continuation
-    Completed --> [*]: All Emails Taged & Alert Dispatched
+    Completed --> [*]: All Emails Tagged & Alert Dispatched
 ```
+
+---
+
+## Automated 90-Day Archiving Sweep
+
+To maintain a clean, high-signal inbox without manual maintenance, the classifier includes an automated archiving sweep executed immediately following daily classification:
+
+- **Target Query**: Evaluates messages in the inbox that have been successfully classified but are older than ninety days:
+
+  ```text
+  in:inbox label:ai-processed -label:ai-review older_than:90d
+  ```
+
+- **Strict Quarantine Preservation**: Messages tagged with `ai-review` are explicitly excluded from automatic archiving (`-label:ai-review`), ensuring pending items requiring human review remain visible in the inbox.
+- **High-Throughput Batch Processing**: Utilizes the Gmail API `batchModify` endpoint to remove the `INBOX` label across up to 1,000 messages per request, requiring zero LLM inference tokens.
+- **Telemetry & Digest Reporting**: The total number of archived emails is included directly in the Telegram summary report (`📦 Archived from Inbox: <count>`).
 
 ---
 

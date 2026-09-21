@@ -43,3 +43,17 @@ def test_settings_defaults(monkeypatch):
     assert settings.quarantine_label == "ai-review"
     assert settings.processed_label == "ai-processed"
     assert settings.llm_model == "gemma-4-e2b-it"
+    assert settings.archive_older_than_days == 90
+    assert settings.auto_archive_enabled is True
+
+
+def test_settings_archive_custom_values(monkeypatch):
+    monkeypatch.setenv("GMAIL_CLIENT_ID", "cid")
+    monkeypatch.setenv("GMAIL_CLIENT_SECRET", "csecret")
+    monkeypatch.setenv("GMAIL_REFRESH_TOKEN", "rtoken")
+    monkeypatch.setenv("ARCHIVE_OLDER_THAN_DAYS", "60")
+    monkeypatch.setenv("AUTO_ARCHIVE_ENABLED", "false")
+
+    settings = Settings()
+    assert settings.archive_older_than_days == 60
+    assert settings.auto_archive_enabled is False

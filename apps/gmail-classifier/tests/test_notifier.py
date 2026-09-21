@@ -32,6 +32,19 @@ def test_format_daily_summary_single():
     assert "Suspicious link detected (conf: 0.45)" in text
 
 
+def test_format_daily_summary_with_archived_count():
+    notifier = TelegramNotifier(bot_token="fake-token", chat_id=123)
+    msgs = notifier.format_daily_summary(
+        target_date="2026-09-16",
+        total_count=10,
+        label_counts={"Personal": 10},
+        quarantined_items=[],
+        archived_count=42,
+    )
+    assert len(msgs) == 1
+    assert "Archived from Inbox:</b> 42" in msgs[0]
+
+
 def test_format_daily_summary_dry_run():
     notifier = TelegramNotifier(bot_token="fake-token", chat_id=123)
     msgs = notifier.format_daily_summary(

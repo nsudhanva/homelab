@@ -102,6 +102,16 @@ class Settings(BaseSettings):
         validation_alias=AliasChoices("CONCURRENCY", "concurrency"),
         description="Number of concurrent message classification workers",
     )
+    archive_older_than_days: int = Field(
+        default=90,
+        validation_alias=AliasChoices("ARCHIVE_OLDER_THAN_DAYS", "archive_older_than_days"),
+        description="Archive classified emails older than this many days from INBOX",
+    )
+    auto_archive_enabled: bool = Field(
+        default=True,
+        validation_alias=AliasChoices("AUTO_ARCHIVE_ENABLED", "auto_archive_enabled"),
+        description="Whether to run the archive sweep for older classified emails",
+    )
 
     def to_llm_client_config(self) -> LLMClientConfig:
         return LLMClientConfig(

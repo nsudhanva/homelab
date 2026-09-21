@@ -67,6 +67,10 @@ spec:
                   value: "ai-processed"
                 - name: CONCURRENCY
                   value: "1"
+                - name: ARCHIVE_OLDER_THAN_DAYS
+                  value: "90"
+                - name: AUTO_ARCHIVE_ENABLED
+                  value: "true"
               volumeMounts:
                 - name: tmp
                   mountPath: /tmp

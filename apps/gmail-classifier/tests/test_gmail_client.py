@@ -158,3 +158,50 @@ def test_apply_label():
         id="msg-888",
         body={"addLabelIds": ["lbl-1", "lbl-2"], "removeLabelIds": ["lbl-old"]},
     )
+
+
+def test_list_messages_to_archive():
+    mock_service = MagicMock()
+    mock_messages_api = mock_service.users().messages()
+    mock_messages_api.list.return_value.execute.return_value = {
+        "messages": [{"id": "arch-1"}, {"id": "arch-2"}],
+        "nextPageToken": None,
+    }
+
+    client = GmailClient(
+        client_id="cid",
+        client_secret="csecret",
+        refresh_token="rtoken",
+        processed_label="ai-processed",
+        service=mock_service,
+    )
+    res = client.list_messages_to_archive(older_than_days=90, quarantine_label="ai-review")
+    assert res == ["arch-1", "arch-2"]
+    mock_messages_api.list.assert_called_once_with(
+        userId="me",
+        q="in:inbox label:ai-processed -label:ai-review older_than:90d",
+        pageToken=None,
+    )
+
+
+def test_batch_archive_messages():
+    mock_service = MagicMock()
+    mock_messages_api = mock_service.users().messages()
+
+    client = GmailClient(
+        client_id="cid",
+        client_secret="csecret",
+        refresh_token="rtoken",
+        service=mock_service,
+    )
+    # Empty list should do nothing
+    assert client.batch_archive_messages([]) == 0
+    mock_messages_api.batchModify.assert_not_called()
+
+    # With messages
+    count = client.batch_archive_messages(["msg-1", "msg-2"], batch_size=500)
+    assert count == 2
+    mock_messages_api.batchModify.assert_called_once_with(
+        userId="me",
+        body={"ids": ["msg-1", "msg-2"], "removeLabelIds": ["INBOX"]},
+    )

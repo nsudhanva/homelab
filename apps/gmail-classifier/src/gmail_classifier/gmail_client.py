@@ -147,3 +147,56 @@ class GmailClient:
             )
             .execute()
         )
+
+    def list_messages_to_archive(
+        self,
+        older_than_days: int = 90,
+        quarantine_label: str = "ai-review",
+        limit: int | None = None,
+    ) -> list[str]:
+        """Query emails in INBOX with processed_label, excluding quarantine, older than days."""
+        query = (
+            f"in:inbox label:{self.processed_label} -label:{quarantine_label} "
+            f"older_than:{older_than_days}d"
+        )
+        logger.info(f"Listing messages to archive with query: '{query}'")
+        messages: list[str] = []
+        page_token: str | None = None
+        while True:
+            req = (
+                self.service.users()
+                .messages()
+                .list(
+                    userId="me",
+                    q=query,
+                    pageToken=page_token,
+                )
+            )
+            res = req.execute()
+            for item in res.get("messages", []):
+                if "id" in item:
+                    messages.append(item["id"])
+                    if limit is not None and len(messages) >= limit:
+                        return messages
+            page_token = res.get("nextPageToken")
+            if not page_token:
+                break
+        return messages
+
+    def batch_archive_messages(self, message_ids: list[str], batch_size: int = 1000) -> int:
+        """Batch remove INBOX label from multiple messages without modifying other labels."""
+        if not message_ids:
+            return 0
+        total_archived = 0
+        for i in range(0, len(message_ids), batch_size):
+            chunk = message_ids[i : i + batch_size]
+            body = {
+                "ids": chunk,
+                "removeLabelIds": ["INBOX"],
+            }
+            self.service.users().messages().batchModify(userId="me", body=body).execute()
+            total_archived += len(chunk)
+            logger.info(
+                f"Archived batch of {len(chunk)} messages ({total_archived}/{len(message_ids)})"
+            )
+        return total_archived

@@ -31,13 +31,18 @@ class TelegramNotifier:
         label_counts: dict[str, int],
         quarantined_items: list[dict[str, Any]],
         dry_run: bool = False,
+        archived_count: int = 0,
     ) -> list[str]:
         """Format daily summary into one or more HTML messages respecting Telegram limits."""
         dry_run_badge = " <b>[DRY RUN]</b>" if dry_run else ""
+        archived_line = (
+            f"📦 <b>Archived from Inbox:</b> {archived_count}\n" if archived_count > 0 else ""
+        )
         header = (
             f"📬 <b>Gmail Daily Classifier Summary</b>{dry_run_badge}\n"
             f"📅 <b>Date:</b> <code>{html.escape(target_date)}</code>\n"
             f"🔢 <b>Total Processed:</b> {total_count}\n"
+            f"{archived_line}"
         )
 
         labels_section = "\n🏷️ <b>Label Distribution:</b>\n"
@@ -146,6 +151,7 @@ class TelegramNotifier:
         label_counts: dict[str, int],
         quarantined_items: list[dict[str, Any]],
         dry_run: bool = False,
+        archived_count: int = 0,
     ) -> bool:
         """Send formatted daily summary messages asynchronously."""
         messages = self.format_daily_summary(
@@ -154,6 +160,7 @@ class TelegramNotifier:
             label_counts=label_counts,
             quarantined_items=quarantined_items,
             dry_run=dry_run,
+            archived_count=archived_count,
         )
         success = True
         for msg in messages:
@@ -168,6 +175,7 @@ class TelegramNotifier:
         label_counts: dict[str, int],
         quarantined_items: list[dict[str, Any]],
         dry_run: bool = False,
+        archived_count: int = 0,
     ) -> bool:
         """Send formatted daily summary messages synchronously."""
         messages = self.format_daily_summary(
@@ -176,6 +184,7 @@ class TelegramNotifier:
             label_counts=label_counts,
             quarantined_items=quarantined_items,
             dry_run=dry_run,
+            archived_count=archived_count,
         )
         success = True
         for msg in messages:
