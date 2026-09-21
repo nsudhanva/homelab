@@ -1,4 +1,9 @@
 #!/usr/bin/env python3
+# /// script
+# dependencies = [
+#     "google-auth-oauthlib",
+# ]
+# ///
 """Interactive script to generate Google OAuth refresh token with Drive and Gmail scopes."""
 
 import argparse
@@ -13,46 +18,56 @@ SCOPES = [
 ]
 
 
-def get_client_credentials(kubeconfig: str) -> tuple[str, str]:
-    try:
-        id_cmd = [
-            "kubectl",
-            "--kubeconfig",
-            kubeconfig,
-            "-n",
-            "drive-organizer",
-            "get",
-            "secret",
-            "drive-credentials",
-            "-o",
-            "jsonpath={.data.DRIVE_CLIENT_ID}",
-        ]
-        cid_b64 = subprocess.check_output(id_cmd, text=True).strip()
+def get_client_credentials(kubeconfig: str | None = None) -> tuple[str, str]:
+    base_cmd = ["kubectl"]
+    if kubeconfig:
+        base_cmd.extend(["--kubeconfig", kubeconfig])
 
-        secret_cmd = [
-            "kubectl",
-            "--kubeconfig",
-            kubeconfig,
-            "-n",
-            "drive-organizer",
-            "get",
-            "secret",
-            "drive-credentials",
-            "-o",
-            "jsonpath={.data.DRIVE_CLIENT_SECRET}",
-        ]
-        csec_b64 = subprocess.check_output(secret_cmd, text=True).strip()
+    for secret_name in (
+        "drive-credentials-primary",
+        "drive-credentials",
+        "gmail-credentials-primary",
+        "gmail-credentials",
+    ):
+        try:
+            id_cmd = base_cmd + [
+                "-n",
+                "drive-organizer",
+                "get",
+                "secret",
+                secret_name,
+                "-o",
+                "jsonpath={.data.DRIVE_CLIENT_ID}",
+            ]
+            cid_b64 = subprocess.check_output(
+                id_cmd, text=True, stderr=subprocess.DEVNULL
+            ).strip()
 
-        import base64
+            secret_cmd = base_cmd + [
+                "-n",
+                "drive-organizer",
+                "get",
+                "secret",
+                secret_name,
+                "-o",
+                "jsonpath={.data.DRIVE_CLIENT_SECRET}",
+            ]
+            csec_b64 = subprocess.check_output(
+                secret_cmd, text=True, stderr=subprocess.DEVNULL
+            ).strip()
 
-        client_id = base64.b64decode(cid_b64).decode("utf-8")
-        client_secret = base64.b64decode(csec_b64).decode("utf-8")
-        return client_id, client_secret
-    except (subprocess.SubprocessError, KeyError, ValueError, Exception) as e:  # noqa: BLE001
-        print(f"Failed to fetch credentials from cluster: {e}", file=sys.stderr)
-        client_id = input("Enter Google Client ID: ").strip()
-        client_secret = input("Enter Google Client Secret: ").strip()
-        return client_id, client_secret
+            import base64
+
+            if cid_b64 and csec_b64:
+                client_id = base64.b64decode(cid_b64).decode("utf-8")
+                client_secret = base64.b64decode(csec_b64).decode("utf-8")
+                return client_id, client_secret
+        except (subprocess.SubprocessError, KeyError, ValueError, Exception):  # noqa: BLE001, S112
+            continue
+
+    client_id = input("Enter Google Client ID: ").strip()
+    client_secret = input("Enter Google Client Secret: ").strip()
+    return client_id, client_secret
 
 
 def main() -> None:
@@ -60,7 +75,12 @@ def main() -> None:
         description="Acquire Google Drive and Gmail OAuth tokens"
     )
     parser.add_argument(
-        "--kubeconfig", default="k3s.kubeconfig", help="Path to k3s.kubeconfig"
+        "--account",
+        default="secondary",
+        help="Account identifier (e.g. secondary, tertiary)",
+    )
+    parser.add_argument(
+        "--kubeconfig", default=None, help="Path to optional kubeconfig"
     )
     parser.add_argument(
         "--port", type=int, default=8080, help="Local redirect server port"
@@ -87,6 +107,7 @@ def main() -> None:
 
     flow = InstalledAppFlow.from_client_config(client_config, scopes=SCOPES)
     print("\nStarting local OAuth authentication flow...")
+    print(f"Target Account: {args.account}")
     print(f"Requested Scopes: {', '.join(SCOPES)}\n")
     creds = flow.run_local_server(
         port=args.port, prompt="consent", access_type="offline"
@@ -94,9 +115,12 @@ def main() -> None:
 
     print("\nAuthentication successful!")
     print(f"Refresh Token: {creds.refresh_token}")
-    print("\nUpdate Vault with the new refresh token:")
+    print(f"\nStore credentials in Vault for account '{args.account}':")
     print(
-        'kubectl -n vault exec -it vault-0 -- vault kv patch kv/gmail/credentials refresh_token="<YOUR_NEW_REFRESH_TOKEN>"'
+        f"kubectl -n vault exec -it vault-0 -- vault kv put kv/google/accounts/{args.account} \\\n"
+        f'  client_id="{client_id}" \\\n'
+        f'  client_secret="{client_secret}" \\\n'
+        f'  refresh_token="{creds.refresh_token}"\n'
     )
 
 
