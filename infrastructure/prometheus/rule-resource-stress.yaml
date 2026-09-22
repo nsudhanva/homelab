@@ -51,10 +51,18 @@ spec:
         description: GPU VRAM usage on {{ $labels.modelName }} (device {{ $labels.device }}) is above 90% (currently {{ printf "%.2f" $value }}%) for more than 3 minutes.
         summary: GPU VRAM utilization is above 90%
     - alert: GpuTemperatureHigh
-      expr: DCGM_FI_DEV_GPU_TEMP > 80
-      for: 2m
+      expr: DCGM_FI_DEV_GPU_TEMP > 92
+      for: 10m
+      labels:
+        severity: warning
+      annotations:
+        description: GPU temperature on {{ $labels.modelName }} (device {{ $labels.device }}) has reached {{ printf "%.0f" $value }}°C for more than 10 minutes.
+        summary: GPU temperature is elevated
+    - alert: GpuTemperatureCritical
+      expr: DCGM_FI_DEV_GPU_TEMP > 95
+      for: 3m
       labels:
         severity: critical
       annotations:
-        description: GPU temperature on {{ $labels.modelName }} (device {{ $labels.device }}) has reached {{ printf "%.0f" $value }}°C (throttle threshold is 83°C).
+        description: GPU temperature on {{ $labels.modelName }} (device {{ $labels.device }}) has reached {{ printf "%.0f" $value }}°C (hardware throttle limit is 97°C).
         summary: GPU temperature is critically high
