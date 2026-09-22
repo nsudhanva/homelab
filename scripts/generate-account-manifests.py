@@ -335,18 +335,24 @@ def main() -> None:
         kust_file = app_dir / "kustomization.yaml"
         expected_files[kust_file] = generate_kustomization(namespace, account_ids)
 
-        # Clean up legacy un-suffixed or family files
+        # Clean up legacy un-suffixed or family files, and orphaned account files
         legacy_files = [
             app_dir / "cronjob.yaml",
             app_dir / "secret.yaml",
             app_dir / "cronjob-family.yaml",
             app_dir / "secret-family.yaml",
         ]
+        orphaned_files = [
+            p
+            for p in list(app_dir.glob("cronjob-*.yaml"))
+            + list(app_dir.glob("secret-*.yaml"))
+            if p not in expected_files
+        ]
 
         if args.check:
-            for l_file in legacy_files:
+            for l_file in legacy_files + orphaned_files:
                 if l_file.exists():
-                    print(f"[DRIFT] Obsolete legacy file exists: {l_file}")
+                    print(f"[DRIFT] Obsolete/orphaned file exists: {l_file}")
                     dirty = True
             for file_path, content in expected_files.items():
                 if not file_path.exists():
@@ -356,9 +362,9 @@ def main() -> None:
                     print(f"[DRIFT] Content mismatch: {file_path}")
                     dirty = True
         else:
-            for l_file in legacy_files:
+            for l_file in legacy_files + orphaned_files:
                 if l_file.exists():
-                    print(f"Removing obsolete file: {l_file}")
+                    print(f"Removing obsolete/orphaned file: {l_file}")
                     l_file.unlink()
             for file_path, content in expected_files.items():
                 file_path.write_text(content)
