@@ -24,6 +24,8 @@ def get_client_credentials(kubeconfig: str | None = None) -> tuple[str, str]:
         base_cmd.extend(["--kubeconfig", kubeconfig])
 
     for secret_name in (
+        "drive-credentials-personal",
+        "gmail-credentials-personal",
         "drive-credentials-primary",
         "drive-credentials",
         "gmail-credentials-primary",
