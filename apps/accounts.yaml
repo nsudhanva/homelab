@@ -4,3 +4,8 @@ accounts:
       gmail: "0 1 * * *"
       drive: "0 2 * * *"
     vault_path: gmail/credentials
+  - nickname: family
+    schedule:
+      gmail: "15 1 * * *"
+      drive: "15 2 * * *"
+    vault_path: google/accounts/family

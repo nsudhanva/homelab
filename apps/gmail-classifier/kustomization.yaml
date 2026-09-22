@@ -6,3 +6,5 @@ resources:
 - openrouter-secret.yaml
 - secret-personal.yaml
 - cronjob-personal.yaml
+- secret-family.yaml
+- cronjob-family.yaml

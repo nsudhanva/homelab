@@ -335,12 +335,11 @@ def main() -> None:
         kust_file = app_dir / "kustomization.yaml"
         expected_files[kust_file] = generate_kustomization(namespace, account_ids)
 
-        # Clean up legacy un-suffixed or family files, and orphaned account files
+        # Clean up legacy un-suffixed files, and orphaned account files
         legacy_files = [
-            app_dir / "cronjob.yaml",
-            app_dir / "secret.yaml",
-            app_dir / "cronjob-family.yaml",
-            app_dir / "secret-family.yaml",
+            p
+            for p in [app_dir / "cronjob.yaml", app_dir / "secret.yaml"]
+            if p not in expected_files
         ]
         orphaned_files = [
             p
