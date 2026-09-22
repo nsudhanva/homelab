@@ -92,6 +92,12 @@ spec:
               - receiver: "null"
                 matchers:
                 - alertname = InfoInhibitor
+              - receiver: "null"
+                matchers:
+                - alertname =~ "Alertmanager.*FailedToSendAlerts"
+              - receiver: "null"
+                matchers:
+                - severity = info
             receivers:
             - name: "null"
             - name: telegram
