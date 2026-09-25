@@ -5,6 +5,7 @@ metadata:
   namespace: gmail-classifier
 spec:
   schedule: "0 1 * * *"
+  suspend: false
   concurrencyPolicy: Forbid
   successfulJobsHistoryLimit: 3
   failedJobsHistoryLimit: 3

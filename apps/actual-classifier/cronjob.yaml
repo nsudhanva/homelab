@@ -5,6 +5,7 @@ metadata:
   namespace: actual-classifier
 spec:
   schedule: "0 */2 * * *"
+  suspend: false
   concurrencyPolicy: Forbid
   successfulJobsHistoryLimit: 3
   failedJobsHistoryLimit: 3

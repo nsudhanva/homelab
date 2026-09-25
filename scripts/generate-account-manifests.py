@@ -24,6 +24,7 @@ metadata:
   namespace: gmail-classifier
 spec:
   schedule: "{schedule}"
+  suspend: false
   concurrencyPolicy: Forbid
   successfulJobsHistoryLimit: 3
   failedJobsHistoryLimit: 3
@@ -160,6 +161,7 @@ metadata:
   namespace: drive-organizer
 spec:
   schedule: "{schedule}"
+  suspend: false
   concurrencyPolicy: Forbid
   successfulJobsHistoryLimit: 3
   failedJobsHistoryLimit: 3
