@@ -19,12 +19,16 @@ REDACTED
 Claim URL (Decoded):
 https://beta-bridge.simplefin.org/simplefin/claim/REDACTED
 
-Linked Financial Institutions & Accounts (15 total):
-- Chase Bank: TOTAL CHECKING, Amazon Prime Rewards Visa
-- American Express: High Yield Savings Account, Gold Card
-- Santander Bank: Simply right checking, Santander savings
-- Apple Card: Sudhanva
-- Robinhood: Credit Card, Joint Brokerage, Individual, Individual, Roth IRA, Crypto, Checking, Savings
+Linked Financial Institutions & Accounts (21 total):
+- [Sudhanva] Chase Bank: Chase Total Checking, Chase Amazon Prime Visa
+- [Sudhanva] American Express: Amex HYSA, Amex Gold Card
+- [Sudhanva] Santander Bank: Santander Checking, Santander Savings
+- [Sudhanva] Apple Card
+- [Sudhanva] Robinhood: Credit Card, Individual, Individual, Roth IRA, Crypto, Checking, Savings
+- [Joint] Robinhood: Robinhood Joint
+- [Maanasa] Chase Bank: Chase Sapphire Reserve, Chase Freedom Flex
+- [Maanasa] Discover Bank: Discover Online Savings, Discover Cashback Debit, Discover it Card
+- [Maanasa] Apple Card
 
 HashiCorp Vault Path:
 kv/actual-budget/simplefin"
