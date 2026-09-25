@@ -1,37 +1,36 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-FOLDER_ID="b4bcc38c-4296-41a4-b9b3-b4c50047ce37"
+FOLDER_ID="${BW_FOLDER_ID:-b4bcc38c-4296-41a4-b9b3-b4c50047ce37}"
 URL="https://actual.sudhanva.me"
 USERNAME="admin"
-PASSWORD="REDACTED"
+VAULT_AUTH_PATH="${VAULT_AUTH_PATH:-kv/actual}"
+VAULT_SIMPLEFIN_PATH="${VAULT_SIMPLEFIN_PATH:-kv/actual-budget/simplefin}"
+
+if [[ -z "${VAULT_TOKEN:-}" ]]; then
+  echo "VAULT_TOKEN must be set" >&2
+  exit 1
+fi
+
+vault_field() {
+  kubectl -n vault exec -i vault-0 -- env VAULT_TOKEN="$VAULT_TOKEN" \
+    vault kv get -field="$2" "$1"
+}
+
+PASSWORD="$(vault_field "$VAULT_AUTH_PATH" password)"
+SIMPLEFIN_TOKEN="$(vault_field "$VAULT_SIMPLEFIN_PATH" setup_token)"
 
 LOGIN_NAME="Actual Budget (Homelab)"
-LOGIN_NOTES="Actual Budget personal finance on K3s cluster. Auto-bootstrapped with SimpleFIN Bridge integration (15 accounts linked). Vault Paths: kv/actual-budget/auth and kv/actual-budget/simplefin"
+LOGIN_NOTES="Actual Budget personal finance on K3s cluster with SimpleFIN Bridge integration. Vault paths: ${VAULT_AUTH_PATH} and ${VAULT_SIMPLEFIN_PATH}"
 
 NOTE_NAME="SimpleFIN Bridge Setup Token (Actual Budget)"
 NOTE_CONTENT="Provider: https://beta-bridge.simplefin.org
-Status: Claimed & Active in Actual Budget Server
 
 Setup Token:
-REDACTED
-
-Claim URL (Decoded):
-https://beta-bridge.simplefin.org/simplefin/claim/REDACTED
-
-Linked Financial Institutions & Accounts (21 total):
-- [Sudhanva] Chase Bank: Chase Total Checking, Chase Amazon Prime Visa
-- [Sudhanva] American Express: Amex HYSA, Amex Gold Card
-- [Sudhanva] Santander Bank: Santander Checking, Santander Savings
-- [Sudhanva] Apple Card
-- [Sudhanva] Robinhood: Credit Card, Individual, Individual, Roth IRA, Crypto, Checking, Savings
-- [Joint] Robinhood: Robinhood Joint
-- [Maanasa] Chase Bank: Chase Sapphire Reserve, Chase Freedom Flex
-- [Maanasa] Discover Bank: Discover Online Savings, Discover Cashback Debit, Discover it Card
-- [Maanasa] Apple Card
+${SIMPLEFIN_TOKEN}
 
 HashiCorp Vault Path:
-kv/actual-budget/simplefin"
+${VAULT_SIMPLEFIN_PATH}"
 
 if [[ -z "${BW_SESSION:-}" ]]; then
   echo "Unlocking Bitwarden CLI..."
