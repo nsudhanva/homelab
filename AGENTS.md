@@ -9,7 +9,11 @@ Multi-node bare-metal Kubernetes cluster on Ubuntu 26.04 LTS using K3s, managed 
 ## Dos
 
 - Always search online for latest stable versions before adding dependencies
-- Always use Vault to store sensitive information or secrets
+- Always use Vault to store sensitive information or secrets. Every Kubernetes Secret must come from an `ExternalSecret` that reads a Vault path; write the value to Vault first, then reference it
+- Make every cluster change through Git and let ArgoCD apply it. Imperative `kubectl` is limited to read-only inspection, logs, and triggering a Job from an existing CronJob
+- Make every node-level change (K3s config, systemd units, Tailscale settings, sysctls) through the Ansible roles in `ansible/`, previewed with `--check --diff`
+- Set explicit CPU and memory requests and limits on every Deployment, Job, and CronJob, keeping total requests within node allocatable
+- Declare fields you rely on explicitly (for example `suspend: false` on CronJobs) so ArgoCD detects and reverts drift
 - Use ArgoCD ApplicationSets for deploying infrastructure and apps
 - Place infrastructure components in `infrastructure/{component-name}/`
 - Place user applications in `apps/{app-name}/`
@@ -34,6 +38,11 @@ Multi-node bare-metal Kubernetes cluster on Ubuntu 26.04 LTS using K3s, managed 
 - Do not modify `/etc/fstab` or system files without explicit user approval
 - Do not delete PVCs or any data volumes without explicit user approval
 - Do not combine multiple resources in one YAML file; use separate files (deployment.yaml, service.yaml, ingress.yaml, pvc.yaml)
+- Do not commit secrets, tokens, passwords, API keys, account numbers, or personal financial data. This is a public repository; `gitleaks` runs in pre-commit and CI
+- Do not put credentials in scripts; scripts read them from Vault or environment variables at runtime
+- Do not create, patch, or delete Secrets, CronJobs, Deployments, or ArgoCD Applications with `kubectl`; change the manifests in Git instead
+- Do not change Tailscale DNS, node IPs, or node networking outside the `tailscale` and `k3s_server` Ansible roles. Nodes use their Tailscale IP as `node-ip` and run with Tailscale DNS disabled
+- Do not run long batch workloads that exceed node allocatable; schedule them through CronJobs with resource limits
 
 ## Repository Structure
 
@@ -58,6 +67,7 @@ Before pushing changes:
 pre-commit run --all-files
 kubectl get nodes
 kubectl get pods -A
+kubectl get applications -n argocd
 ```
 
 ## Common Patterns

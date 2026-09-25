@@ -101,6 +101,18 @@ sudo cp /etc/rancher/k3s/k3s.yaml ~/.kube/config
 sudo chown $(id -u):$(id -g) ~/.kube/config
 ```
 
+### Node DNS
+
+Cluster nodes do not use Tailscale DNS. The `tailscale` Ansible role runs `tailscale set --accept-dns=false` on every node, so the host resolves names through its uplink resolvers. Image pulls and other node DNS lookups never depend on DNS services running inside the cluster. See [Node Networking and DNS](../explanation/node-networking.md).
+
+### Configure tailnet nameservers
+
+In the Tailscale admin console under **DNS**, configure:
+
+- Global nameserver: the Tailscale IP of `technitium-dns` (`kubectl -n technitium get svc technitium-tailscale -o wide`)
+- Secondary global nameserver: a public resolver such as `1.1.1.1`, so tailnet clients keep resolving names while Technitium is unavailable
+- Split DNS: `sudhanva.me` pointing to the `tailscale-dns` Tailscale IP (see [Split DNS resolver IP](#split-dns-resolver-ip))
+
 ## Step 2: Enable custom domains with Gateway API
 
 This repo uses Envoy Gateway, ExternalDNS, and cert-manager with the Tailscale Gateway API setup. Subdomains such as `homelab.sudhanva.me` resolve to the Tailscale Gateway while your apex `sudhanva.me` remains managed elsewhere.

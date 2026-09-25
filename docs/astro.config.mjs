@@ -189,6 +189,7 @@ export default defineConfig({
           items: [
             { label: 'Automation Model', slug: 'explanation/automation-model' },
             { label: 'Gateway & Networking', slug: 'explanation/gateway-networking' },
+            { label: 'Node Networking & DNS', slug: 'explanation/node-networking' },
             { label: 'Storage Architecture', slug: 'explanation/storage-architecture' },
             { label: 'AI Email Classifier', slug: 'explanation/gmail-classifier' },
           ],

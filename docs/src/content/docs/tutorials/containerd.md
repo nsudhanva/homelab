@@ -22,7 +22,7 @@ The automation structure in `ansible/` manages the bare-metal lifecycle:
 - `ansible/inventory/hosts.yaml`: Lists control plane nodes and worker nodes with hostnames, SSH users, and IP addresses.
 - `ansible/group_vars/all.yaml`: Defines global cluster variables including pinned K3s versions, TLS SANs, and storage paths.
 - `ansible/site.yaml`: The master playbook defining the sequence of roles applied to hosts.
-- `ansible/roles/`: Modular tasks for OS preparation (`common`), GPU setup (`nvidia`), K3s server (`k3s_server`), and ArgoCD bootstrap (`argocd`).
+- `ansible/roles/`: Modular tasks for OS preparation (`common`), Tailscale node settings (`tailscale`), GPU setup (`nvidia`), K3s server (`k3s_server`), and ArgoCD bootstrap (`argocd`). Each role has a matching tag in `ansible/site.yaml`, so you can run one role with `--tags`.
 
 ## Step 2: Configure host inventory
 
@@ -36,7 +36,7 @@ k3s_cluster:
         legion:
           ansible_host: 100.66.139.118
           ansible_user: sudhanva
-          k3s_node_ip: "10.0.0.133"
+          k3s_node_ip: "100.66.139.118"
           k3s_external_ip: "100.66.139.118"
 ```
 
@@ -52,7 +52,13 @@ tls_sans:
   - "10.0.0.133"
   - "legion"
   - "legion.ainu-herring.ts.net"
+k3s_kubelet_args:
+  - "kube-reserved=cpu=250m,memory=512Mi"
+  - "system-reserved=cpu=250m,memory=512Mi"
+  - "eviction-hard=memory.available<500Mi,nodefs.available<10%,imagefs.available<10%"
 ```
+
+`k3s_node_ip` and `k3s_external_ip` are both the node's Tailscale IP. The Tailscale IP stays the same across LAN, DHCP, and interface changes (Ethernet or Wi-Fi), so the API server, kubelet, and host-network pods always have a reachable address. `k3s_kubelet_args` reserves CPU and memory for K3s and the OS so workloads cannot starve the control plane. See [Node Networking and DNS](../explanation/node-networking.md).
 
 ## Step 4: Verify Ansible connectivity
 

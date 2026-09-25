@@ -23,10 +23,12 @@ Update `ansible/inventory/hosts.yaml` with the new worker node details under `k3
 k3s_agents:
   hosts:
     worker-01:
-      ansible_host: 10.0.0.140
+      ansible_host: WORKER_TAILSCALE_IP
       ansible_user: sudhanva
-      k3s_node_ip: "10.0.0.140"
+      k3s_node_ip: "WORKER_TAILSCALE_IP"
 ```
+
+Replace `WORKER_TAILSCALE_IP` with the output of `tailscale ip -4` on the worker. Every node uses its Tailscale IP as the node IP, so nodes reach each other and the API server over the tailnet regardless of LAN addressing.
 
 ## Step 2: Run the agent provisioning role
 

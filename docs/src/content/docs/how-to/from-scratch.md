@@ -31,7 +31,7 @@ all:
               ansible_host: 100.66.139.118
               ansible_user: sudhanva
               ansible_ssh_common_args: "-o StrictHostKeyChecking=accept-new"
-              k3s_node_ip: "10.0.0.133"
+              k3s_node_ip: "100.66.139.118"
               k3s_external_ip: "100.66.139.118"
 ```
 
@@ -47,7 +47,8 @@ The script executes the Ansible playbook `ansible/site.yaml` which handles:
 
 - Host prerequisites: Kernel modules (`overlay`, `br_netfilter`), sysctls, and storage path creation on the dedicated SSD (`/home/k3s-storage`).
 - NVIDIA integration: Installs NVIDIA Container Toolkit, generates CDI specifications, and configures containerd GPU runtime.
-- K3s Server: Installs K3s, disables Traefik and ServiceLB, attaches to Tailscale and LAN IPs, and starts the systemd service.
+- Tailscale: Verifies Tailscale is running and disables Tailscale DNS on the node so the host resolves through its upstream network resolvers.
+- K3s Server: Installs K3s, disables Traefik and ServiceLB, uses the Tailscale IP as the node IP, reserves CPU and memory for the system, orders K3s after `tailscaled`, and starts the systemd service.
 - Kubeconfig: Fetches the cluster credentials and configures the Tailscale endpoint.
 - GitOps bootstrap: Deploys ArgoCD with server-side apply and applies the root Application (`bootstrap/root.yaml`).
 

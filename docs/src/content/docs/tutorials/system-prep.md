@@ -20,7 +20,7 @@ This tutorial guides you through preparing a physical machine (node `legion`) ru
 Install Ubuntu 26.04 LTS Server on the machine. During installation:
 
 - Select standard OpenSSH server installation.
-- Configure a static IPv4 address on your local network (for example, `10.0.0.133`).
+- Connect the machine to your local network. DHCP is fine, because the cluster uses the node's Tailscale IP rather than its LAN address.
 - Set the hostname to `legion`.
 
 ## Step 2: Prepare the local storage mount
@@ -63,6 +63,18 @@ nvidia-smi
 
 The output confirms the GPU model, driver version, and CUDA version.
 
-## Step 4: Next steps
+## Step 4: Install and join Tailscale
+
+Install Tailscale and join the node to your tailnet. Provisioning fails early if Tailscale is missing, because K3s uses the Tailscale IP as the node IP.
+
+```bash
+curl -fsSL https://tailscale.com/install.sh | sh
+sudo tailscale up
+tailscale ip -4
+```
+
+Use the address from `tailscale ip -4` for `ansible_host`, `k3s_node_ip`, and `k3s_external_ip` in the inventory.
+
+## Step 5: Next steps
 
 With the bare-metal host installed, networked, and storage mounted, proceed to [Ansible Configuration](./containerd.md) to define cluster inventory variables.
