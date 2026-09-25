@@ -37,14 +37,34 @@ Instead of running playbooks manually from your workstation, GitHub Actions exec
 
 ### Step 1: Secure Tailscale Connection
 
-The workflow (`.github/workflows/provision.yaml`) uses `tailscale/github-action` with an ephemeral auth key to join the tailnet and reach `legion` (`100.66.139.118`).
+The workflow (`.github/workflows/provision.yaml`) uses `tailscale/github-action` with a Tailscale OAuth client to join the tailnet as an ephemeral `tag:ci` node and reach `legion` (`100.66.139.118`) over SSH.
+
+The tailnet policy must let the OAuth client assign `tag:ci` and allow `tag:ci` to reach the node on port 22:
+
+```json
+{
+  "tagOwners": {
+    "tag:ci": ["autogroup:admin"]
+  },
+  "grants": [
+    {
+      "src": ["tag:ci"],
+      "dst": ["100.66.139.118"],
+      "ip": ["tcp:22"]
+    }
+  ]
+}
+```
+
+Create the OAuth client at `https://login.tailscale.com/admin/settings/oauth` with the `auth_keys` write scope and the `tag:ci` tag.
 
 ### Step 2: Repository Secrets
 
-Configure two secrets in your GitHub repository (`Settings > Secrets and variables > Actions`):
+Configure these secrets in your GitHub repository (`Settings > Secrets and variables > Actions`):
 
-- `TAILSCALE_AUTHKEY`: An ephemeral or reusable Tailscale auth key with tags `tag:ci` or `tag:k8s`.
-- `SSH_PRIVATE_KEY`: An SSH private key authorized to log in as `sudhanva@legion`.
+- `TS_OAUTH_CLIENT_ID`: The Tailscale OAuth client ID.
+- `TS_OAUTH_SECRET`: The Tailscale OAuth client secret.
+- `SSH_PRIVATE_KEY`: An SSH private key whose public key is in `~/.ssh/authorized_keys` for `sudhanva` on `legion`.
 
 ### Step 3: Triggering Provisioning
 
