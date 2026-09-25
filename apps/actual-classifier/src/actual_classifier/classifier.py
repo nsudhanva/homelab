@@ -36,6 +36,12 @@ Given a raw financial transaction, classify it accurately according to the house
 - Savings: Investment purchases, transfers to brokerage.
 - Transfer: Credit card statement payments, inter-account transfers, Zelle, Wise, checks.
 
+### Amount Sign
+- Negative amounts are money leaving the account (purchases, bills, payments).
+- Positive amounts are money entering the account (salary, interest, refunds, incoming transfers).
+- A positive amount from a merchant is a refund or credit: use that merchant's category,
+  not Income.
+
 ### 2. Tags (Strict Single-Word Choice, or Null)
 - Subscription: Any recurring software, streaming, telecom, or membership service
   (Disney+, Paramount+, Cloudflare, LeetCode, Pikapods, Apple Services, Oracle Cloud, Comcast,
@@ -47,7 +53,9 @@ Given a raw financial transaction, classify it accurately according to the house
 - Bills: Applied to non-subscription utilities (PG&E, Eversource).
 - Rent: Applied to Ironworks apartment payments.
 - Transfer: Applied to credit card payments and bank transfers.
-- Unknown: Only use if truly impossible to classify with high confidence.
+- Unknown: Only use when you cannot determine the category itself.
+- Use null when none of the tags above apply. Groceries, restaurants, and general shopping
+  normally have a null tag. Never use Unknown just because no tag fits.
 
 ### 3. Clean Payee Normalization
 - Strip out terminal codes, POS prefixes (e.g., TST*, SQ *, CL *), transaction locations,

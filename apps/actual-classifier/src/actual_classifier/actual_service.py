@@ -42,6 +42,7 @@ class ActualBudgetService:
             # 2. Fetch accounts map
             accounts = q.get_accounts(session)
             acc_map = {a.id: a.name for a in accounts}
+            offbudget_accounts = {a.id for a in accounts if a.offbudget}
 
             # 3. Fetch payees map
             payees = q.get_payees(session)
@@ -53,11 +54,12 @@ class ActualBudgetService:
             # Filter for unclassified or #Unknown transactions
             pending: list[Any] = []
             for t in transactions:
-                if t.is_parent or t.starting_balance_flag:
+                if t.is_parent or t.starting_balance_flag or t.transferred_id:
                     continue
-                # Unclassified if category is None or notes have #Unknown
+                if t.acct in offbudget_accounts:
+                    continue
                 notes = (t.notes or "").strip()
-                if t.category is None or "#Unknown" in notes:
+                if t.category_id is None or "#Unknown" in notes:
                     pending.append(t)
 
             logger.info(f"Found {len(pending)} unclassified or review-pending transactions.")
@@ -65,16 +67,20 @@ class ActualBudgetService:
 
             for tx in batch:
                 acc_name = (acc_map.get(tx.acct) if tx.acct else None) or "Unknown Account"
-                payee_name = payee_map.get(tx.description) or tx.imported_description or "Unknown"
+                payee_name = (
+                    (payee_map.get(tx.payee_id) if tx.payee_id else None)
+                    or tx.imported_description
+                    or "Unknown"
+                )
 
                 tx_input = TransactionInput(
                     id=tx.id,
-                    date=str(tx.date),
+                    date=tx.get_date().isoformat(),
                     amount_cents=tx.amount,
                     imported_payee=payee_name,
                     account_name=acc_name,
                     current_notes=tx.notes or "",
-                    current_category=tx.category,
+                    current_category=tx.category.name if tx.category else None,
                 )
 
                 classification: ClassificationResult = self.classifier.classify(tx_input)
@@ -96,7 +102,7 @@ class ActualBudgetService:
 
                 summary_entry = {
                     "id": tx.id,
-                    "date": tx.date,
+                    "date": tx_input.date,
                     "imported_payee": payee_name,
                     "clean_payee": classification.clean_payee,
                     "amount": f"${tx_input.amount_dollars:.2f}",
@@ -110,14 +116,13 @@ class ActualBudgetService:
 
                 if not dry_run:
                     if target_cat_id:
-                        tx.category = target_cat_id
+                        tx.category_id = target_cat_id
                     tx.notes = new_notes
                     session.add(tx)
 
             if not dry_run and results:
                 logger.info("Committing and syncing updates to Actual Budget...")
-                session.commit()
-                actual.sync()
+                actual.commit()
                 logger.info(f"Successfully updated and synced {len(results)} transactions.")
             elif dry_run:
                 logger.info(
