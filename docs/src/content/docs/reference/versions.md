@@ -54,6 +54,7 @@ Check the latest stable release before changing any pinned version.
 - Jellyfin: `10.11.7` in `apps/jellyfin/deployment.yaml`
 - Filebrowser: `latest` in `apps/filebrowser/deployment.yaml`
 - Alertmanager: `0.34.0` (via kube-prometheus-stack)
+- Actual Budget: `26.9.0-alpine` in `apps/actual-budget/deployment.yaml`
 - Gmail Classifier: `0.1.0` in `apps/gmail-classifier/pyproject.toml`
 - Astro: `7.3.2` in `docs/package.json`
 - Starlight: `0.42.1` in `docs/package.json`

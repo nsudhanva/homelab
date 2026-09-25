@@ -138,3 +138,14 @@ The `media` namespace is shared by Jellyfin and Filebrowser so they can use the 
 | CronJob | `apps/drive-organizer/cronjob.yaml` | Daily schedule at `0 2 * * *` invoking `uv run drive-organizer` |
 | ExternalSecret | `apps/drive-organizer/secret.yaml` | Vault integration for Google OAuth credentials and Telegram bot token |
 | Python App | `apps/drive-organizer/src/drive_organizer/` | Symmetrical personal and family Google Drive organizer using local Gemma 4 |
+
+## Actual Budget
+
+| Item | Path | Notes |
+| --- | --- | --- |
+| Namespace | `apps/actual-budget/namespace.yaml` | Dedicated `actual-budget` namespace |
+| App config | `apps/actual-budget/app.yaml` | ArgoCD app definition |
+| Deployment | `apps/actual-budget/deployment.yaml` | `docker.io/actualbudget/actual-server:26.9.0-alpine` |
+| Service | `apps/actual-budget/service.yaml` | ClusterIP on port 5006 |
+| HTTPRoute | `apps/actual-budget/httproute.yaml` | `actual.sudhanva.me` via tailnet gateway |
+| PVC | `apps/actual-budget/pvc.yaml` | 5Gi local-path storage for `/data` (SQLite database and user files) |

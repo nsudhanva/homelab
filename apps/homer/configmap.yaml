@@ -68,6 +68,15 @@ data:
             icon: "fas fa-microchip"
             tag: "ai"
             target: "_blank"
+      - name: "Finance & Accounts"
+        icon: "fas fa-wallet"
+        items:
+          - name: "Actual Budget"
+            subtitle: "Personal finance with SimpleFIN bank sync"
+            url: "https://actual.sudhanva.me"
+            icon: "fas fa-coins"
+            tag: "finance"
+            target: "_blank"
       - name: "Cluster Management"
         icon: "fas fa-cogs"
         items:

@@ -133,6 +133,7 @@ export default defineConfig({
               items: [
                 { label: 'Add Worker Node', slug: 'how-to/add-worker-node' },
                 { label: 'Deploy Apps', slug: 'how-to/deploy-apps' },
+                { label: 'Actual Budget', slug: 'how-to/actual-budget' },
                 { label: 'Sync ArgoCD Apps', slug: 'how-to/argocd-sync' },
                 { label: 'Connect Repo to ArgoCD', slug: 'how-to/argocd-repo' },
                 { label: 'Automated Image Updates', slug: 'how-to/image-updates' },
