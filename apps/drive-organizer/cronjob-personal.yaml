@@ -43,6 +43,8 @@ spec:
               value: "local"
             - name: FALLBACK_LLM_PROVIDER
               value: "openrouter"
+            - name: OPENROUTER_MODEL_NAME
+              value: "google/gemma-4-31b-it"
             - name: LLM_BASE_URL
               value: "http://llama-server.llama.svc.cluster.local:8080/v1"
             - name: LLM_MODEL_NAME
