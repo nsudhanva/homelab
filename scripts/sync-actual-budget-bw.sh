@@ -2,11 +2,32 @@
 set -euo pipefail
 
 FOLDER_ID="b4bcc38c-4296-41a4-b9b3-b4c50047ce37"
-NAME="Actual Budget (Homelab)"
 URL="https://actual.sudhanva.me"
 USERNAME="admin"
 PASSWORD="REDACTED"
-NOTES="Actual Budget personal finance on K3s cluster. Auto-bootstrapped with SimpleFIN Bridge integration (7 accounts linked). Vault Paths: kv/actual-budget/auth and kv/actual-budget/simplefin"
+
+LOGIN_NAME="Actual Budget (Homelab)"
+LOGIN_NOTES="Actual Budget personal finance on K3s cluster. Auto-bootstrapped with SimpleFIN Bridge integration (15 accounts linked). Vault Paths: kv/actual-budget/auth and kv/actual-budget/simplefin"
+
+NOTE_NAME="SimpleFIN Bridge Setup Token (Actual Budget)"
+NOTE_CONTENT="Provider: https://beta-bridge.simplefin.org
+Status: Claimed & Active in Actual Budget Server
+
+Setup Token:
+REDACTED
+
+Claim URL (Decoded):
+https://beta-bridge.simplefin.org/simplefin/claim/REDACTED
+
+Linked Financial Institutions & Accounts (15 total):
+- Chase Bank: TOTAL CHECKING, Amazon Prime Rewards Visa
+- American Express: High Yield Savings Account, Gold Card
+- Santander Bank: Simply right checking, Santander savings
+- Apple Card: Sudhanva
+- Robinhood: Credit Card, Joint Brokerage, Individual, Individual, Roth IRA, Crypto, Checking, Savings
+
+HashiCorp Vault Path:
+kv/actual-budget/simplefin"
 
 if [[ -z "${BW_SESSION:-}" ]]; then
   echo "Unlocking Bitwarden CLI..."
@@ -19,11 +40,11 @@ bw sync --session "$BW_SESSION"
 
 echo "Creating Bitwarden login item for Actual Budget..."
 ITEM_JSON=$(bw --session "$BW_SESSION" get template item | jq \
-  --arg name "$NAME" \
+  --arg name "$LOGIN_NAME" \
   --arg url "$URL" \
   --arg username "$USERNAME" \
   --arg password "$PASSWORD" \
-  --arg notes "$NOTES" \
+  --arg notes "$LOGIN_NOTES" \
   --arg folderId "$FOLDER_ID" \
   '.name = $name |
    .type = 1 |
@@ -34,5 +55,21 @@ ITEM_JSON=$(bw --session "$BW_SESSION" get template item | jq \
    .notes = $notes')
 
 echo "$ITEM_JSON" | bw encode | bw --session "$BW_SESSION" create item > /dev/null
+echo "✓ Successfully created: $LOGIN_NAME"
+
+echo "Creating Bitwarden secure note for SimpleFIN setup token..."
+NOTE_JSON=$(bw --session "$BW_SESSION" get template item | jq \
+  --arg name "$NOTE_NAME" \
+  --arg notes "$NOTE_CONTENT" \
+  --arg folderId "$FOLDER_ID" \
+  '.name = $name |
+   .type = 2 |
+   .folderId = $folderId |
+   .secureNote.type = 0 |
+   .notes = $notes')
+
+echo "$NOTE_JSON" | bw encode | bw --session "$BW_SESSION" create item > /dev/null
+echo "✓ Successfully created: $NOTE_NAME"
+
 bw sync --session "$BW_SESSION"
-echo "Successfully created and synced: $NAME in Bitwarden!"
+echo "All credentials and secure notes successfully synced to Bitwarden!"
