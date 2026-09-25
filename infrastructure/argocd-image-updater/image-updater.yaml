@@ -38,3 +38,15 @@ spec:
           imageName: docker.io/jellyfin/jellyfin:latest
           commonUpdateSettings:
             updateStrategy: digest
+    - namePattern: app-alert-summarizer
+      images:
+        - alias: alert-summarizer
+          imageName: ghcr.io/nsudhanva/homelab-alert-summarizer:latest
+          commonUpdateSettings:
+            updateStrategy: digest
+    - namePattern: app-docs
+      images:
+        - alias: docs
+          imageName: ghcr.io/nsudhanva/homelab-docs:latest
+          commonUpdateSettings:
+            updateStrategy: digest

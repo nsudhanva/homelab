@@ -52,3 +52,5 @@ Look for `.argocd-source-<appName>.yaml` files added under `apps/` after Image U
 - Registry secrets are created by External Secrets in `infrastructure/external-secrets/`.
 - Updates commit to the tracked branch (`master`) so ArgoCD can auto-sync.
 - Apps should include a `kustomization.yaml` so ArgoCD can apply Image Updater overrides.
+- Third-party images (Headlamp, Homer, Filebrowser) follow semver tags. Jellyfin and the in-house Deployments (`alert-summarizer`, `docs`) track the `latest` tag by digest, so each image that CI pushes to GHCR rolls out through a Git commit.
+- CronJobs that use `imagePullPolicy: Always` with the `latest` tag (`gmail-classifier`, `drive-organizer`, `actual-classifier`) pull the newest image on every run and do not need Image Updater rules.
