@@ -6,7 +6,7 @@ NAME="Actual Budget (Homelab)"
 URL="https://actual.sudhanva.me"
 USERNAME="admin"
 PASSWORD="REDACTED"
-NOTES="Actual Budget personal finance on K3s cluster. Auto-bootstrapped with SimpleFIN support."
+NOTES="Actual Budget personal finance on K3s cluster. Auto-bootstrapped with SimpleFIN Bridge integration (7 accounts linked). Vault Paths: kv/actual-budget/auth and kv/actual-budget/simplefin"
 
 if [[ -z "${BW_SESSION:-}" ]]; then
   echo "Unlocking Bitwarden CLI..."
