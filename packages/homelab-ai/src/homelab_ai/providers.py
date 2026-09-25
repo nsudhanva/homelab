@@ -28,6 +28,7 @@ class LocalOpenAIProviderBuilder(BaseProviderBuilder):
             base_url=config.llm_base_url.rstrip("/"),
             api_key="not-needed",
             timeout=config.llm_timeout_seconds,
+            max_retries=config.llm_max_retries,
         )
         provider = OpenAIProvider(openai_client=client)
         return OpenAIChatModel(
@@ -50,6 +51,7 @@ class OpenRouterProviderBuilder(BaseProviderBuilder):
             base_url=config.openrouter_base_url.rstrip("/"),
             api_key=config.openrouter_api_key,
             timeout=config.openrouter_timeout_seconds,
+            max_retries=config.openrouter_max_retries,
             default_headers=headers if headers else None,
         )
         provider = OpenRouterProvider(openai_client=client)

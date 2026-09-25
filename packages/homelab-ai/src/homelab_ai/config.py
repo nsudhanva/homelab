@@ -44,6 +44,11 @@ class LLMClientConfig(BaseSettings):
         validation_alias="LLM_TIMEOUT_SECONDS",
         description="Per-request timeout in seconds for LLM inference",
     )
+    llm_max_retries: int = Field(
+        default=0,
+        validation_alias="LLM_MAX_RETRIES",
+        description="HTTP retries against the local endpoint before falling back",
+    )
     openrouter_base_url: str = Field(
         default="https://openrouter.ai/api/v1",
         validation_alias="OPENROUTER_BASE_URL",
@@ -63,6 +68,11 @@ class LLMClientConfig(BaseSettings):
         default=60.0,
         validation_alias="OPENROUTER_TIMEOUT_SECONDS",
         description="Per-request timeout in seconds for OpenRouter inference",
+    )
+    openrouter_max_retries: int = Field(
+        default=2,
+        validation_alias="OPENROUTER_MAX_RETRIES",
+        description="HTTP retries against OpenRouter for transient errors",
     )
     app_name: str = Field(
         default="homelab-ai",
