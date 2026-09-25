@@ -7,3 +7,7 @@ tls_sans:
   - "10.0.0.133"
   - "legion"
   - "legion.ainu-herring.ts.net"
+k3s_kubelet_args:
+  - "kube-reserved=cpu=250m,memory=512Mi"
+  - "system-reserved=cpu=250m,memory=512Mi"
+  - "eviction-hard=memory.available<500Mi,nodefs.available<10%,imagefs.available<10%"

@@ -1,0 +1,7 @@
+[Unit]
+Wants=tailscaled.service
+After=tailscaled.service
+
+[Service]
+ExecStartPre=/bin/sh -c 'until ip -4 -o addr show dev tailscale0 | grep -q "{{ k3s_node_ip }}/"; do sleep 1; done'
+TimeoutStartSec=300

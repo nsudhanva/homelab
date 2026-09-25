@@ -14,6 +14,20 @@
     mode: "0644"
   notify: Restart k3s
 
+- name: Ensure k3s systemd drop-in directory exists
+  ansible.builtin.file:
+    path: /etc/systemd/system/k3s.service.d
+    state: directory
+    mode: "0755"
+
+- name: Start k3s only after the Tailscale node IP is up
+  ansible.builtin.template:
+    src: tailscale-dependency.conf.j2
+    dest: /etc/systemd/system/k3s.service.d/10-tailscale.conf
+    mode: "0644"
+  notify:
+    - Reload systemd
+    - Restart k3s
 
 - name: Check if k3s is installed
   ansible.builtin.stat:

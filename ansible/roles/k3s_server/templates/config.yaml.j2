@@ -15,3 +15,7 @@ default-runtime: "nvidia"
 node-label:
   - "gpu.nvidia.com/present=true"
   - "node.homelab/role=controlplane"
+kubelet-arg:
+{% for arg in k3s_kubelet_args %}
+  - "{{ arg }}"
+{% endfor %}

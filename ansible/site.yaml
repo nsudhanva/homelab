@@ -2,7 +2,13 @@
   hosts: k3s_servers
   become: true
   roles:
-    - common
-    - nvidia
-    - k3s_server
-    - argocd
+    - role: common
+      tags: [common]
+    - role: tailscale
+      tags: [tailscale]
+    - role: nvidia
+      tags: [nvidia]
+    - role: k3s_server
+      tags: [k3s]
+    - role: argocd
+      tags: [argocd]
