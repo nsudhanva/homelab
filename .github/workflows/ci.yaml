@@ -449,3 +449,97 @@ jobs:
         platforms: linux/amd64
         tags: ${{ steps.meta.outputs.tags }}
         labels: ${{ steps.meta.outputs.labels }}
+
+  actual-classifier-test:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v7
+    - name: Detect actual-classifier changes
+      id: changes
+      uses: dorny/paths-filter@v4
+      with:
+        filters: |
+          classifier:
+            - "apps/actual-classifier/**"
+            - "packages/homelab-ai/**"
+            - ".github/workflows/ci.yaml"
+    - name: Install uv
+      if: steps.changes.outputs.classifier == 'true'
+      uses: astral-sh/setup-uv@v7
+      with:
+        version: "latest"
+    - name: Set up Python
+      if: steps.changes.outputs.classifier == 'true'
+      run: uv python install 3.12
+    - name: Run ruff lint
+      if: steps.changes.outputs.classifier == 'true'
+      run: uv run ruff check
+      working-directory: apps/actual-classifier
+    - name: Run ruff format check
+      if: steps.changes.outputs.classifier == 'true'
+      run: uv run ruff format --check
+      working-directory: apps/actual-classifier
+    - name: Run ty type check
+      if: steps.changes.outputs.classifier == 'true'
+      run: uv run ty check
+      working-directory: apps/actual-classifier
+    - name: Run unit tests
+      if: steps.changes.outputs.classifier == 'true'
+      run: uv run pytest
+      working-directory: apps/actual-classifier
+
+  actual-classifier-push:
+    if: github.event_name == 'push'
+    needs: actual-classifier-test
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    env:
+      REGISTRY: ghcr.io
+      IMAGE_NAME: ${{ github.repository }}-actual-classifier
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v7
+    - name: Detect actual-classifier changes
+      id: changes
+      uses: dorny/paths-filter@v4
+      with:
+        filters: |
+          classifier:
+            - "apps/actual-classifier/**"
+            - "packages/homelab-ai/**"
+            - ".github/workflows/ci.yaml"
+    - name: Set up QEMU
+      if: steps.changes.outputs.classifier == 'true'
+      uses: docker/setup-qemu-action@v4
+    - name: Set up Docker Buildx
+      if: steps.changes.outputs.classifier == 'true'
+      uses: docker/setup-buildx-action@v4
+    - name: Log in to the Container registry
+      if: steps.changes.outputs.classifier == 'true'
+      uses: docker/login-action@v4
+      with:
+        registry: ${{ env.REGISTRY }}
+        username: ${{ github.actor }}
+        password: ${{ secrets.GITHUB_TOKEN }}
+    - name: Extract metadata
+      if: steps.changes.outputs.classifier == 'true'
+      id: meta
+      uses: docker/metadata-action@v6
+      with:
+        images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+        tags: |
+          type=raw,value=latest
+          type=sha,format=short
+    - name: Build and push actual-classifier image
+      if: steps.changes.outputs.classifier == 'true'
+      uses: docker/build-push-action@v7
+      with:
+        context: .
+        file: ./apps/actual-classifier/Dockerfile
+        push: true
+        platforms: linux/amd64
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
