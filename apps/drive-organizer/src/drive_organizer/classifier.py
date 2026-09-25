@@ -38,6 +38,7 @@ VALID_CATEGORIES = {
     "AI Studio",
     "Models",
     "Code",
+    "Travel",
     "Review",
 }
 

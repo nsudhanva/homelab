@@ -13,6 +13,7 @@ import concurrent.futures
 import json
 import re
 import subprocess
+import time
 import urllib.parse
 import urllib.request
 from collections import defaultdict
@@ -163,13 +164,25 @@ def scan_promotional_senders(
 ) -> list[UnsubscribeTarget]:
     """Scan account for promotional senders and extract unsubscribe metadata."""
     query = "category:promotions OR label:Newsletters"
-    url = (
-        "https://gmail.googleapis.com/gmail/v1/users/me/messages?"
-        + urllib.parse.urlencode({"q": query, "maxResults": max_messages})
-    )
-    req = urllib.request.Request(url, headers={"Authorization": f"Bearer {token}"})
-    with urllib.request.urlopen(req, timeout=15) as resp:
-        msgs = json.loads(resp.read().decode("utf-8")).get("messages", [])
+    msgs = []
+    page_token = None
+    while len(msgs) < max_messages:
+        batch_size = min(500, max_messages - len(msgs))
+        params = {"q": query, "maxResults": batch_size}
+        if page_token:
+            params["pageToken"] = page_token
+        url = (
+            "https://gmail.googleapis.com/gmail/v1/users/me/messages?"
+            + urllib.parse.urlencode(params)
+        )
+        req = urllib.request.Request(url, headers={"Authorization": f"Bearer {token}"})
+        with urllib.request.urlopen(req, timeout=15) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+            batch = data.get("messages", [])
+            msgs.extend(batch)
+            page_token = data.get("nextPageToken")
+            if not page_token or not batch:
+                break
 
     print(
         f"[{account_name}] Found {len(msgs)} promotional messages. Inspecting headers in parallel..."
@@ -333,6 +346,7 @@ def run_manager(account: str, max_messages: int = 500, execute: bool = False) ->
 
     for t in unsub_ready:
         ok, msg = execute_unsubscribe(t)
+        time.sleep(0.3)
         if ok:
             success_count += 1
             print(f"  ✅ [SUCCESS] {t.sender_name} ({t.domain}): {msg}")
