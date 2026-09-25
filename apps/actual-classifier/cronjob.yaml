@@ -1,0 +1,73 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: actual-classifier
+  namespace: actual-classifier
+spec:
+  schedule: "0 */2 * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      ttlSecondsAfterFinished: 86400
+      template:
+        metadata:
+          labels:
+            app: actual-classifier
+        spec:
+          restartPolicy: OnFailure
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 10001
+            runAsGroup: 10001
+            fsGroup: 10001
+            seccompProfile:
+              type: RuntimeDefault
+          containers:
+            - name: actual-classifier
+              image: ghcr.io/nsudhanva/homelab-actual-classifier:latest
+              imagePullPolicy: Always
+              securityContext:
+                runAsNonRoot: true
+                runAsUser: 10001
+                runAsGroup: 10001
+                readOnlyRootFilesystem: true
+                allowPrivilegeEscalation: false
+                capabilities:
+                  drop:
+                    - ALL
+              resources:
+                requests:
+                  cpu: 100m
+                  memory: 128Mi
+                limits:
+                  cpu: 500m
+                  memory: 384Mi
+              envFrom:
+                - secretRef:
+                    name: actual-classifier-secrets
+                    optional: true
+              env:
+                - name: ACTUAL_SERVER_URL
+                  value: "http://actual-budget.actual-budget.svc.cluster.local:5006"
+                - name: ACTUAL_BUDGET_NAME
+                  value: "My Finances"
+                - name: PRIMARY_LLM_PROVIDER
+                  value: "local"
+                - name: FALLBACK_LLM_PROVIDER
+                  value: "openrouter"
+                - name: LLM_BASE_URL
+                  value: "http://llama-server.llama.svc.cluster.local:8080/v1"
+                - name: LLM_MODEL
+                  value: "gemma-4-e2b-it"
+                - name: CONFIDENCE_THRESHOLD
+                  value: "0.6"
+                - name: BATCH_SIZE
+                  value: "50"
+              volumeMounts:
+                - name: tmp
+                  mountPath: /tmp
+          volumes:
+            - name: tmp
+              emptyDir: {}

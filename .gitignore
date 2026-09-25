@@ -36,5 +36,6 @@ vault-keys.json
 **/__pycache__/
 *.pyc
 .pytest_cache/
+.ruff_cache/
 .env
 *.env

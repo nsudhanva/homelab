@@ -149,3 +149,13 @@ The `media` namespace is shared by Jellyfin and Filebrowser so they can use the 
 | Service | `apps/actual-budget/service.yaml` | ClusterIP on port 5006 |
 | HTTPRoute | `apps/actual-budget/httproute.yaml` | `actual.sudhanva.me` via tailnet gateway |
 | PVC | `apps/actual-budget/pvc.yaml` | 5Gi local-path storage for `/data` (SQLite database and user files) |
+
+## Actual Classifier
+
+| Item | Path | Notes |
+| --- | --- | --- |
+| Namespace | `apps/actual-classifier/namespace.yaml` | Dedicated `actual-classifier` namespace |
+| App config | `apps/actual-classifier/app.yaml` | ArgoCD app definition |
+| CronJob | `apps/actual-classifier/cronjob.yaml` | Scheduled every 2 hours (`0 */2 * * *`) |
+| ExternalSecret | `apps/actual-classifier/secret.yaml` | Vault integration for Actual Budget and OpenRouter credentials |
+| Python App | `apps/actual-classifier/src/actual_classifier/` | Automated transaction categorization and tagging using local Gemma 4 |
