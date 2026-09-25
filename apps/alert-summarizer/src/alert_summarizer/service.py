@@ -1,5 +1,6 @@
 import html
 import logging
+import time
 
 from .clients import AlertAgentClient, TelegramClient
 from .models import Alert, AlertmanagerPayload, AlertSummary
@@ -7,10 +8,37 @@ from .models import Alert, AlertmanagerPayload, AlertSummary
 logger = logging.getLogger(__name__)
 
 
+class AlertDeduplicator:
+    """Suppresses re-deliveries of an alert state already sent within a time window."""
+
+    def __init__(self, window_seconds: float) -> None:
+        self.window_seconds = window_seconds
+        self._sent: dict[tuple[str, str], float] = {}
+
+    @staticmethod
+    def key(alert: Alert) -> tuple[str, str]:
+        identity = alert.fingerprint or f"{alert.alertname}|{sorted(alert.labels.items())}"
+        return identity, alert.status.lower()
+
+    def should_send(self, alert: Alert, now: float | None = None) -> bool:
+        now = time.monotonic() if now is None else now
+        self._sent = {k: t for k, t in self._sent.items() if now - t < self.window_seconds}
+        return self.key(alert) not in self._sent
+
+    def mark_sent(self, alert: Alert, now: float | None = None) -> None:
+        self._sent[self.key(alert)] = time.monotonic() if now is None else now
+
+
 class AlertSummarizerService:
-    def __init__(self, agent_client: AlertAgentClient, telegram_client: TelegramClient):
+    def __init__(
+        self,
+        agent_client: AlertAgentClient,
+        telegram_client: TelegramClient,
+        deduplicator: AlertDeduplicator | None = None,
+    ):
         self.agent = agent_client
         self.telegram = telegram_client
+        self.deduplicator = deduplicator
 
     def format_alert_context(self, alert: Alert) -> str:
         lines = [
@@ -85,6 +113,11 @@ class AlertSummarizerService:
     async def process_payload(self, payload: AlertmanagerPayload) -> int:
         success_count = 0
         for alert in payload.alerts:
+            if self.deduplicator and not self.deduplicator.should_send(alert):
+                logger.info(f"Skipping duplicate delivery: {alert.alertname} ({alert.status})")
+                continue
             if await self.process_alert(alert):
                 success_count += 1
+                if self.deduplicator:
+                    self.deduplicator.mark_sent(alert)
         return success_count

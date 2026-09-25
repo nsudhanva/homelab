@@ -17,7 +17,8 @@ class Settings(BaseSettings):
     llm_timeout_seconds: float = 15.0
     llm_max_tokens: int = 400
     llm_temperature: float = 0.2
-    llm_retries: int = 2
+    llm_retries: int = 1
+    dedup_window_seconds: float = 3000.0
     pydantic_ai_no_banner: bool = True
 
     # Telegram Settings

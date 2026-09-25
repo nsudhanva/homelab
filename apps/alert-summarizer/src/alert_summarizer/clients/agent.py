@@ -1,10 +1,12 @@
 import logging
 from dataclasses import dataclass
 
+from openai import AsyncOpenAI
 from pydantic_ai import Agent, RunContext
 from pydantic_ai.models import Model
 from pydantic_ai.models.openai import OpenAIChatModel
 from pydantic_ai.providers.openai import OpenAIProvider
+from pydantic_ai.settings import ModelSettings
 
 from ..models import AlertSummary
 
@@ -20,11 +22,13 @@ class SummarizerDeps:
 def build_alert_agent(
     model: Model | str,
     retries: int = 2,
+    model_settings: ModelSettings | None = None,
 ) -> Agent[SummarizerDeps, AlertSummary]:
     agent: Agent[SummarizerDeps, AlertSummary] = Agent(
         model=model,
         output_type=AlertSummary,
         deps_type=SummarizerDeps,
+        model_settings=model_settings,
         system_prompt=(
             "You are an expert Site Reliability Engineering (SRE) on-call assistant "
             "for a bare-metal Kubernetes homelab cluster. "
@@ -57,6 +61,9 @@ class AlertAgentClient:
         cluster_name: str = "homelab-k3s",
         environment: str = "production",
         custom_model: Model | None = None,
+        timeout_seconds: float = 15.0,
+        max_tokens: int = 400,
+        temperature: float = 0.2,
     ):
         self.cluster_name = cluster_name
         self.environment = environment
@@ -64,16 +71,27 @@ class AlertAgentClient:
         if custom_model is not None:
             self._model = custom_model
         else:
-            provider = OpenAIProvider(
+            client = AsyncOpenAI(
                 base_url=base_url.rstrip("/"),
                 api_key="none",
+                timeout=timeout_seconds,
+                max_retries=0,
             )
+            provider = OpenAIProvider(openai_client=client)
             self._model = OpenAIChatModel(
                 model_name=model_name,
                 provider=provider,
             )
 
-        self.agent = build_alert_agent(model=self._model, retries=retries)
+        self.agent = build_alert_agent(
+            model=self._model,
+            retries=retries,
+            model_settings=ModelSettings(
+                max_tokens=max_tokens,
+                temperature=temperature,
+                timeout=timeout_seconds,
+            ),
+        )
 
     async def summarize_alert(
         self,

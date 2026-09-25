@@ -8,7 +8,7 @@ from pydantic_ai.models.test import TestModel
 
 from alert_summarizer.clients import AlertAgentClient, TelegramClient
 from alert_summarizer.models import Alert, AlertmanagerPayload, AlertSummary
-from alert_summarizer.service import AlertSummarizerService
+from alert_summarizer.service import AlertDeduplicator, AlertSummarizerService
 
 os.environ["PYDANTIC_AI_NO_BANNER"] = "1"
 
@@ -160,3 +160,58 @@ async def test_process_payload(sample_alert: Alert):
 
     assert count == 2
     assert mock_tg.send_message.await_count == 2
+
+
+@pytest.mark.asyncio
+async def test_process_payload_skips_duplicate_deliveries(sample_alert: Alert):
+    mock_agent = AsyncMock(spec=AlertAgentClient)
+    mock_agent.summarize_alert.return_value = None
+    mock_tg = AsyncMock(spec=TelegramClient)
+    mock_tg.send_message.return_value = True
+    deduplicator = AlertDeduplicator(window_seconds=3000)
+    service = AlertSummarizerService(
+        agent_client=mock_agent, telegram_client=mock_tg, deduplicator=deduplicator
+    )
+    payload = AlertmanagerPayload(status="firing", alerts=[sample_alert])
+
+    assert await service.process_payload(payload) == 1
+    assert await service.process_payload(payload) == 0
+    assert mock_tg.send_message.await_count == 1
+
+
+def test_deduplicator_expires_after_window(sample_alert: Alert):
+    deduplicator = AlertDeduplicator(window_seconds=60)
+    deduplicator.mark_sent(sample_alert, now=0.0)
+
+    assert not deduplicator.should_send(sample_alert, now=30.0)
+    assert deduplicator.should_send(sample_alert, now=61.0)
+
+
+def test_deduplicator_treats_resolved_as_new_state(
+    sample_alert: Alert, sample_resolved_alert: Alert
+):
+    deduplicator = AlertDeduplicator(window_seconds=3000)
+    deduplicator.mark_sent(sample_alert, now=0.0)
+
+    assert deduplicator.should_send(sample_resolved_alert, now=1.0)
+
+
+def test_webhook_returns_before_processing(sample_alert: Alert):
+    from fastapi.testclient import TestClient
+
+    from alert_summarizer.main import app, get_service
+
+    mock_service = AsyncMock(spec=AlertSummarizerService)
+    mock_service.process_payload.return_value = 1
+    app.dependency_overrides[get_service] = lambda: mock_service
+    try:
+        response = TestClient(app).post(
+            "/webhook",
+            json={"status": "firing", "alerts": [sample_alert.model_dump()]},
+        )
+    finally:
+        app.dependency_overrides.clear()
+
+    assert response.status_code == 200
+    assert response.json() == {"status": "accepted", "alerts_received": 1}
+    mock_service.process_payload.assert_awaited_once()

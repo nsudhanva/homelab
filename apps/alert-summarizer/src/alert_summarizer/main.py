@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import os
 from collections.abc import AsyncIterator
@@ -5,18 +6,22 @@ from contextlib import asynccontextmanager
 from typing import Any
 
 import httpx
-from fastapi import Depends, FastAPI, HTTPException, status
+from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException, status
 
 from .clients import AlertAgentClient, TelegramClient
 from .config import Settings
 from .models import AlertmanagerPayload
-from .service import AlertSummarizerService
+from .service import AlertDeduplicator, AlertSummarizerService
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(name)s: %(message)s")
+for noisy_logger in ("httpx", "httpx2", "httpcore"):
+    logging.getLogger(noisy_logger).setLevel(logging.WARNING)
 logger = logging.getLogger("alert_summarizer")
 
 settings = Settings()
 http_client: httpx.AsyncClient | None = None
+deduplicator = AlertDeduplicator(window_seconds=settings.dedup_window_seconds)
+processing_lock = asyncio.Lock()
 
 
 @asynccontextmanager
@@ -48,6 +53,9 @@ def get_service() -> AlertSummarizerService:
         retries=settings.llm_retries,
         cluster_name=settings.cluster_name,
         environment=settings.environment,
+        timeout_seconds=settings.llm_timeout_seconds,
+        max_tokens=settings.llm_max_tokens,
+        temperature=settings.llm_temperature,
     )
     telegram = TelegramClient(
         bot_token=token,
@@ -56,7 +64,9 @@ def get_service() -> AlertSummarizerService:
         timeout_seconds=settings.telegram_timeout_seconds,
         client=http_client,
     )
-    return AlertSummarizerService(agent_client=agent, telegram_client=telegram)
+    return AlertSummarizerService(
+        agent_client=agent, telegram_client=telegram, deduplicator=deduplicator
+    )
 
 
 @app.get("/healthz", status_code=status.HTTP_200_OK)
@@ -76,9 +86,19 @@ async def readyz() -> dict[str, str]:
         ) from exc
 
 
+async def process_in_background(
+    service: AlertSummarizerService, payload: AlertmanagerPayload
+) -> None:
+    async with processing_lock:
+        count = await service.process_payload(payload)
+    logger.info(f"Dispatched {count} of {len(payload.alerts)} alert(s)")
+
+
 @app.post("/webhook", status_code=status.HTTP_200_OK)
 async def webhook(
-    payload: AlertmanagerPayload, service: AlertSummarizerService = Depends(get_service)
+    payload: AlertmanagerPayload,
+    background_tasks: BackgroundTasks,
+    service: AlertSummarizerService = Depends(get_service),
 ) -> dict[str, Any]:
-    count = await service.process_payload(payload)
-    return {"status": "processed", "alerts_dispatched": count}
+    background_tasks.add_task(process_in_background, service, payload)
+    return {"status": "accepted", "alerts_received": len(payload.alerts)}
