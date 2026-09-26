@@ -286,3 +286,34 @@ def test_run_archive_sweep_disabled(monkeypatch):
     count = run_archive_sweep(settings=settings, gmail=mock_gmail)
     assert count == 0
     mock_gmail.list_messages_to_archive.assert_not_called()
+
+
+def test_parse_arguments_mark_all_read():
+    args = parse_arguments(["--mark-all-read", "--account", "family"])
+    assert args.mark_all_read is True
+    assert args.account == "family"
+
+
+def test_run_mark_all_read(monkeypatch):
+    monkeypatch.setenv("GMAIL_CLIENT_ID", "cid")
+    monkeypatch.setenv("GMAIL_CLIENT_SECRET", "csecret")
+    monkeypatch.setenv("GMAIL_REFRESH_TOKEN", "rtoken")
+    settings = Settings()
+
+    from gmail_classifier.main import run_mark_all_read
+
+    mock_gmail = MagicMock()
+    mock_gmail.list_unread_messages.return_value = ["u-1", "u-2"]
+    mock_gmail.batch_mark_read.return_value = 2
+    assert run_mark_all_read(settings=settings, gmail=mock_gmail) == 2
+    mock_gmail.batch_mark_read.assert_called_once_with(["u-1", "u-2"])
+
+    mock_gmail.reset_mock()
+    mock_gmail.list_unread_messages.return_value = ["u-1"]
+    assert run_mark_all_read(settings=settings, gmail=mock_gmail, dry_run=True) == 1
+    mock_gmail.batch_mark_read.assert_not_called()
+
+    mock_gmail.reset_mock()
+    mock_gmail.list_unread_messages.return_value = []
+    assert run_mark_all_read(settings=settings, gmail=mock_gmail) == 0
+    mock_gmail.batch_mark_read.assert_not_called()

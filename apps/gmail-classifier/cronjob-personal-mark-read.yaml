@@ -1,0 +1,64 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: gmail-mark-read-personal
+  namespace: gmail-classifier
+spec:
+  schedule: "0 4 * * 0"
+  suspend: false
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      ttlSecondsAfterFinished: 86400
+      backoffLimit: 3
+      template:
+        metadata:
+          labels:
+            app: gmail-mark-read-personal
+        spec:
+          restartPolicy: OnFailure
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 10001
+            runAsGroup: 10001
+            fsGroup: 10001
+            seccompProfile:
+              type: RuntimeDefault
+          containers:
+            - name: gmail-mark-read
+              image: ghcr.io/nsudhanva/homelab-gmail-classifier:latest
+              imagePullPolicy: Always
+              args:
+                - --mark-all-read
+              securityContext:
+                runAsNonRoot: true
+                runAsUser: 10001
+                runAsGroup: 10001
+                readOnlyRootFilesystem: true
+                allowPrivilegeEscalation: false
+                capabilities:
+                  drop:
+                    - ALL
+              resources:
+                requests:
+                  cpu: 50m
+                  memory: 96Mi
+                limits:
+                  cpu: 250m
+                  memory: 256Mi
+              envFrom:
+                - secretRef:
+                    name: gmail-credentials-personal
+              env:
+                - name: ACCOUNT_NAME
+                  value: "personal"
+                - name: PROCESSED_LABEL
+                  value: "ai-processed"
+              volumeMounts:
+                - name: tmp
+                  mountPath: /tmp
+          volumes:
+            - name: tmp
+              emptyDir: {}

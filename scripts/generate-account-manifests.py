@@ -106,6 +106,74 @@ spec:
 """
 
 
+def generate_gmail_mark_read_cronjob(account_id: str, schedule: str) -> str:
+    return f"""apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: gmail-mark-read-{account_id}
+  namespace: gmail-classifier
+spec:
+  schedule: "{schedule}"
+  suspend: false
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      ttlSecondsAfterFinished: 86400
+      backoffLimit: 3
+      template:
+        metadata:
+          labels:
+            app: gmail-mark-read-{account_id}
+        spec:
+          restartPolicy: OnFailure
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 10001
+            runAsGroup: 10001
+            fsGroup: 10001
+            seccompProfile:
+              type: RuntimeDefault
+          containers:
+            - name: gmail-mark-read
+              image: ghcr.io/nsudhanva/homelab-gmail-classifier:latest
+              imagePullPolicy: Always
+              args:
+                - --mark-all-read
+              securityContext:
+                runAsNonRoot: true
+                runAsUser: 10001
+                runAsGroup: 10001
+                readOnlyRootFilesystem: true
+                allowPrivilegeEscalation: false
+                capabilities:
+                  drop:
+                    - ALL
+              resources:
+                requests:
+                  cpu: 50m
+                  memory: 96Mi
+                limits:
+                  cpu: 250m
+                  memory: 256Mi
+              envFrom:
+                - secretRef:
+                    name: gmail-credentials-{account_id}
+              env:
+                - name: ACCOUNT_NAME
+                  value: "{account_id}"
+                - name: PROCESSED_LABEL
+                  value: "ai-processed"
+              volumeMounts:
+                - name: tmp
+                  mountPath: /tmp
+          volumes:
+            - name: tmp
+              emptyDir: {{}}
+"""
+
+
 def generate_gmail_secret(account_id: str, vault_path: str) -> str:
     return f"""apiVersion: external-secrets.io/v1
 kind: ExternalSecret
@@ -262,11 +330,15 @@ spec:
 """
 
 
-def generate_kustomization(namespace: str, account_ids: list[str]) -> str:
+def generate_kustomization(
+    namespace: str, account_ids: list[str], extra_cronjobs: bool = False
+) -> str:
     resources = ["namespace.yaml", "openrouter-secret.yaml"]
     for aid in account_ids:
         resources.append(f"secret-{aid}.yaml")
         resources.append(f"cronjob-{aid}.yaml")
+        if extra_cronjobs:
+            resources.append(f"cronjob-{aid}-mark-read.yaml")
 
     res_lines = "\n".join(f"- {r}" for r in resources)
     return f"""apiVersion: kustomize.config.k8s.io/v1beta1
@@ -305,6 +377,8 @@ def main() -> None:
             "schedule_key": "gmail",
             "cronjob_gen": generate_gmail_cronjob,
             "secret_gen": generate_gmail_secret,
+            "extra_schedule_key": "gmail_mark_read",
+            "extra_cronjob_gen": generate_gmail_mark_read_cronjob,
         },
         {
             "app_dir": REPO_ROOT / "apps" / "drive-organizer",
@@ -323,6 +397,8 @@ def main() -> None:
         sched_key: str = target["schedule_key"]
         cronjob_gen = target["cronjob_gen"]
         secret_gen = target["secret_gen"]
+        extra_key = target.get("extra_schedule_key")
+        extra_gen = target.get("extra_cronjob_gen")
 
         # Expected files and contents
         expected_files: dict[Path, str] = {}
@@ -337,9 +413,14 @@ def main() -> None:
 
             expected_files[cron_file] = cronjob_gen(aid, sched)
             expected_files[secret_file] = secret_gen(aid, vpath)
+            if extra_key and extra_gen:
+                extra_file = app_dir / f"cronjob-{aid}-mark-read.yaml"
+                expected_files[extra_file] = extra_gen(aid, acc["schedule"][extra_key])
 
         kust_file = app_dir / "kustomization.yaml"
-        expected_files[kust_file] = generate_kustomization(namespace, account_ids)
+        expected_files[kust_file] = generate_kustomization(
+            namespace, account_ids, extra_cronjobs=bool(extra_key)
+        )
 
         # Clean up legacy un-suffixed files, and orphaned account files
         legacy_files = [

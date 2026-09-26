@@ -205,3 +205,37 @@ def test_batch_archive_messages():
         userId="me",
         body={"ids": ["msg-1", "msg-2"], "removeLabelIds": ["INBOX"]},
     )
+
+
+def test_list_unread_messages_paginates():
+    mock_service = MagicMock()
+    mock_messages_api = mock_service.users().messages()
+    mock_messages_api.list.return_value.execute.side_effect = [
+        {"messages": [{"id": "u-1"}, {"id": "u-2"}], "nextPageToken": "next"},
+        {"messages": [{"id": "u-3"}]},
+    ]
+    client = GmailClient(
+        client_id="cid", client_secret="csecret", refresh_token="rtoken", service=mock_service
+    )
+
+    assert client.list_unread_messages() == ["u-1", "u-2", "u-3"]
+    mock_messages_api.list.assert_any_call(
+        userId="me", q="is:unread", maxResults=500, pageToken=None
+    )
+
+
+def test_batch_mark_read_chunks_requests():
+    mock_service = MagicMock()
+    mock_messages_api = mock_service.users().messages()
+    client = GmailClient(
+        client_id="cid", client_secret="csecret", refresh_token="rtoken", service=mock_service
+    )
+
+    assert client.batch_mark_read([]) == 0
+    assert client.batch_mark_read(["m-1", "m-2", "m-3"], batch_size=2) == 3
+    mock_messages_api.batchModify.assert_any_call(
+        userId="me", body={"ids": ["m-1", "m-2"], "removeLabelIds": ["UNREAD"]}
+    )
+    mock_messages_api.batchModify.assert_any_call(
+        userId="me", body={"ids": ["m-3"], "removeLabelIds": ["UNREAD"]}
+    )

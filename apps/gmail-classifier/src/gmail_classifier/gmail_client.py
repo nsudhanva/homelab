@@ -200,3 +200,38 @@ class GmailClient:
                 f"Archived batch of {len(chunk)} messages ({total_archived}/{len(message_ids)})"
             )
         return total_archived
+
+    def list_unread_messages(self, limit: int | None = None) -> list[str]:
+        """List IDs of every unread message outside spam and trash."""
+        messages: list[str] = []
+        page_token: str | None = None
+        while True:
+            res = (
+                self.service.users()
+                .messages()
+                .list(userId="me", q="is:unread", maxResults=500, pageToken=page_token)
+                .execute()
+            )
+            for item in res.get("messages", []):
+                if "id" in item:
+                    messages.append(item["id"])
+                    if limit is not None and len(messages) >= limit:
+                        return messages
+            page_token = res.get("nextPageToken")
+            if not page_token:
+                break
+        return messages
+
+    def batch_mark_read(self, message_ids: list[str], batch_size: int = 1000) -> int:
+        """Batch remove the UNREAD label without modifying other labels."""
+        total = 0
+        for i in range(0, len(message_ids), batch_size):
+            chunk = message_ids[i : i + batch_size]
+            self.service.users().messages().batchModify(
+                userId="me", body={"ids": chunk, "removeLabelIds": ["UNREAD"]}
+            ).execute()
+            total += len(chunk)
+            logger.info(
+                f"Marked batch of {len(chunk)} messages as read ({total}/{len(message_ids)})"
+            )
+        return total

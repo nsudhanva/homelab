@@ -125,7 +125,8 @@ The `media` namespace is shared by Jellyfin and Filebrowser so they can use the 
 | --- | --- | --- |
 | Namespace | `apps/gmail-classifier/namespace.yaml` | Dedicated `gmail-classifier` namespace |
 | App config | `apps/gmail-classifier/app.yaml` | ArgoCD app definition |
-| CronJob | `apps/gmail-classifier/cronjob.yaml` | Daily schedule at `0 1 * * *` invoking `uv run gmail-classifier` |
+| CronJob | `apps/gmail-classifier/cronjob-<nickname>.yaml` | Daily classification per account, generated from `apps/accounts.yaml` |
+| CronJob | `apps/gmail-classifier/cronjob-<nickname>-mark-read.yaml` | Weekly `--mark-all-read` per account (Sundays) |
 | ExternalSecret | `apps/gmail-classifier/secret.yaml` | Vault integration for Google OAuth client credentials and refresh token |
 | Python App | `apps/gmail-classifier/src/gmail_classifier/` | Automated Gmail triage engine using local Gemma 4 and Telegram alerts |
 

@@ -68,11 +68,13 @@ accounts:
   - nickname: personal
     schedule:
       gmail: "0 1 * * *"
+      gmail_mark_read: "0 4 * * 0"
       drive: "0 2 * * *"
     vault_path: google/accounts/personal
   - nickname: work
     schedule:
       gmail: "15 1 * * *"
+      gmail_mark_read: "15 4 * * 0"
       drive: "15 2 * * *"
     vault_path: google/accounts/work
 ```
@@ -93,7 +95,8 @@ uv run --with pyyaml scripts/generate-account-manifests.py --check
 
 The generator produces:
 
-- Symmetrical CronJobs: `cronjob-primary.yaml`, `cronjob-secondary.yaml`
+- Classifier and Drive CronJobs per account: `cronjob-<nickname>.yaml`
+- Weekly Gmail mark-as-read CronJobs per account: `apps/gmail-classifier/cronjob-<nickname>-mark-read.yaml` (`gmail-mark-read-<nickname>`), scheduled by `gmail_mark_read`
 - Symmetrical ExternalSecrets: `secret-primary.yaml`, `secret-secondary.yaml`
 - Updated `kustomization.yaml` resource lists
 

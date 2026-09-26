@@ -284,6 +284,20 @@ To maintain a clean, high-signal inbox without manual maintenance, the classifie
 - **High-Throughput Batch Processing**: Utilizes the Gmail API `batchModify` endpoint to remove the `INBOX` label across up to 1,000 messages per request, requiring zero LLM inference tokens.
 - **Telemetry & Digest Reporting**: The total number of archived emails is included directly in the Telegram summary report (`📦 Archived from Inbox: <count>`).
 
+### Weekly Mark-as-Read
+
+A separate CronJob per account (`gmail-mark-read-<nickname>`) runs the same image with `--mark-all-read` every Sunday (04:00 for `personal`, 04:15 for `family`, from `gmail_mark_read` in `apps/accounts.yaml`):
+
+- Lists every unread message outside Spam and Trash with the query `is:unread`.
+- Removes the `UNREAD` label through `batchModify`, up to 1,000 messages per request. Labels, inbox placement, and classification are untouched.
+- Uses no LLM inference and sends no Telegram message.
+
+Run it on demand for one account:
+
+```bash
+kubectl -n gmail-classifier create job --from=cronjob/gmail-mark-read-personal gmail-mark-read-personal-manual
+```
+
 ---
 
 ## Security & Secrets Management

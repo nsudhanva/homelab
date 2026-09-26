@@ -77,6 +77,12 @@ def parse_arguments(args: list[str] | None = None) -> argparse.Namespace:
         help="Run only the archive sweep for older emails without classifying new emails.",
     )
     parser.add_argument(
+        "--mark-all-read",
+        action="store_true",
+        default=False,
+        help="Mark every unread email as read without classifying or archiving.",
+    )
+    parser.add_argument(
         "--account",
         type=str,
         default=None,
@@ -127,6 +133,34 @@ def run_archive_sweep(
 
     logger.info(f"[{settings.account_name}] [DRY RUN] Would archive {len(archive_ids)} email(s).")
     return len(archive_ids)
+
+
+def run_mark_all_read(
+    settings: Settings,
+    gmail: GmailClient | None = None,
+    dry_run: bool = False,
+    limit: int | None = None,
+) -> int:
+    """Mark every unread message in the account as read."""
+    if gmail is None:
+        gmail = GmailClient(
+            client_id=settings.gmail_client_id,
+            client_secret=settings.gmail_client_secret,
+            refresh_token=settings.gmail_refresh_token,
+            processed_label=settings.processed_label,
+        )
+
+    unread_ids = gmail.list_unread_messages(limit=limit)
+    logger.info(f"[{settings.account_name}] Found {len(unread_ids)} unread email(s).")
+    if not unread_ids:
+        return 0
+    if dry_run:
+        logger.info(f"[{settings.account_name}] [DRY RUN] Would mark {len(unread_ids)} as read.")
+        return len(unread_ids)
+
+    marked = gmail.batch_mark_read(unread_ids)
+    logger.info(f"[{settings.account_name}] Marked {marked} email(s) as read.")
+    return marked
 
 
 def run_pipeline(
@@ -371,6 +405,14 @@ def main() -> None:
     except Exception as exc:
         logger.error(f"Failed to load application settings from environment: {exc}")
         sys.exit(1)
+
+    if args.mark_all_read:
+        try:
+            run_mark_all_read(settings=settings, dry_run=args.dry_run, limit=args.limit)
+        except Exception as exc:
+            logger.exception(f"Unhandled error while marking emails as read: {exc}")
+            sys.exit(1)
+        return
 
     if args.archive_only:
         try:
