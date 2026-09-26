@@ -14,7 +14,7 @@ class Settings(BaseSettings):
     # LLM & Pydantic AI Settings
     llm_base_url: str = "http://llama-server.llama.svc.cluster.local:8080/v1"
     llm_model: str = "gemma-4-e2b-it"
-    llm_timeout_seconds: float = 15.0
+    llm_timeout_seconds: float = 60.0
     llm_max_tokens: int = 400
     llm_temperature: float = 0.2
     llm_retries: int = 1

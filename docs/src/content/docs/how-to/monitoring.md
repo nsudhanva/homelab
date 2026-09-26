@@ -54,14 +54,22 @@ kubectl -n monitoring get servicemonitors
 
 ## Step 5: Telegram Alerting
 
-Alertmanager and Grafana forward cluster alerts directly to Telegram:
+Alertmanager sends alerts to the `alert-summarizer` service (`apps/alert-summarizer/`), which summarizes each alert with the local LLM and posts it to Telegram. Grafana posts to Telegram directly.
 
 - Bot: `@ManassuHomelabBot`
 - Target Chat ID: `7341944813`
 - Secret storage: Bot token stored in Vault at `kv/telegram/bot`
-- GitOps Secret Sync: ExternalSecret in `infrastructure/prometheus/external-secret-telegram.yaml` creates `alertmanager-telegram` in `monitoring`
-- Alertmanager Config: `prometheus.yaml` mounts `alertmanager-telegram` and sets `bot_token_file: /etc/alertmanager/secrets/alertmanager-telegram/token`
+- GitOps Secret Sync: ExternalSecret in `infrastructure/prometheus/external-secret-telegram.yaml` creates `alertmanager-telegram` in `monitoring`, which `alert-summarizer` mounts
+- Alertmanager route: `prometheus.yaml` groups alerts by `alertname` and `namespace` (`group_wait: 30s`, `group_interval: 5m`, `repeat_interval: 1h`) and sends them to `http://alert-summarizer.monitoring.svc.cluster.local:8000/webhook` with `send_resolved: true`
+- Silenced routes: `Watchdog`, `InfoInhibitor`, `Alertmanager*FailedToSendAlerts`, and `severity=info` go to the `null` receiver
 - Grafana: Contact point `Telegram AlertBot` configured as default notification policy
+
+### Alert summarizer behavior
+
+- The webhook acknowledges Alertmanager immediately and processes alerts in the background, one at a time.
+- Each alert is summarized into symptom, probable cause, and recommended action by `gemma-4-e2b-it` (`ALERT_LLM_TIMEOUT_SECONDS`, `ALERT_LLM_MAX_TOKENS`). If the model does not answer in time, a plain template message is sent instead.
+- Re-deliveries of the same alert state (same fingerprint and status) within `ALERT_DEDUP_WINDOW_SECONDS` (default 3000 seconds) are skipped. The window is shorter than `repeat_interval`, so hourly reminders for alerts that are still firing are delivered.
+- New images roll out automatically through Argo CD Image Updater (digest strategy).
 
 To test the alerting pipeline, send a test alert payload to Alertmanager:
 
