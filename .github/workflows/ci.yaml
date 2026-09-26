@@ -2,9 +2,13 @@ name: CI
 
 on:
   pull_request:
+    paths-ignore:
+    - "apps/**/.argocd-source-*.yaml"
   push:
     branches:
     - master
+    paths-ignore:
+    - "apps/**/.argocd-source-*.yaml"
 
 permissions:
   contents: read
