@@ -4,7 +4,7 @@ metadata:
   name: actual-classifier
   namespace: actual-classifier
 spec:
-  schedule: "0 */2 * * *"
+  schedule: "0 3 * * *"
   suspend: false
   concurrencyPolicy: Forbid
   successfulJobsHistoryLimit: 3

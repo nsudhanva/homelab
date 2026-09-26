@@ -26,7 +26,7 @@ The classifier automates categorization and single-word tagging for imported ban
 - **Guardrails & Confidence Threshold**: Any prediction below the configured confidence threshold (default `0.60`) is tagged `#Unknown` to prevent misclassification of ambiguous charges. Transactions with no applicable tag keep a clean note (for example groceries and general shopping).
 - **Scope**: Only on-budget transactions with no category (or an `#Unknown` note) are classified. Transfers between accounts, off-budget tracking accounts (brokerage and retirement), split parents, and starting balances are skipped.
 - **Amount Sign Awareness**: Negative amounts are treated as outflows and positive amounts as inflows; a positive amount from a merchant is classified as a refund in that merchant's category.
-- **Scheduled Sync**: Deployed as a Kubernetes CronJob running every two hours (`0 */2 * * *`) with concurrency control and ephemeral pod termination. The image is built and published to `ghcr.io/nsudhanva/homelab-actual-classifier` by the `actual-classifier-push` CI job.
+- **Scheduled Sync**: Deployed as a Kubernetes CronJob running daily at 03:00 (`0 3 * * *`), after the Gmail (01:00) and Drive (02:00) jobs, with concurrency control and ephemeral pod termination. The image is built and published to `ghcr.io/nsudhanva/homelab-actual-classifier` by the `actual-classifier-push` CI job.
 
 ## Step 1: Review Configuration and Secrets
 
