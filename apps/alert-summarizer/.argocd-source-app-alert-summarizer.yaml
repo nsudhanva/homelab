@@ -1,3 +1,3 @@
 kustomize:
   images:
-  - ghcr.io/nsudhanva/homelab-alert-summarizer:latest@sha256:17a9e9a65ed8dec2fcdf560157e3982160094d0c67fe16ee28c83b338bfb1a45
+  - ghcr.io/nsudhanva/homelab-alert-summarizer:latest@sha256:b7902e9fd7f7dbe5a0334cb5e1e25aef2a3d55be08619c233a9b39562b8339bc
