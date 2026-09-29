@@ -31,9 +31,9 @@ if [[ ! -x "$BIN" ]]; then
   curl -sSL -o "$CHECKSUMS" "https://github.com/yannh/kubeconform/releases/download/${VERSION}/CHECKSUMS"
 
   if command -v sha256sum >/dev/null 2>&1; then
-    grep "$(basename "$TAR")" "$CHECKSUMS" | (cd "$BIN_DIR" && sha256sum --check)
+    grep "$(basename "$TAR")" "$CHECKSUMS" | (cd "$BIN_DIR" && sha256sum -c -)
   elif command -v shasum >/dev/null 2>&1; then
-    grep "$(basename "$TAR")" "$CHECKSUMS" | (cd "$BIN_DIR" && shasum -a 256 -c)
+    grep "$(basename "$TAR")" "$CHECKSUMS" | (cd "$BIN_DIR" && shasum -a 256 -c -)
   else
     echo "sha256sum or shasum is required to verify kubeconform" >&2
     exit 1
