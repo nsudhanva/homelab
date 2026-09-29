@@ -61,8 +61,8 @@ class AlertAgentClient:
         cluster_name: str = "homelab-k3s",
         environment: str = "production",
         custom_model: Model | None = None,
-        timeout_seconds: float = 15.0,
-        max_tokens: int = 400,
+        timeout_seconds: float = 60.0,
+        max_tokens: int = 1024,
         temperature: float = 0.2,
     ):
         self.cluster_name = cluster_name

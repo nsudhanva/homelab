@@ -56,7 +56,7 @@ spec:
             - --n-gpu-layers
             - "99"
             - --ctx-size
-            - "8192"
+            - "2048"
             - --parallel
             - "1"
             - --threads
@@ -73,13 +73,15 @@ spec:
               memory: 1536Mi
             limits:
               cpu: 2500m
-              memory: 6Gi
+              memory: 3584Mi
               nvidia.com/gpu: "1"
           env:
             - name: NVIDIA_VISIBLE_DEVICES
               value: all
             - name: NVIDIA_DRIVER_CAPABILITIES
               value: all
+            - name: MALLOC_TRIM_THRESHOLD_
+              value: "131072"
           startupProbe:
             httpGet:
               path: /health

@@ -45,7 +45,7 @@ spec:
             - name: ALERT_LLM_TIMEOUT_SECONDS
               value: "60.0"
             - name: ALERT_LLM_MAX_TOKENS
-              value: "400"
+              value: "1024"
             - name: ALERT_TELEGRAM_CHAT_ID
               value: "7341944813"
             - name: ALERT_TELEGRAM_BOT_TOKEN_FILE
