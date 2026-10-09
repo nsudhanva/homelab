@@ -1,7 +1,7 @@
 import asyncio
 import logging
 import os
-from collections.abc import AsyncIterator
+from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from typing import Any
 
@@ -25,7 +25,7 @@ processing_lock = asyncio.Lock()
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI) -> AsyncIterator[None]:
+async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     global http_client
     if settings.pydantic_ai_no_banner:
         os.environ["PYDANTIC_AI_NO_BANNER"] = "1"
