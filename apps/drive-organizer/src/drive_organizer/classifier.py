@@ -367,7 +367,7 @@ class DriveClassifier:
 
         # 2. Construct LLM prompt with actual extracted document text
         text_section = (
-            f"--- EXTRACTED DOCUMENT TEXT ---\n{extracted_text[:3500]}\n--- END DOCUMENT TEXT ---"
+            f"--- EXTRACTED DOCUMENT TEXT ---\n{extracted_text[:2000]}\n--- END DOCUMENT TEXT ---"
             if extracted_text.strip()
             else "[No extractable text found in document stream/header - rely on filename and metadata]"
         )
