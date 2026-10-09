@@ -17,6 +17,6 @@ spec:
     - key: node-role.kubernetes.io/control-plane
       operator: Exists
       effect: NoSchedule
-  cordon: true
+  cordon: false
   upgrade:
     image: rancher/k3s-upgrade
