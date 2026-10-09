@@ -3,7 +3,11 @@
 from typing import Any
 
 from pydantic import BaseModel
-from pydantic_ai.exceptions import FallbackExceptionGroup, ModelAPIError
+from pydantic_ai.exceptions import (
+    FallbackExceptionGroup,
+    ModelAPIError,
+    UnexpectedModelBehavior,
+)
 from pydantic_ai.models.fallback import FallbackModel
 from pydantic_ai.models.openai import OpenAIChatModel
 from pydantic_ai.models.openrouter import OpenRouterModel
@@ -114,6 +118,28 @@ def test_agent_fallback_execution_on_failure() -> None:
     res = agent.run_sync("Classify this")
     assert res.output.summary == "rescued by fallback"
     assert res.output.confidence == 0.99
+
+
+def test_agent_fallback_execution_on_unexpected_model_behavior() -> None:
+    class TruncatedModel(TestModel):
+        async def request(self, *args: Any, **kwargs: Any) -> Any:
+            raise UnexpectedModelBehavior(
+                "Model token limit (provider default) exceeded before any response was generated"
+            )
+
+    fallback = TestModel(
+        custom_output_args={"summary": "rescued from token limit", "confidence": 0.98}
+    )
+
+    router = ModelRouter(
+        custom_primary_builder=CustomModelProviderBuilder(TruncatedModel()),
+        custom_fallback_builder=CustomModelProviderBuilder(fallback),
+    )
+    agent = router.create_agent(output_type=SampleOutput)
+
+    res = agent.run_sync("Classify long prompt")
+    assert res.output.summary == "rescued from token limit"
+    assert res.output.confidence == 0.98
 
 
 def test_unwrap_fallback_error() -> None:

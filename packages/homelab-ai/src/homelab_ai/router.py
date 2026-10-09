@@ -4,7 +4,11 @@ import logging
 from typing import Any, TypeVar
 
 from pydantic_ai import Agent
-from pydantic_ai.exceptions import FallbackExceptionGroup, ModelAPIError
+from pydantic_ai.exceptions import (
+    FallbackExceptionGroup,
+    ModelAPIError,
+    UnexpectedModelBehavior,
+)
 from pydantic_ai.models import Model
 from pydantic_ai.models.fallback import FallbackModel
 
@@ -107,7 +111,11 @@ class ModelRouter:
                 f"Configuring FallbackModel (primary={self.config.primary_provider}, "
                 f"fallback={self.config.fallback_provider})"
             )
-            return FallbackModel(primary, fallback, fallback_on=(ModelAPIError,))
+            return FallbackModel(
+                primary,
+                fallback,
+                fallback_on=(ModelAPIError, UnexpectedModelBehavior),
+            )
 
         return primary
 
