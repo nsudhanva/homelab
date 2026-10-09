@@ -23,7 +23,7 @@ spec:
           type: RuntimeDefault
       initContainers:
         - name: download-model
-          image: curlimages/curl:8.12.1
+          image: curlimages/curl:8.22.0
           command:
             - sh
             - -c
