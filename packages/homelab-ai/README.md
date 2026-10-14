@@ -1,10 +1,10 @@
 # homelab-ai
 
-Shared Python library for high-availability LLM routing, Pydantic AI `FallbackModel` resilience, and agent factories across homelab microservices.
+A shared Python library for the homelab microservices. It gives high-availability LLM routing, Pydantic AI `FallbackModel` resilience, and agent factories.
 
 ## Features
 
-- **Pydantic AI Native Fallback**: Routes requests from local GPU SLM (`gemma-4-e2b-it`) to OpenRouter (`google/gemma-4-31b-it`) upon connection errors, timeouts, or HTTP 429/5xx status codes.
-- **Dynamic Provider Flipping**: Switch primary and fallback providers with a single environment variable (`PRIMARY_LLM_PROVIDER`, `FALLBACK_LLM_PROVIDER`).
-- **OOP Architecture**: Strategy pattern for model providers (`LocalOpenAIProviderBuilder`, `OpenRouterProviderBuilder`) and composable `ModelRouter` factory.
-- **Diagnostic Unpacking**: Clean unwrapping of `FallbackExceptionGroup` for structured logging and metrics.
+- Pydantic AI native fallback: The primary model is the local GPU SLM (`gemma-4-e2b-it`). If a connection error, a timeout, or an HTTP 429/5xx status occurs, the library sends the request to OpenRouter (`google/gemma-4-31b-it`).
+- Provider change at runtime: Change the primary and fallback providers with one environment variable each (`PRIMARY_LLM_PROVIDER`, `FALLBACK_LLM_PROVIDER`).
+- OOP architecture: A strategy pattern for model providers (`LocalOpenAIProviderBuilder`, `OpenRouterProviderBuilder`) and a composable `ModelRouter` factory.
+- Diagnostic unpacking: The library unwraps `FallbackExceptionGroup` cleanly for structured logging and metrics.

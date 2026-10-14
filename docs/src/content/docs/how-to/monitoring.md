@@ -1,6 +1,6 @@
 ---
 title: Deploy Prometheus, Grafana, and Alertmanager
-description: Install the Prometheus monitoring stack with Grafana dashboards and Alertmanager. Configure ServiceMonitors for application metrics and expose dashboards via Tailscale Gateway.
+description: Install the Prometheus monitoring stack with Grafana dashboards and Alertmanager. Configure ServiceMonitors for application metrics and expose the dashboards through Tailscale Gateway.
 keywords:
   - prometheus kubernetes
   - grafana kubernetes
@@ -16,11 +16,11 @@ sidebar:
 
 # Deploy Prometheus And Grafana
 
-This guide installs the Prometheus stack with Grafana and Alertmanager, exposes them via the Tailscale Gateway, and wires Headlamp metrics into Prometheus.
+This guide installs the Prometheus stack with Grafana and Alertmanager. It exposes them through the Tailscale Gateway and connects the Headlamp metrics to Prometheus.
 
 ## Step 1: Store Grafana admin credentials in Vault
 
-Create the Vault KV entry that External Secrets will sync into the `grafana-admin` Secret.
+Create the Vault KV entry. External Secrets syncs this entry into the `grafana-admin` Secret.
 
 ```bash
 kubectl -n vault exec -it vault-0 -- vault kv put kv/monitoring/grafana-admin \
@@ -30,7 +30,7 @@ kubectl -n vault exec -it vault-0 -- vault kv put kv/monitoring/grafana-admin \
 
 ## Step 2: Sync the Prometheus stack
 
-ArgoCD will create the `monitoring` namespace, install the Prometheus Operator CRDs, and deploy the stack from `infrastructure/prometheus/`.
+ArgoCD creates the `monitoring` namespace and installs the Prometheus Operator CRDs. Then it deploys the stack from `infrastructure/prometheus/`.
 
 ```bash
 kubectl -n argocd get applications | rg prometheus
@@ -38,7 +38,7 @@ kubectl -n argocd get applications | rg prometheus
 
 ## Step 3: Access the dashboards
 
-Open the following URLs on the tailnet:
+Open these URLs on the tailnet.
 
 - Grafana: `https://grafana.sudhanva.me`
 - Prometheus: `https://prometheus.sudhanva.me`
@@ -46,7 +46,7 @@ Open the following URLs on the tailnet:
 
 ## Step 4: Confirm Headlamp metrics
 
-Headlamp exposes `/metrics` once `HEADLAMP_CONFIG_METRICS_ENABLED` is set. Prometheus discovers it via the ServiceMonitor in `apps/headlamp/servicemonitor.yaml`.
+Headlamp exposes `/metrics` when `HEADLAMP_CONFIG_METRICS_ENABLED` is set. Prometheus finds the endpoint through the ServiceMonitor in `apps/headlamp/servicemonitor.yaml`.
 
 ```bash
 kubectl -n monitoring get servicemonitors
@@ -54,24 +54,24 @@ kubectl -n monitoring get servicemonitors
 
 ## Step 5: Telegram Alerting
 
-Alertmanager sends alerts to the `alert-summarizer` service (`apps/alert-summarizer/`), which summarizes each alert with the local LLM and posts it to Telegram. Grafana posts to Telegram directly.
+Alertmanager sends alerts to the `alert-summarizer` service (`apps/alert-summarizer/`). This service uses the local LLM to summarize each alert and posts the summary to Telegram. Grafana posts to Telegram directly.
 
 - Bot: `@ManassuHomelabBot`
 - Target Chat ID: `7341944813`
-- Secret storage: Bot token stored in Vault at `kv/telegram/bot`
-- GitOps Secret Sync: ExternalSecret in `infrastructure/prometheus/external-secret-telegram.yaml` creates `alertmanager-telegram` in `monitoring`, which `alert-summarizer` mounts
-- Alertmanager route: `prometheus.yaml` groups alerts by `alertname` and `namespace` (`group_wait: 30s`, `group_interval: 5m`, `repeat_interval: 1h`) and sends them to `http://alert-summarizer.monitoring.svc.cluster.local:8000/webhook` with `send_resolved: true`
+- Secret storage: Vault keeps the bot token at `kv/telegram/bot`
+- GitOps Secret Sync: The ExternalSecret in `infrastructure/prometheus/external-secret-telegram.yaml` creates `alertmanager-telegram` in `monitoring`. The `alert-summarizer` service mounts this Secret
+- Alertmanager route: `prometheus.yaml` groups alerts by `alertname` and `namespace` (`group_wait: 30s`, `group_interval: 5m`, `repeat_interval: 1h`). It sends them to `http://alert-summarizer.monitoring.svc.cluster.local:8000/webhook` with `send_resolved: true`
 - Silenced routes: `Watchdog`, `InfoInhibitor`, `Alertmanager*FailedToSendAlerts`, and `severity=info` go to the `null` receiver
-- Grafana: Contact point `Telegram AlertBot` configured as default notification policy
+- Grafana: The contact point `Telegram AlertBot` is the default notification policy
 
 ### Alert summarizer behavior
 
-- The webhook acknowledges Alertmanager immediately and processes alerts in the background, one at a time.
-- Each alert is summarized into symptom, probable cause, and recommended action by `gemma-4-e2b-it` (`ALERT_LLM_TIMEOUT_SECONDS`, `ALERT_LLM_MAX_TOKENS`). If the model does not answer in time, a plain template message is sent instead.
-- Re-deliveries of the same alert state (same fingerprint and status) within `ALERT_DEDUP_WINDOW_SECONDS` (default 3000 seconds) are skipped. The window is shorter than `repeat_interval`, so hourly reminders for alerts that are still firing are delivered.
-- New images roll out automatically through Argo CD Image Updater (digest strategy).
+- The webhook acknowledges Alertmanager immediately. Then it processes the alerts in the background, one at a time.
+- The `gemma-4-e2b-it` model writes a summary of each alert with a symptom, a probable cause, and a recommended action (`ALERT_LLM_TIMEOUT_SECONDS`, `ALERT_LLM_MAX_TOKENS`). If the model does not answer in time, the service sends a plain template message.
+- The service ignores a repeated delivery of the same alert state (same fingerprint and status) in the `ALERT_DEDUP_WINDOW_SECONDS` window (default 3000 seconds). This window is shorter than `repeat_interval`. Thus the service still sends hourly reminders for alerts that continue to fire.
+- Argo CD Image Updater deploys new images automatically (digest strategy).
 
-To test the alerting pipeline, send a test alert payload to Alertmanager:
+To test the alert pipeline, send a test alert payload to Alertmanager.
 
 ```bash
 kubectl exec -n monitoring alertmanager-monitoring-alertmanager-0 -c alertmanager -- \

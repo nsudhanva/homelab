@@ -14,7 +14,7 @@ sidebar:
 
 # Sync ArgoCD Applications
 
-Use this guide to force a sync, refresh status, or recover from drift. Auto-sync is enabled by default in the ApplicationSets, but manual sync is useful for troubleshooting.
+Use this guide to force a sync, refresh the status, or recover from drift. The ApplicationSets have auto-sync on by default. A manual sync helps during troubleshooting.
 
 ## Step 1: Check application status
 
@@ -50,7 +50,7 @@ argocd app sync -l app.kubernetes.io/instance=infrastructure
 
 ## Step 5: Reconcile drift
 
-If the app keeps drifting, inspect the diff and fix the source manifest in Git.
+If the app continues to drift, examine the diff. Then repair the source manifest in Git.
 
 ```bash
 argocd app diff <app-name>

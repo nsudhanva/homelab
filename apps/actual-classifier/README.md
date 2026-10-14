@@ -1,11 +1,11 @@
 # Actual Classifier
 
-AI-powered transaction classifier and tagger for Actual Budget, running locally on the homelab Kubernetes cluster.
+An AI transaction classifier and tagger for Actual Budget. It runs locally on the homelab Kubernetes cluster.
 
 ## Features
 
-- **Constrained Grammar Inference**: Guarantees only approved single-word categories and tags.
-- **Payee Normalization**: Cleans cryptic bank strings (e.g., `TST*IDLY EXPRESS - MOUNT` -> `Idly Express`).
-- **High Availability Routing**: Primary local inference via `llama-server` (Gemma 4) with automatic OpenRouter fallback via `packages/homelab-ai`.
-- **Actual Budget Sync**: Direct integration using `actualpy` and Actual Budget API.
-- **Deterministic Guardrails**: Validates outputs and prevents hallucinated categories.
+- **Constrained Grammar Inference**: Makes sure that the model gives only approved single-word categories and tags.
+- **Payee Normalization**: Cleans unclear bank strings (e.g., `TST*IDLY EXPRESS - MOUNT` -> `Idly Express`).
+- **High Availability Routing**: Uses local inference through `llama-server` (Gemma 4) first. If that fails, it uses OpenRouter automatically through `packages/homelab-ai`.
+- **Actual Budget Sync**: Connects directly with `actualpy` and the Actual Budget API.
+- **Deterministic Guardrails**: Validates the outputs and stops hallucinated categories.

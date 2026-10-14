@@ -1,6 +1,6 @@
 ---
 title: How to Build and Extend AI Applications with Automatic Fallback
-description: Problem-oriented guide on building or extending homelab microservices with shared homelab-ai routing and OpenRouter failover.
+description: How to build or extend a homelab microservice with the shared homelab-ai routing and OpenRouter failover.
 keywords:
   - add ai application
   - homelab-ai guide
@@ -12,13 +12,13 @@ sidebar:
 
 # How to Build and Extend AI Applications with Automatic Fallback
 
-This guide walks through building a new AI microservice or extending an existing application with automatic local-to-cloud model fallback using `packages/homelab-ai`.
+This guide shows how to build a new AI microservice or extend an existing application. The `packages/homelab-ai` package gives automatic fallback from the local model to a cloud model.
 
 ---
 
 ## Step 1: Declare the homelab-ai Dependency
 
-In your application directory (`apps/{your-app}/pyproject.toml`), add `homelab-ai` to your dependencies and configure `[tool.uv.sources]`:
+In the application directory (`apps/{your-app}/pyproject.toml`), add `homelab-ai` to the dependencies. Then configure `[tool.uv.sources]`:
 
 ```toml
 [project]
@@ -36,7 +36,7 @@ dependencies = [
 homelab-ai = { path = "../../packages/homelab-ai", editable = true }
 ```
 
-Lock dependencies using `uv`:
+Lock the dependencies with `uv`:
 
 ```bash
 cd apps/{your-app}
@@ -48,7 +48,7 @@ uv sync
 
 ## Step 2: Configure Settings and the ModelRouter
 
-In your application's `config.py`, import the standard provider types from `homelab_ai`:
+In the `config.py` file of the application, import the standard provider types from `homelab_ai`:
 
 ```python
 from homelab_ai import FallbackProviderType, LLMClientConfig, LLMProviderType
@@ -99,7 +99,7 @@ class Settings(BaseSettings):
         )
 ```
 
-In your application service or worker, instantiate the router and create the agent:
+In the application service or worker, make an instance of the router and create the agent:
 
 ```python
 from homelab_ai import ModelRouter
@@ -128,7 +128,7 @@ class MyService:
 
 ## Step 3: Write Hermetic Fallback Unit Tests
 
-Verify that fallback works when the local LLM fails by injecting mock models via `CustomModelProviderBuilder`:
+Use `CustomModelProviderBuilder` to inject mock models. Then make sure that fallback works when the local LLM fails:
 
 ```python
 from homelab_ai import LLMClientConfig, ModelRouter
@@ -167,7 +167,7 @@ def test_service_failover_to_openrouter() -> None:
 
 ## Step 4: Add Kubernetes Manifests and ExternalSecret
 
-Add an `openrouter-secret.yaml` manifest in your app's directory to pull credentials from Vault:
+Add an `openrouter-secret.yaml` manifest in the app directory. This manifest gets the credentials from Vault:
 
 ```yaml
 apiVersion: external-secrets.io/v1
@@ -193,7 +193,7 @@ spec:
       property: api_key
 ```
 
-In your `deployment.yaml` or `cronjob.yaml`, mount the secret and configure provider routing:
+In the `deployment.yaml` or `cronjob.yaml` file, mount the secret and configure the provider routing:
 
 ```yaml
             envFrom:
@@ -213,7 +213,7 @@ In your `deployment.yaml` or `cronjob.yaml`, mount the secret and configure prov
 
 ## Step 5: Configure Monorepo Dockerfile and CI Pipeline
 
-In your `Dockerfile`, copy `packages/homelab-ai` into the build context and install with `--no-editable`:
+In the `Dockerfile`, copy `packages/homelab-ai` into the build context. Install it with `--no-editable`:
 
 ```dockerfile
 FROM ghcr.io/astral-sh/uv:python3.12-bookworm-slim AS builder
@@ -257,9 +257,9 @@ In `.github/workflows/ci.yaml`, configure the Docker build action with `context:
 
 ---
 
-## Step 6: Deploy and Verify Model Flipping
+## Step 6: Deploy and Test Model Flipping
 
-Verify that both linting and tests pass:
+Make sure that the lint checks and the tests pass:
 
 ```bash
 uv run ruff check
@@ -269,7 +269,7 @@ uv run pytest
 pre-commit run --all-files
 ```
 
-After deploying via ArgoCD, toggle the primary model dynamically:
+After ArgoCD deploys the app, you can change the primary model at runtime:
 
 ```bash
 # Set OpenRouter Gemma 4 31B as primary

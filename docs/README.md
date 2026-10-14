@@ -1,6 +1,6 @@
 # Homelab Documentation
 
-Documentation for the bare-metal K3s homelab cluster, built with [Astro](https://astro.build/) and [Starlight](https://starlight.astro.build/).
+Documentation for the bare-metal K3s homelab cluster. The site uses [Astro](https://astro.build/) and [Starlight](https://starlight.astro.build/).
 
 ## Prerequisites
 
@@ -8,7 +8,7 @@ Documentation for the bare-metal K3s homelab cluster, built with [Astro](https:/
 
 ## Installation
 
-Install dependencies using Bun:
+Install the dependencies with Bun:
 
 ```bash
 bun install
@@ -22,11 +22,11 @@ Start the local development server:
 bun dev
 ```
 
-The site will be available at `http://localhost:4321/` with hot module reloading.
+The site is available at `http://localhost:4321/` with hot module reloading.
 
-## Type Checking & Validation
+## Type Checking and Validation
 
-Run Astro's type checker:
+Run the Astro type checker:
 
 ```bash
 bunx @astrojs/check
@@ -34,7 +34,7 @@ bunx @astrojs/check
 
 ## Production Build
 
-Generate the static site into the `dist/` directory:
+Build the static site into the `dist/` directory:
 
 ```bash
 bun run build
@@ -48,11 +48,11 @@ bun run preview
 
 ## Documentation Structure
 
-The documentation follows the [Divio documentation system](https://docs.divio.com/documentation-system/):
+The documentation uses the [Divio documentation system](https://docs.divio.com/documentation-system/):
 
-- `tutorials/`: Learning-oriented tutorials (e.g., node preparation, K3s bootstrap)
-- `how-to/`: Problem-oriented how-to guides (e.g., adding worker nodes, storage, monitoring)
-- `reference/`: Information-oriented technical reference (e.g., versions, application catalog)
-- `explanation/`: Understanding-oriented architectural explanations (e.g., networking, storage)
+- `tutorials/`: Learning-oriented tutorials (for example, node preparation and K3s bootstrap)
+- `how-to/`: Problem-oriented how-to guides (for example, worker nodes, storage, and monitoring)
+- `reference/`: Information-oriented technical reference (for example, versions and the application catalog)
+- `explanation/`: Understanding-oriented explanations of the architecture (for example, networking and storage)
 
-Content is written in Markdown (`.md`) and MDX (`.mdx`) in `src/content/docs/`.
+The content is in Markdown (`.md`) and MDX (`.mdx`) files in `src/content/docs/`.

@@ -1,6 +1,6 @@
 ---
 title: Applications Catalog Reference
-description: Reference catalog of all user applications deployed via ArgoCD including Jellyfin, Filebrowser, Headlamp, Home Assistant, Homer dashboard, and documentation site with their manifest paths.
+description: Catalog of the user applications that ArgoCD deploys, with their manifest paths. It includes Jellyfin, Filebrowser, Headlamp, Home Assistant, Homer, and the docs site.
 keywords:
   - kubernetes applications
   - jellyfin kubernetes
@@ -16,11 +16,11 @@ sidebar:
 
 # Applications Catalog
 
-This page lists the applications already defined in `apps/`.
+This page lists the applications in `apps/`.
 
 ## Media namespace
 
-The `media` namespace is shared by Jellyfin and Filebrowser so they can use the same PVCs.
+Jellyfin and Filebrowser use the same `media` namespace. Thus, they can use the same PVCs.
 
 - Namespace definition: `apps/media/namespace.yaml`
 - ArgoCD app: `apps/media/app.yaml`
@@ -41,7 +41,7 @@ The `media` namespace is shared by Jellyfin and Filebrowser so they can use the 
 | Item | Path | Notes |
 | --- | --- | --- |
 | App config | `apps/filebrowser/app.yaml` | ArgoCD app definition |
-| Deployment | `apps/filebrowser/deployment.yaml` | Auth via Vault-backed secret, mounts Jellyfin media |
+| Deployment | `apps/filebrowser/deployment.yaml` | Auth through a Vault-backed secret, mounts Jellyfin media |
 | Service | `apps/filebrowser/service.yaml` | ClusterIP on port 80 |
 | HTTPRoute | `apps/filebrowser/httproute.yaml` | `filebrowser.sudhanva.me` |
 
@@ -62,8 +62,8 @@ The `media` namespace is shared by Jellyfin and Filebrowser so they can use the 
 | Namespace | `apps/headlamp/namespace.yaml` | Dedicated `headlamp` namespace |
 | App config | `apps/headlamp/app.yaml` | ArgoCD app definition |
 | ServiceAccount | `apps/headlamp/serviceaccount.yaml` | Headlamp dashboard service account |
-| ClusterRoleBinding | `apps/headlamp/clusterrolebinding.yaml` | Grants `cluster-admin` privileges to service account |
-| Secret | `apps/headlamp/secret-token.yaml` | Permanent token secret for seamless in-cluster login |
+| ClusterRoleBinding | `apps/headlamp/clusterrolebinding.yaml` | Gives `cluster-admin` privileges to the service account |
+| Secret | `apps/headlamp/secret-token.yaml` | Permanent token secret for in-cluster login |
 | Deployment | `apps/headlamp/deployment.yaml` | `ghcr.io/headlamp-k8s/headlamp:v0.45.0` with `-unsafe-use-service-account-token` |
 | Service | `apps/headlamp/service.yaml` | ClusterIP on port 80 |
 | HTTPRoute | `apps/headlamp/httproute.yaml` | `headlamp.sudhanva.me` |
@@ -93,7 +93,7 @@ The `media` namespace is shared by Jellyfin and Filebrowser so they can use the 
 | PVC | `apps/technitium/pvc.yaml` | 5Gi local-path storage for `/etc/dns` |
 | ExternalSecret | `apps/technitium/external-secret.yaml` | Vault integration for admin API credentials |
 | ConfigMap | `apps/technitium/configmap-settings.yaml` | Declarative settings for blocklists, forwarders, DNSSEC |
-| PostSync Job | `apps/technitium/job-sync.yaml` | GitOps configuration sync via Technitium REST API |
+| PostSync Job | `apps/technitium/job-sync.yaml` | GitOps configuration sync through the Technitium REST API |
 
 ## Home Assistant
 
@@ -105,7 +105,7 @@ The `media` namespace is shared by Jellyfin and Filebrowser so they can use the 
 | ConfigMap (Packages) | `apps/home-assistant/configmap-packages.yaml` | Declarative packages for Google Cast, Sony TV, PS5, Xfinity |
 | Deployment | `apps/home-assistant/deployment.yaml` | `ghcr.io/home-assistant/home-assistant:2026.9.2` |
 | Service | `apps/home-assistant/service.yaml` | ClusterIP on port 8123 |
-| HTTPRoute | `apps/home-assistant/httproute.yaml` | `homeassistant.sudhanva.me` via tailnet gateway |
+| HTTPRoute | `apps/home-assistant/httproute.yaml` | `homeassistant.sudhanva.me` through the tailnet gateway |
 | PVC | `apps/home-assistant/pvc.yaml` | 5Gi local-path storage for `/config` |
 
 ## Llama Server (Gemma 4)
@@ -116,7 +116,7 @@ The `media` namespace is shared by Jellyfin and Filebrowser so they can use the 
 | App config | `apps/llama/app.yaml` | ArgoCD app definition |
 | Deployment | `apps/llama/deployment.yaml` | `ghcr.io/ggml-org/llama.cpp:server-cuda` with Gemma 4 E2B |
 | Service | `apps/llama/service.yaml` | ClusterIP on port 8080 |
-| HTTPRoute | `apps/llama/httproute.yaml` | `ai.sudhanva.me` via tailnet gateway |
+| HTTPRoute | `apps/llama/httproute.yaml` | `ai.sudhanva.me` through the tailnet gateway |
 | PVC | `apps/llama/pvc.yaml` | 15Gi local-path storage for `/models` |
 
 ## Gmail Classifier
@@ -128,7 +128,7 @@ The `media` namespace is shared by Jellyfin and Filebrowser so they can use the 
 | CronJob | `apps/gmail-classifier/cronjob-<nickname>.yaml` | Daily classification per account, generated from `apps/accounts.yaml` |
 | CronJob | `apps/gmail-classifier/cronjob-<nickname>-mark-read.yaml` | Weekly `--mark-all-read` per account (Sundays) |
 | ExternalSecret | `apps/gmail-classifier/secret.yaml` | Vault integration for Google OAuth client credentials and refresh token |
-| Python App | `apps/gmail-classifier/src/gmail_classifier/` | Automated Gmail triage engine using local Gemma 4 and Telegram alerts |
+| Python App | `apps/gmail-classifier/src/gmail_classifier/` | Gmail triage engine that uses local Gemma 4 and sends Telegram alerts |
 
 ## Drive Organizer
 
@@ -136,9 +136,9 @@ The `media` namespace is shared by Jellyfin and Filebrowser so they can use the 
 | --- | --- | --- |
 | Namespace | `apps/drive-organizer/namespace.yaml` | Dedicated `drive-organizer` namespace |
 | App config | `apps/drive-organizer/app.yaml` | ArgoCD app definition |
-| CronJob | `apps/drive-organizer/cronjob.yaml` | Daily schedule at `0 2 * * *` invoking `uv run drive-organizer` |
+| CronJob | `apps/drive-organizer/cronjob.yaml` | Daily schedule at `0 2 * * *` that runs `uv run drive-organizer` |
 | ExternalSecret | `apps/drive-organizer/secret.yaml` | Vault integration for Google OAuth credentials and Telegram bot token |
-| Python App | `apps/drive-organizer/src/drive_organizer/` | Symmetrical personal and family Google Drive organizer using local Gemma 4 |
+| Python App | `apps/drive-organizer/src/drive_organizer/` | Symmetrical Google Drive organizer for personal and family accounts, uses local Gemma 4 |
 
 ## Actual Budget
 
@@ -148,7 +148,7 @@ The `media` namespace is shared by Jellyfin and Filebrowser so they can use the 
 | App config | `apps/actual-budget/app.yaml` | ArgoCD app definition |
 | Deployment | `apps/actual-budget/deployment.yaml` | `docker.io/actualbudget/actual-server:26.9.0-alpine` |
 | Service | `apps/actual-budget/service.yaml` | ClusterIP on port 5006 |
-| HTTPRoute | `apps/actual-budget/httproute.yaml` | `actual.sudhanva.me` via tailnet gateway |
+| HTTPRoute | `apps/actual-budget/httproute.yaml` | `actual.sudhanva.me` through the tailnet gateway |
 | PVC | `apps/actual-budget/pvc.yaml` | 5Gi local-path storage for `/data` (SQLite database and user files) |
 
 ## Actual Classifier
@@ -159,4 +159,4 @@ The `media` namespace is shared by Jellyfin and Filebrowser so they can use the 
 | App config | `apps/actual-classifier/app.yaml` | ArgoCD app definition |
 | CronJob | `apps/actual-classifier/cronjob.yaml` | Scheduled daily at 03:00 (`0 3 * * *`), after Gmail and Drive jobs |
 | ExternalSecret | `apps/actual-classifier/secret.yaml` | Vault integration for Actual Budget and OpenRouter credentials |
-| Python App | `apps/actual-classifier/src/actual_classifier/` | Automated transaction categorization and tagging using local Gemma 4 |
+| Python App | `apps/actual-classifier/src/actual_classifier/` | Puts transactions into categories and adds tags with local Gemma 4 |

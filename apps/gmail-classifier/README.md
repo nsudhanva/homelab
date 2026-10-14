@@ -1,12 +1,12 @@
 # Gmail Classifier
 
-Daily AI-powered Gmail triage and classification runner deployed as a Kubernetes CronJob.
+A daily AI job for Gmail triage and classification that runs as a Kubernetes CronJob.
 
 ## Overview
 
-- Ingests unprocessed emails for a given date from Gmail.
-- Sanitizes MIME/HTML payloads into clean, compact text.
-- Classifies emails against user-curated Gmail labels using a local LLM (`gemma-4-e2b-it`).
-- Falls back to `ai-review` quarantine if classification confidence is below the threshold or the predicted label is uncurated.
+- Gets the unprocessed emails for a given date from Gmail.
+- Cleans MIME/HTML payloads into compact text.
+- Classifies emails against the Gmail labels that the user curates, with a local LLM (`gemma-4-e2b-it`).
+- Applies the `ai-review` quarantine label if the classification confidence is below the threshold or the predicted label is not curated.
 - Tags processed emails with `ai-processed` and the predicted label.
-- Sends an execution summary and highlights quarantined emails to Telegram.
+- Sends a run summary to Telegram that shows the quarantined emails.

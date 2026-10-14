@@ -1,6 +1,6 @@
 ---
 title: K3s Cluster Setup Tutorials
-description: Step-by-step tutorials for building a bare-metal K3s Kubernetes cluster on Ubuntu 26.04 LTS using Ansible automation and ArgoCD GitOps.
+description: Step-by-step tutorials to build a bare-metal K3s Kubernetes cluster on Ubuntu 26.04 LTS with Ansible automation and ArgoCD GitOps.
 keywords:
   - k3s tutorial
   - bare metal kubernetes setup
@@ -13,7 +13,7 @@ sidebar:
 
 # Cluster Setup Tutorials
 
-These tutorials guide you step-by-step through setting up a bare-metal K3s Kubernetes cluster on node `legion` (Ubuntu 26.04 LTS) from scratch.
+These tutorials show you, step by step, how to build a bare-metal K3s Kubernetes cluster from scratch. The cluster runs on node `legion` (Ubuntu 26.04 LTS).
 
 ```mermaid
 flowchart TD
@@ -27,7 +27,7 @@ flowchart TD
 
 ## Tutorial Roadmap
 
-Follow these tutorials in sequence to build a reproducible, production-ready homelab cluster:
+Do these tutorials in sequence. The result is a homelab cluster that is reproducible and ready for production:
 
 | Stage | Tutorial | Deliverable |
 |---|---|---|

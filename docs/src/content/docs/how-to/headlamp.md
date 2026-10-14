@@ -1,6 +1,6 @@
 ---
 title: Deploy Headlamp Kubernetes Dashboard
-description: Deploy Headlamp as a Kubernetes dashboard with Tailscale Gateway ingress. Configure OIDC authentication with Vault and Prometheus metrics integration.
+description: Deploy Headlamp as a Kubernetes dashboard with Tailscale Gateway ingress. Configure OIDC authentication with Vault and collect metrics with Prometheus.
 keywords:
   - headlamp kubernetes
   - kubernetes dashboard
@@ -15,13 +15,13 @@ sidebar:
 
 # Expose Headlamp With Tailscale Gateway
 
-This guide shows how to deploy the Headlamp UI and expose it at `headlamp.sudhanva.me` through the Tailscale Gateway API.
+This guide shows how to deploy the Headlamp UI. The Tailscale Gateway API exposes it at `headlamp.sudhanva.me`.
 
 ## Step 1: Add the Headlamp app manifests
 
-Create a new app directory under `apps/` with separate manifests for each resource.
+Create a new app directory under `apps/`. Use a separate manifest for each resource.
 
-Example layout:
+The layout is as follows:
 
 - `apps/headlamp/app.yaml`
 - `apps/headlamp/namespace.yaml`
@@ -33,7 +33,7 @@ Example layout:
 - `apps/headlamp/servicemonitor.yaml`
 - `apps/headlamp/httproute.yaml`
 
-`app.yaml` defines the app name, path, and namespace.
+The `app.yaml` file defines the app name, the path, and the namespace.
 
 ```yaml
 name: headlamp
@@ -66,7 +66,7 @@ spec:
 
 ## Step 2: Commit and push
 
-ArgoCD watches the repo and applies changes via ApplicationSets.
+ArgoCD monitors the repo and applies the changes through ApplicationSets.
 
 ```bash
 git add apps/headlamp
@@ -76,9 +76,9 @@ git push
 
 ## Step 3: Access Headlamp
 
-Open `https://headlamp.sudhanva.me` in your browser. Headlamp runs with `-unsafe-use-service-account-token` and automatically signs in using the in-cluster service account credentials with `cluster-admin` privileges.
+Open `https://headlamp.sudhanva.me` in your browser. Headlamp runs with `-unsafe-use-service-account-token`. It signs in automatically with the in-cluster service account credentials, which have `cluster-admin` privileges.
 
-Alternatively, if generating a manual short-lived token:
+If you want a short-lived token, make one manually:
 
 ```bash
 kubectl -n headlamp create token headlamp
@@ -86,21 +86,21 @@ kubectl -n headlamp create token headlamp
 
 ## Step 4: Cluster role permissions
 
-The repository binds the Headlamp service account directly to `cluster-admin` in `apps/headlamp/clusterrolebinding.yaml` for administrative control. If you prefer read-only visibility, change the `roleRef` to the built-in `view` ClusterRole.
+The file `apps/headlamp/clusterrolebinding.yaml` binds the Headlamp service account directly to `cluster-admin`. This gives administrative control. If you want read-only access, change the `roleRef` to the built-in `view` ClusterRole.
 
 ## OIDC Login With Vault
 
-This enables long-lived OIDC logins instead of short-lived service account tokens. It uses Vault as the identity provider and requires the Kubernetes API server to trust Vault as an OIDC issuer.
+This procedure replaces short-lived service account tokens with long-lived OIDC logins. Vault is the identity provider. The Kubernetes API server must trust Vault as an OIDC issuer.
 
 ### Step 1: Create Vault OIDC key, provider, and client
 
-Log into Vault with an admin token:
+Log in to Vault with an admin token.
 
 ```bash
 kubectl -n vault exec -it vault-0 -- vault login
 ```
 
-Create a signing key and provider:
+Create a signing key and a provider.
 
 ```bash
 kubectl -n vault exec -it vault-0 -- vault write identity/oidc/key/headlamp rotation_period=24h
@@ -111,7 +111,7 @@ kubectl -n vault exec -it vault-0 -- vault write identity/oidc/provider/headlamp
 Vault appends the provider path automatically, so the resulting issuer becomes `https://vault.sudhanva.me/v1/identity/oidc/provider/headlamp`.
 ```
 
-Create the client and capture its ID and secret:
+Create the client. Then record its ID and its secret.
 
 ```bash
 kubectl -n vault exec -it vault-0 -- vault write identity/oidc/client/headlamp \
@@ -122,7 +122,7 @@ kubectl -n vault exec -it vault-0 -- vault read -field=client_secret identity/oi
 
 ### Step 2: Enable a Vault login method for users
 
-Vault must allow humans to authenticate before it can issue OIDC codes. Enable a login method (for example `userpass`) and grant it access to the authorize endpoint.
+Users must authenticate to Vault before Vault can issue OIDC codes. Enable a login method (for example `userpass`). Then give it access to the authorize endpoint.
 
 ```bash
 kubectl -n vault exec -it vault-0 -- vault auth enable userpass
@@ -136,7 +136,7 @@ kubectl -n vault exec -it vault-0 -- vault write auth/userpass/users/headlamp \
   password="REPLACE_ME" policies="default,headlamp-oidc"
 ```
 
-Authorize the user for the Headlamp OIDC client by creating an entity, alias, and assignment, then attach that assignment to the client:
+To authorize the user for the Headlamp OIDC client, create an entity, an alias, and an assignment. Then attach the assignment to the client.
 
 ```bash
 kubectl -n vault exec -it vault-0 -- vault auth list
@@ -152,9 +152,9 @@ kubectl -n vault exec -it vault-0 -- vault write identity/oidc/client/headlamp \
   assignments="headlamp"
 ```
 
-Use the userpass credentials to log in when Vault prompts during the OIDC flow.
+When Vault asks for credentials during the OIDC flow, log in with the userpass credentials.
 
-If you prefer to allow any authenticated Vault user (no assignments), recreate the client without assignments. Vault will generate a new client ID and secret, so update the KV entry and the Kubernetes API server flags after doing this.
+If you want to let all authenticated Vault users log in (no assignments), make the client again without assignments. Vault then makes a new client ID and secret. After this change, update the KV entry and the Kubernetes API server flags.
 
 ### Step 3: Store Headlamp OIDC settings in Vault
 
@@ -169,15 +169,15 @@ kubectl -n vault exec -it vault-0 -- vault kv put kv/headlamp/oidc \
 
 ### Step 4: Configure Kubernetes API server OIDC
 
-Add the OIDC settings to the API server configuration. Use the `client_id` returned by Vault.
+Add the OIDC settings to the API server configuration. Use the `client_id` that Vault returns.
 
-In K3s, configure `--kube-apiserver-arg` in `/etc/rancher/k3s/config.yaml` or through Ansible variables (`ansible/group_vars/all.yaml`), then restart the `k3s` service on the control plane.
+In K3s, configure `--kube-apiserver-arg` in `/etc/rancher/k3s/config.yaml` or in the Ansible variables (`ansible/group_vars/all.yaml`). Then restart the `k3s` service on the control plane.
 
-### Step 4a: Ensure cluster DNS resolves Vault
+### Step 4a: Make sure that cluster DNS resolves Vault
 
-The API server and Headlamp pods must be able to reach `vault.sudhanva.me` for OIDC token validation and exchange. Tailscale DNS returns Tailscale IPs (`100.x.x.x`) that pods cannot route to directly.
+The API server and the Headlamp pods must connect to `vault.sudhanva.me` to validate and exchange OIDC tokens. Tailscale DNS returns Tailscale IPs (`100.x.x.x`), and pods cannot route directly to these IPs.
 
-This repo uses split-horizon DNS to solve this. CoreDNS rewrites `*.sudhanva.me` queries to the internal gateway service, which pods can reach via the cluster network:
+This repo uses split-horizon DNS to solve this problem. CoreDNS rewrites `*.sudhanva.me` queries to the internal gateway service. Pods can reach this service through the cluster network.
 
 ```yaml
 apiVersion: v1
@@ -199,7 +199,7 @@ data:
     }
 ```
 
-The `gateway-internal` service in `envoy-gateway` namespace selects Envoy pods by label, so it dynamically tracks the gateway without hardcoded IPs:
+The `gateway-internal` service in the `envoy-gateway` namespace selects Envoy pods by label. Thus it follows the gateway without hardcoded IPs.
 
 ```yaml
 apiVersion: v1
@@ -218,17 +218,17 @@ spec:
     targetPort: 10443
 ```
 
-These manifests live in `infrastructure/coredns/configmap.yaml` and `infrastructure/gateway/internal-service.yaml`.
+These manifests are in `infrastructure/coredns/configmap.yaml` and `infrastructure/gateway/internal-service.yaml`.
 
 ### Step 5: Sync Headlamp and log in
 
-Headlamp reads OIDC config from the `headlamp-oidc` Secret created by External Secrets. After ArgoCD syncs the app, use the Sign In button.
+Headlamp reads the OIDC configuration from the `headlamp-oidc` Secret. External Secrets creates this Secret. After ArgoCD syncs the app, click the Sign In button.
 
 ## Troubleshooting OIDC
 
 ### "invalid child issuer \"provider\""
 
-This error means the issuer URL stored in Vault is missing the provider name. Confirm what Headlamp is using:
+This error tells you that the issuer URL in Vault does not include the provider name. Examine the URL that Headlamp uses.
 
 ```bash
 kubectl -n headlamp get secret headlamp-oidc -o jsonpath='{.data.issuer_url}' | base64 -d; echo
@@ -236,14 +236,14 @@ kubectl -n headlamp get secret headlamp-oidc -o jsonpath='{.data.issuer_url}' | 
 
 The URL must end with `/v1/identity/oidc/provider/headlamp`.
 
-If the provider does not exist, the OIDC discovery endpoint returns `404`:
+If the provider does not exist, the OIDC discovery endpoint returns `404`.
 
 ```bash
 curl -s -o /dev/null -w "%{http_code}\n" \
   https://vault.sudhanva.me/v1/identity/oidc/provider/headlamp/.well-known/openid-configuration
 ```
 
-Create the provider and client in Vault (Step 1 above), update `kv/headlamp/oidc`, then force a refresh:
+Create the provider and the client in Vault (Step 1). Update `kv/headlamp/oidc`. Then force a refresh.
 
 ```bash
 kubectl -n headlamp annotate externalsecret headlamp-oidc \
@@ -253,21 +253,21 @@ kubectl -n headlamp annotate externalsecret headlamp-oidc \
 
 ### OIDC not enabled on the API server
 
-Headlamp OIDC tokens only work if the API server has OIDC flags set. Check the running flags on node `legion`:
+Headlamp OIDC tokens work only if the API server has the OIDC flags. Examine the flags of the running process on node `legion`.
 
 ```bash
 ssh sudhanva@100.66.139.118 "ps aux | grep k3s | grep oidc"
 ```
 
-If no OIDC flags are present, add the `kube-apiserver-arg` entries to `/etc/rancher/k3s/config.yaml` and restart K3s.
+If the OIDC flags are not there, add the `kube-apiserver-arg` entries to `/etc/rancher/k3s/config.yaml`. Then restart K3s.
 
 ## Optional OIDC Manifest Wiring
 
-If choosing to transition Headlamp from in-cluster service account authentication to external OIDC providers, configure an ExternalSecret for the OIDC client credentials and mount them into `apps/headlamp/deployment.yaml`.
+To move Headlamp from in-cluster service account authentication to an external OIDC provider, configure an ExternalSecret for the OIDC client credentials. Then mount the credentials in `apps/headlamp/deployment.yaml`.
 
 ## OIDC Admin Access
 
-When Headlamp users authenticate as external OIDC identities, bind their OIDC group or user entity to `cluster-admin`:
+If Headlamp users authenticate as external OIDC identities, bind their OIDC group or user entity to `cluster-admin`.
 
 ```yaml
 apiVersion: rbac.authorization.k8s.io/v1
@@ -284,7 +284,7 @@ subjects:
   name: oidc:admins
 ```
 
-Update the group name if your OIDC provider uses a different group claim. If binding a specific Vault OIDC user, set the `User` subject to `oidc:<entity_id>` from Vault:
+If your OIDC provider uses a different group claim, change the group name. To bind one specific Vault OIDC user, set the `User` subject to `oidc:<entity_id>` from Vault.
 
 ```bash
 kubectl -n vault exec -it vault-0 -- vault read -field=id identity/entity/name/headlamp
@@ -292,7 +292,7 @@ kubectl -n vault exec -it vault-0 -- vault read -field=id identity/entity/name/h
 
 ## Prometheus Metrics
 
-Headlamp exposes `/metrics` when `HEADLAMP_CONFIG_METRICS_ENABLED` is set. The repo enables this flag and adds a ServiceMonitor so Prometheus picks it up automatically.
+Headlamp exposes `/metrics` when `HEADLAMP_CONFIG_METRICS_ENABLED` is set. The repo sets this flag. It also adds a ServiceMonitor, so Prometheus finds the endpoint automatically.
 
 ```bash
 kubectl -n headlamp get servicemonitors

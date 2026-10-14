@@ -1,6 +1,6 @@
 ---
 title: Persistent Storage with K3s Local-Path Provisioner
-description: Configure and manage persistent storage in the homelab cluster using K3s native local-path provisioner on the dedicated SSD partition.
+description: Configure and manage persistent storage in the homelab cluster with the native K3s local-path provisioner on the dedicated SSD partition.
 keywords:
   - k3s storage
   - local-path provisioner
@@ -13,7 +13,7 @@ sidebar:
 
 # Persistent Storage (Local-Path Provisioner)
 
-The cluster utilizes K3s's built-in `local-path-provisioner` to dynamically allocate persistent storage directly onto the high-speed NVMe/SSD drive mounted at `/home/k3s-storage`.
+The cluster uses the built-in K3s `local-path-provisioner` to make persistent storage dynamically. The storage is on the NVMe/SSD drive at `/home/k3s-storage`.
 
 ```mermaid
 flowchart LR
@@ -24,7 +24,7 @@ flowchart LR
 
 ## Storage Architecture
 
-The local-path provisioner creates hostPath-backed persistent volumes on demand. Each PVC gets its own dedicated directory on the host under `/home/k3s-storage/` named after the PVC and its UUID:
+The local-path provisioner creates hostPath persistent volumes when a claim needs one. Each PVC gets its own directory on the host in `/home/k3s-storage/`. The directory name contains the PVC name and its UUID:
 
 ```bash
 /home/k3s-storage/pvc-<uuid>_<namespace>_<pvc-name>/
@@ -32,7 +32,7 @@ The local-path provisioner creates hostPath-backed persistent volumes on demand.
 
 ### Storage Configuration in K3s
 
-The storage root path is defined in `/etc/rancher/k3s/config.yaml` during host provisioning via Ansible:
+Ansible sets the storage root path in `/etc/rancher/k3s/config.yaml` when it provisions the host:
 
 ```yaml
 default-local-storage-path: "/home/k3s-storage"
@@ -40,7 +40,7 @@ default-local-storage-path: "/home/k3s-storage"
 
 ## Step 1: Verify the StorageClass
 
-The `local-path` StorageClass is set as the default storage class on the cluster:
+The `local-path` StorageClass is the default storage class on the cluster. To see it, run:
 
 ```bash
 kubectl get storageclass
@@ -53,11 +53,11 @@ NAME                   PROVISIONER             RECLAIMPOLICY   VOLUMEBINDINGMODE
 local-path (default)   rancher.io/local-path   Delete          WaitForFirstConsumer   false                  1h
 ```
 
-Because the volume binding mode is `WaitForFirstConsumer`, the persistent volume is only allocated once the pod using the claim is scheduled to a node.
+The volume binding mode is `WaitForFirstConsumer`. Thus, the provisioner creates the persistent volume only after the scheduler puts the pod that uses the claim on a node.
 
 ## Step 2: Requesting Storage in Applications
 
-To request storage for an application, declare a standard `PersistentVolumeClaim` manifest referencing `local-path`:
+To get storage for an application, declare a standard `PersistentVolumeClaim` manifest that refers to `local-path`:
 
 ```yaml
 apiVersion: v1
@@ -92,17 +92,17 @@ spec:
 
 ## Step 3: Inspecting Volumes on the Host
 
-To inspect the underlying storage directly on the host machine:
+To examine the storage directly on the host machine, run:
 
 ```bash
 ssh sudhanva@100.66.139.118 "sudo ls -la /home/k3s-storage"
 ```
 
-Each persistent volume directory is owned by `root:root` with standard container permissions (`0777` or user-defined UID).
+The owner of each persistent volume directory is `root:root`. The directories have standard container permissions (`0777` or a user-defined UID).
 
 ## Step 4: Backup and Disaster Recovery
 
-Because all volumes reside within `/home/k3s-storage`, creating backups is straightforward and non-disruptive:
+All volumes are in `/home/k3s-storage`. Thus, backups are easy and do not stop the workloads:
 
-- **Restic / Borg**: Point your backup client directly to `/home/k3s-storage` to take deduplicated, encrypted snapshots.
-- **Rsync**: Mirror the directory to remote network-attached storage or an external drive.
+- Restic or Borg: Point your backup client directly to `/home/k3s-storage` to make deduplicated, encrypted snapshots.
+- Rsync: Copy the directory to remote network-attached storage or to an external drive.

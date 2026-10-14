@@ -1,6 +1,6 @@
 ---
 title: AI Email Triage & Gmail Classifier Architecture
-description: Comprehensive architecture and explanation of the automated daily Gmail classification engine powered by Pydantic AI, local Gemma 4 inference on NVIDIA GPU, and Vault secrets.
+description: Architecture of the daily Gmail classifier that uses Pydantic AI, local Gemma 4 inference on an NVIDIA GPU, and Vault secrets.
 keywords:
   - pydantic ai
   - gmail classifier
@@ -15,9 +15,9 @@ sidebar:
 
 ## Overview
 
-The Gmail Classifier is an automated, GitOps-managed email triage engine deployed as a Kubernetes CronJob. It runs daily at 01:00 UTC, inspects messages received over the previous day, cleans and sanitizes email bodies, and passes them to a local in-cluster large language model (Google Gemma 4 E2B running on an NVIDIA GeForce GTX 1050 Ti) via **Pydantic AI**.
+The Gmail Classifier is an email triage job that runs as a Kubernetes CronJob. GitOps manages its deployment. The job runs every day at 01:00 UTC and examines the messages from the previous day. It cleans the email bodies and sends them through Pydantic AI to a local large language model (LLM) in the cluster. The model is Google Gemma 4 E2B on an NVIDIA GeForce GTX 1050 Ti.
 
-The classification engine enforces strict taxonomy safety: it categorizes incoming mail strictly into existing user-curated labels, quarantine-flagging any uncertain or ambiguous emails under `ai-review` without polluting root labels. Upon completion, a formatted summary report is dispatched to Telegram.
+The classifier puts incoming mail only into the existing labels that the user curates. If the result is uncertain or ambiguous, the classifier applies the `ai-review` label and does not change the root labels. When the run is complete, the classifier sends a summary report to Telegram.
 
 ```mermaid
 flowchart TD
@@ -72,7 +72,7 @@ flowchart TD
 
 ## Daily Execution Sequence
 
-The classifier executes unattended through a deterministic sequence. If any single message encounter an API error or network timeout, the failure is caught and logged, the failed item is registered for manual review, and the remaining emails are processed without interrupting Telegram digest generation.
+The classifier runs without an operator in a fixed sequence. If one message causes an API error or a network timeout, the classifier catches and logs the failure. It records the failed item for manual review and continues with the remaining emails. The Telegram digest still goes out at the end of the run.
 
 ```mermaid
 sequenceDiagram
@@ -117,7 +117,7 @@ sequenceDiagram
 
 ## Pydantic & Pydantic AI Integration
 
-The application relies on **Pydantic** for data validation and **Pydantic AI** for structured output generation and model interactions.
+The application uses Pydantic for data validation. It uses Pydantic AI for structured output and for calls to the model.
 
 ```mermaid
 flowchart LR
@@ -151,10 +151,10 @@ flowchart LR
 
 ### Type-Safe Data Contracts
 
-Data structures are strongly typed Pydantic models:
+The data structures are strongly typed Pydantic models:
 
-- `SanitizedEmail`: Captures email metadata, sender, clean subject, decoded body, and snippet.
-- `ClassificationResult`: Defines the exact output schema expected from the model, including label name, confidence score between 0.0 and 1.0, and reasoning explanation.
+- `SanitizedEmail`: Holds the email metadata, the sender, the clean subject, the decoded body, and the snippet.
+- `ClassificationResult`: Defines the output schema that the model must return. The schema has the label name, a confidence score from 0.0 to 1.0, and the reason for the decision.
 
 ```python
 from pydantic import BaseModel, Field
@@ -170,7 +170,7 @@ class ClassificationResult(BaseModel):
 
 ### Agent Configuration
 
-The `EmailClassifier` provisions an `Agent` connected to the local inference server using `OpenAIChatModel`:
+The `EmailClassifier` creates an `Agent` that connects to the local inference server through `OpenAIChatModel`:
 
 ```python
 from openai import AsyncOpenAI
@@ -198,16 +198,16 @@ self.agent = Agent(
 
 ## Label Safety & Autonomous Taxonomy Discovery
 
-User labels are protected against corruption while allowing intelligent taxonomy evolution for accounts with sparse labels.
+The classifier protects user labels from corruption. For accounts with few labels, it can also add new labels in a controlled way.
 
 ### Autonomous Label Discovery
 
-When an account possesses few or no pre-existing user labels, or when incoming emails do not match any candidate labels, the classifier activates autonomous label discovery (`ALLOW_LABEL_CREATION=true`):
+An account can have few or no user labels, or an incoming email can match no candidate label. In these cases, the classifier uses autonomous label discovery (`ALLOW_LABEL_CREATION=true`):
 
-- **Canonical Proposing**: The model is instructed to propose concise, high-level canonical category labels (such as `Newsletters`, `Travel`, `Entertainment`, `Shopping`, `Finance`, `Social`) based on primary sender intent rather than dumping legitimate mail into quarantine.
-- **Strict Guardrails**: New labels must be Title Case and broad (one to two words). Sender-specific company names (such as `Netflix` or `Uber`) are barred to avoid taxonomy fragmentation. Labels are trimmed, bounded to $\le 40$ characters, and forbidden from using reserved prefixes like `CATEGORY_`.
-- **Dynamic Provisioning**: Once sanitized, the classifier calls `ensure_label_exists` on the Gmail API, creates the label if absent, and caches its label ID for subsequent batch operations.
-- **Preserved Quarantine Safety**: Emails identified as unsolicited spam, phishing, or ambiguous noise continue to receive the explicit `QUARANTINE` label, mapping safely to `ai-review`.
+- **Canonical labels**: The prompt tells the model to propose short, high-level category labels, such as `Newsletters`, `Travel`, `Entertainment`, `Shopping`, `Finance`, and `Social`. The model selects the label from the main intent of the sender. Legitimate mail thus stays out of quarantine.
+- **Guardrails**: A new label must use Title Case and be broad (one or two words). Labels with sender company names (such as `Netflix` or `Uber`) are not permitted, because they fragment the taxonomy. The classifier trims each label, limits it to $\le 40$ characters, and rejects reserved prefixes such as `CATEGORY_`.
+- **Label creation**: After the classifier cleans the label, it calls `ensure_label_exists` on the Gmail API. If the label does not exist, this call creates it. The classifier then caches the label ID for the next batch operations.
+- **Quarantine**: Spam, phishing, and ambiguous emails continue to get the `QUARANTINE` label, which maps to `ai-review`.
 
 ```mermaid
 stateDiagram-v2
@@ -272,27 +272,27 @@ stateDiagram-v2
 
 ## Automated 90-Day Archiving Sweep
 
-To maintain a clean, high-signal inbox without manual maintenance, the classifier includes an automated archiving sweep executed immediately following daily classification:
+Immediately after the daily classification, the classifier archives old messages. This keeps the inbox clean without manual work:
 
-- **Target Query**: Evaluates messages in the inbox that have been successfully classified but are older than ninety days:
+- **Query**: The sweep selects inbox messages that the classifier processed and that are older than 90 days:
 
   ```text
   in:inbox label:ai-processed -label:ai-review older_than:90d
   ```
 
-- **Strict Quarantine Preservation**: Messages tagged with `ai-review` are explicitly excluded from automatic archiving (`-label:ai-review`), ensuring pending items requiring human review remain visible in the inbox.
-- **High-Throughput Batch Processing**: Utilizes the Gmail API `batchModify` endpoint to remove the `INBOX` label across up to 1,000 messages per request, requiring zero LLM inference tokens.
-- **Telemetry & Digest Reporting**: The total number of archived emails is included directly in the Telegram summary report (`📦 Archived from Inbox: <count>`).
+- **Quarantine exclusion**: The query excludes messages with the `ai-review` label (`-label:ai-review`). Items that need human review stay in the inbox.
+- **Batch processing**: The sweep uses the Gmail API `batchModify` endpoint to remove the `INBOX` label from up to 1,000 messages per request. It uses no LLM inference tokens.
+- **Reporting**: The Telegram summary report shows the number of archived emails (`📦 Archived from Inbox: <count>`).
 
 ### Weekly Mark-as-Read
 
-A separate CronJob per account (`gmail-mark-read-<nickname>`) runs the same image with `--mark-all-read` every Sunday (04:00 for `personal`, 04:15 for `family`, from `gmail_mark_read` in `apps/accounts.yaml`):
+Each account has a separate CronJob (`gmail-mark-read-<nickname>`). It runs the same image with `--mark-all-read` every Sunday. The schedule is 04:00 for `personal` and 04:15 for `family`, from `gmail_mark_read` in `apps/accounts.yaml`. The job does these tasks:
 
-- Lists every unread message outside Spam and Trash with the query `is:unread`.
-- Removes the `UNREAD` label through `batchModify`, up to 1,000 messages per request. Labels, inbox placement, and classification are untouched.
+- Lists all unread messages outside Spam and Trash with the query `is:unread`.
+- Removes the `UNREAD` label through `batchModify`, up to 1,000 messages per request. It does not change labels, inbox placement, or classification.
 - Uses no LLM inference and sends no Telegram message.
 
-Run it on demand for one account:
+Run the job on demand for one account:
 
 ```bash
 kubectl -n gmail-classifier create job --from=cronjob/gmail-mark-read-personal gmail-mark-read-personal-manual
@@ -302,19 +302,19 @@ kubectl -n gmail-classifier create job --from=cronjob/gmail-mark-read-personal g
 
 ## Security & Secrets Management
 
-- **Zero Secret Exposure**: No refresh tokens or OAuth secrets are stored in version control. All secrets are stored in HashiCorp Vault at `kv/gmail/credentials` and synchronized via an `ExternalSecret` into Kubernetes Secret `gmail-credentials`.
-- **Restricted Container Capabilities**: The container runs under non-root UID/GID `10001:10001`, mounts a read-only root filesystem, drops all POSIX capabilities, and utilizes the `RuntimeDefault` seccomp profile.
-- **Privacy Preservation**: Email contents are processed completely inside the local cluster network (`http://llama-server.llama.svc.cluster.local:8080/v1`). No personal correspondence or headers ever leave the local network for third-party inference APIs.
-- **Fail-Safe Processing**: Transient Google API failures on individual emails are caught gracefully. The pipeline logs the failure, marks the message for human attention, and proceeds through the rest of the queue to guarantee summary alert delivery.
+- **Secrets**: Version control contains no refresh tokens or OAuth secrets. HashiCorp Vault keeps all the secrets at `kv/gmail/credentials`. An `ExternalSecret` copies them into the Kubernetes Secret `gmail-credentials`.
+- **Container restrictions**: The container runs as the non-root UID/GID `10001:10001` with a read-only root filesystem. It drops all POSIX capabilities and uses the `RuntimeDefault` seccomp profile.
+- **Privacy**: The classifier processes email contents only inside the local cluster network (`http://llama-server.llama.svc.cluster.local:8080/v1`). No personal email or headers go out of the local network to third-party inference APIs.
+- **Failure handling**: If the Google API has a temporary failure on one email, the classifier catches the error. It logs the failure, marks the message for human review, and continues with the queue. Thus, the summary alert always goes out.
 
 ---
 
 ## Observability & Grafana Dashboard
 
-A dedicated, zero-PII Grafana dashboard is provisioned in the `monitoring` namespace via `infrastructure/prometheus/dashboard-gmail-classifier.yaml` (labeled `grafana_dashboard: "1"` for automatic discovery by the Grafana sidecar).
+The file `infrastructure/prometheus/dashboard-gmail-classifier.yaml` adds a Grafana dashboard for the classifier to the `monitoring` namespace. The label `grafana_dashboard: "1"` lets the Grafana sidecar find the dashboard automatically. The dashboard shows no PII.
 
-- **Executive KPI Cards**: Real-time visibility into CronJob schedule status (`0 1 * * *`), total successful jobs, failure counts, active batch workers, and last execution duration.
-- **Batch Execution Lifecycle**: Historical run duration and Pod lifecycle phase state timelines (`Running`, `Succeeded`, `Failed`).
-- **Resource Footprint**: Container CPU usage and memory working set metrics tracked against container requests (100m / 128Mi) and limits (500m / 384Mi).
-- **SLM Hardware Acceleration**: Correlated NVIDIA GTX 1050 Ti GPU compute utilization %, VRAM framebuffer allocation (MB), core temperature, and compute clock speeds during inference cycles.
-- **Zero-PII Privacy Posture**: No email bodies, subjects, sender emails, or personal identifiers are stored in Prometheus or displayed on dashboards, ensuring personal privacy is strictly preserved.
+- **Status panels**: The CronJob schedule status (`0 1 * * *`), the total of successful jobs, the failure count, the active batch workers, and the duration of the last run.
+- **Run history**: The run duration over time and the timeline of Pod phases (`Running`, `Succeeded`, `Failed`).
+- **Resources**: Container CPU usage and memory working set, compared with the container requests (100m / 128Mi) and limits (500m / 384Mi).
+- **GPU**: NVIDIA GTX 1050 Ti compute utilization (%), VRAM framebuffer allocation (MB), core temperature, and compute clock speeds during inference.
+- **Privacy**: Prometheus does not store email bodies, subjects, sender addresses, or personal identifiers. The dashboards do not show them.

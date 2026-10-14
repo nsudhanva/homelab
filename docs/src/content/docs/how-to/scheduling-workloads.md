@@ -15,13 +15,13 @@ sidebar:
 
 # Scheduling Workloads
 
-Control exactly where your pods run in the cluster using Node Affinity, Taints, and Tolerations. This guide explains how to target specific nodes (like an ARM64 worker) while ensuring high availability.
+Use Node Affinity, Taints, and Tolerations to control where your pods run in the cluster. This guide shows how to target specific nodes (such as an ARM64 worker) and keep high availability.
 
 ## Concepts
 
 ### Node Labels
 
-Nodes can be labeled with key-value pairs. Standard labels include:
+A node can have labels, which are key-value pairs. Standard labels include:
 
 - `kubernetes.io/arch`: `amd64`, `arm64`
 - `kubernetes.io/os`: `linux`
@@ -35,21 +35,21 @@ kubectl label node <node-name> disk=ssd
 
 ### Node Affinity
 
-Affinity allows you to constrain which nodes your pod is eligible to be scheduled on.
+Affinity limits the nodes on which the scheduler can put your pod.
 
-- **Required (`requiredDuringSchedulingIgnoredDuringExecution`):** The pod _must_ run on a matching node. If no match is found, the pod stays Pending.
-- **Preferred (`preferredDuringSchedulingIgnoredDuringExecution`):** The scheduler tries to find a matching node. If not found, it schedules the pod anywhere.
+- **Required (`requiredDuringSchedulingIgnoredDuringExecution`):** The pod _must_ run on a matching node. If no node matches, the pod stays Pending.
+- **Preferred (`preferredDuringSchedulingIgnoredDuringExecution`):** The scheduler tries to find a matching node. If it finds none, it schedules the pod on any node.
 
 ### Zero Downtime Strategy
 
-When moving workloads or updating deployments, ensure zero downtime by configuring the `RollingUpdate` strategy correctly.
+To get zero downtime when you move workloads or update deployments, configure the `RollingUpdate` strategy correctly.
 
-- **maxUnavailable: 0**: Ensure no old pods are killed until new ones are Ready.
-- **maxSurge: 1**: Allow creating 1 extra pod above the desired count during updates.
+- **maxUnavailable: 0**: Kubernetes does not stop old pods until the new pods are Ready.
+- **maxSurge: 1**: Kubernetes can create 1 pod more than the desired count during updates.
 
 ## Example: Preferring a Specific Worker Node
 
-This configuration encourages the pod to run on any node labeled with `node-role.kubernetes.io/worker=worker` (for example, a dedicated worker), but allows it to run on the control plane if the worker is down.
+This configuration tells the scheduler to prefer a node with the label `node-role.kubernetes.io/worker=worker` (for example, a dedicated worker). If the worker is down, the pod can run on the control plane.
 
 ```yaml
 apiVersion: apps/v1
@@ -82,7 +82,7 @@ spec:
 
 ## Taints and Tolerations
 
-Taints repel pods from nodes. A pod must have a matching `toleration` to be scheduled on a tainted node.
+A taint keeps pods off a node. To run on a tainted node, a pod must have a matching `toleration`.
 
 **Example Taint:**
 
@@ -102,22 +102,22 @@ tolerations:
 
 ## Best Practices: Keep it Flexible
 
-**Avoid pinning every application to a specific node.**
+Do not pin every application to a specific node.
 
-Adding `affinity` or `nodeSelector` to everything create rigid constraints that fight against Kubernetes' ability to self-heal.
+If you add `affinity` or `nodeSelector` to all workloads, you create rigid constraints. These constraints stop Kubernetes from healing itself.
 
 ### When to use Affinity
 
-- **Hardware requirements:** The app needs a specific GPU, USB device, or architecture (ARM64 vs AMD64) present only on certain nodes.
-- **Performance/cost:** Offload non-critical apps to a cheaper/slower node.
-- **Data gravity:** Kubernetes handles this for you. If a pod uses a PVC on a specific node, Kubernetes naturally schedules the pod there.
+- **Hardware requirements:** The app needs a specific GPU, USB device, or architecture (ARM64 vs AMD64) that only some nodes have.
+- **Performance/cost:** Move non-critical apps to a cheaper or slower node.
+- **Data gravity:** Kubernetes does this for you. If a pod uses a PVC on a specific node, Kubernetes schedules the pod on that node.
 
 ### The "Filebrowser Lesson" (Anti-Pattern)
 
-Do not force a pod to a node if it shares dependencies with other pods.
+Do not force a pod onto a node if it shares dependencies with other pods.
 
 - **Scenario:** Filebrowser shared a volume with Jellyfin.
 - **Constraint 1:** Jellyfin _must_ run on `node-1` (GPU).
-- **Constraint 2:** Filebrowser's volume is therefore locked to `node-1`.
-- **Error:** Forcing Filebrowser to `node-2` caused a deadlock because the volume could not follow it.
-- **Fix:** Remove the affinity. Let Kubernetes co-locate them naturally.
+- **Constraint 2:** Because of this, the Filebrowser volume is locked to `node-1`.
+- **Error:** An affinity that forced Filebrowser to `node-2` caused a deadlock, because the volume could not move with the pod.
+- **Fix:** Remove the affinity. Let Kubernetes put the two pods on the same node.

@@ -1,6 +1,6 @@
 ---
 title: How to Auto-Classify Actual Budget Transactions
-description: Configure, benchmark, and deploy the AI-powered transaction classifier for Actual Budget using local Gemma 4 SLM and homelab-ai routing.
+description: Configure, benchmark, and deploy the AI transaction classifier for Actual Budget with the local Gemma 4 SLM and homelab-ai routing.
 keywords:
   - actual budget classifier
   - pydantic ai actual budget
@@ -13,24 +13,24 @@ sidebar:
 
 # How to Auto-Classify Actual Budget Transactions
 
-This problem-oriented guide explains how to operate, configure, benchmark, and monitor the automated Actual Budget Transaction Classifier (`apps/actual-classifier/`).
+Use this guide to operate, configure, benchmark, and monitor the Actual Budget transaction classifier (`apps/actual-classifier/`).
 
 ## Architecture and Workflow
 
-The classifier automates categorization and single-word tagging for imported banking transactions:
+The classifier gives each imported bank transaction a category and a single-word tag:
 
-- **Local Inference First**: Transactions are classified via the local LLaMA server (`llama-server.llama.svc.cluster.local:8080/v1`) running Google Gemma 4 (`gemma-4-e2b-it`).
-- **Resilient Fallback**: If the local model is under heavy load or temporarily unavailable, requests fail over to OpenRouter (`google/gemma-4-31b-it`) managed transparently by the shared `homelab-ai` router.
-- **Strict Taxonomy Enforcement**: The model is constrained via Pydantic schema validation to choose strictly from single-word categories (`Food`, `Transit`, `Shopping`, `Bills`, `Rent`, `Travel`, `Medical`, `Income`, `Savings`, `Transfer`) and single-word tags (`#Subscription`, `#Transit`, `#Medical`, `#Travel`, `#Income`, `#Bills`, `#Rent`, `#Transfer`, `#Unknown`).
-- **Clean Merchant Standardization**: Raw POS strings (such as `TST*IDLY EXPRESS - MOUNT` or `ACH Withdrawal COMCAST-XFINITY`) are normalized to human-readable payees (`Idly Express`, `Comcast`).
-- **Guardrails & Confidence Threshold**: Any prediction below the configured confidence threshold (default `0.60`) is tagged `#Unknown` to prevent misclassification of ambiguous charges. Transactions with no applicable tag keep a clean note (for example groceries and general shopping).
-- **Scope**: Only on-budget transactions with no category (or an `#Unknown` note) are classified. Transfers between accounts, off-budget tracking accounts (brokerage and retirement), split parents, and starting balances are skipped.
-- **Amount Sign Awareness**: Negative amounts are treated as outflows and positive amounts as inflows; a positive amount from a merchant is classified as a refund in that merchant's category.
-- **Scheduled Sync**: Deployed as a Kubernetes CronJob running daily at 03:00 (`0 3 * * *`), after the Gmail (01:00) and Drive (02:00) jobs, with concurrency control and ephemeral pod termination. The image is built and published to `ghcr.io/nsudhanva/homelab-actual-classifier` by the `actual-classifier-push` CI job.
+- **Local inference first**: The local LLaMA server (`llama-server.llama.svc.cluster.local:8080/v1`) classifies the transactions with Google Gemma 4 (`gemma-4-e2b-it`).
+- **Fallback**: If the local model has a high load or is temporarily unavailable, requests go to OpenRouter (`google/gemma-4-31b-it`). The shared `homelab-ai` router controls this fallback.
+- **Taxonomy**: Pydantic schema validation limits the model to single-word categories (`Food`, `Transit`, `Shopping`, `Bills`, `Rent`, `Travel`, `Medical`, `Income`, `Savings`, `Transfer`) and single-word tags (`#Subscription`, `#Transit`, `#Medical`, `#Travel`, `#Income`, `#Bills`, `#Rent`, `#Transfer`, `#Unknown`).
+- **Payee names**: The classifier changes raw POS strings (such as `TST*IDLY EXPRESS - MOUNT` or `ACH Withdrawal COMCAST-XFINITY`) into readable payee names (`Idly Express`, `Comcast`).
+- **Confidence threshold**: If a prediction is below the configured confidence threshold (default `0.60`), the classifier tags it `#Unknown`. This prevents incorrect classification of ambiguous charges. If no tag applies (for example, groceries and general shopping), the note stays clean.
+- **Scope**: The classifier processes only on-budget transactions that have no category or that have an `#Unknown` note. It skips transfers between accounts, off-budget tracking accounts (brokerage and retirement), split parents, and starting balances.
+- **Amount sign**: A negative amount is an outflow and a positive amount is an inflow. If a positive amount comes from a merchant, the classifier records it as a refund in the category of that merchant.
+- **Schedule**: A Kubernetes CronJob runs the classifier every day at 03:00 (`0 3 * * *`), after the Gmail (01:00) and Drive (02:00) jobs. The CronJob has concurrency control, and each pod is ephemeral and stops after the run. The `actual-classifier-push` CI job builds the image and publishes it to `ghcr.io/nsudhanva/homelab-actual-classifier`.
 
 ## Step 1: Review Configuration and Secrets
 
-The classifier retrieves connection parameters from environment variables and credentials from Vault via ExternalSecrets:
+The classifier gets connection parameters from environment variables. It gets credentials from Vault through ExternalSecrets:
 
 ```yaml
 ACTUAL_SERVER_URL: "http://actual-budget.actual-budget.svc.cluster.local:5006"
@@ -48,16 +48,16 @@ The `actual-classifier-secrets` ExternalSecret reads `ACTUAL_PASSWORD` from Vaul
 
 ### Switch models or providers
 
-Provider routing is configured entirely through environment variables in `apps/actual-classifier/cronjob.yaml`, so a switch is a one-line Git change that ArgoCD applies on the next sync:
+Environment variables in `apps/actual-classifier/cronjob.yaml` control all provider routing. To switch, change one line in Git. ArgoCD applies the change on the next sync.
 
-- Use OpenRouter as the primary model: set `PRIMARY_LLM_PROVIDER` to `openrouter` and `FALLBACK_LLM_PROVIDER` to `local`.
-- Change the OpenRouter model: set `OPENROUTER_MODEL_NAME` to any OpenRouter model slug that supports structured output.
-- Change the local model: set `LLM_MODEL` to the alias served by `llama-server`.
-- Disable fallback: set `FALLBACK_LLM_PROVIDER` to `none`.
+- To use OpenRouter as the primary model, set `PRIMARY_LLM_PROVIDER` to `openrouter` and `FALLBACK_LLM_PROVIDER` to `local`.
+- To change the OpenRouter model, set `OPENROUTER_MODEL_NAME` to an OpenRouter model slug that supports structured output.
+- To change the local model, set `LLM_MODEL` to the alias that `llama-server` serves.
+- To disable the fallback, set `FALLBACK_LLM_PROVIDER` to `none`.
 
-The local endpoint is not retried at the HTTP level (`LLM_MAX_RETRIES`, default `0`), so a timeout fails over to the fallback provider immediately. OpenRouter requests retry transient errors (`OPENROUTER_MAX_RETRIES`, default `2`).
+The classifier does not retry the local endpoint at the HTTP level (`LLM_MAX_RETRIES`, default `0`). Thus, a timeout sends the request to the fallback provider immediately. OpenRouter requests retry transient errors (`OPENROUTER_MAX_RETRIES`, default `2`).
 
-Verify that the external secret is synced in the namespace:
+Make sure that the ExternalSecret is synced in the namespace:
 
 ```bash
 kubectl -n actual-classifier get externalsecret,secret
@@ -65,7 +65,7 @@ kubectl -n actual-classifier get externalsecret,secret
 
 ## Step 2: Run Hermetic Unit Tests and Verification
 
-All data models, Pydantic AI guardrails, and Actual Budget sync cycles have comprehensive unit tests:
+Unit tests cover all data models, Pydantic AI guardrails, and Actual Budget sync cycles:
 
 ```bash
 cd apps/actual-classifier
@@ -75,37 +75,37 @@ uv run ruff format --check .
 uv run ty check
 ```
 
-Ensure all tests pass and static type checkers report zero diagnostics before committing changes.
+Before you commit changes, make sure that all tests pass. Make sure that the static type checkers report zero diagnostics.
 
 ## Step 3: Execute Benchmark Evaluation
 
-The classifier package includes a standalone golden benchmark suite covering household transaction domains:
+The classifier package has a standalone golden benchmark suite for household transaction domains:
 
 ```bash
 cd apps/actual-classifier
 uv run python -m actual_classifier.main --benchmark
 ```
 
-The benchmark reports category accuracy, tag precision, payee normalization, and confidence scores across test cases.
+The benchmark reports category accuracy, tag precision, payee normalization, and confidence scores for the test cases.
 
 ## Step 4: Preview Run with Dry-Run Mode
 
-To inspect pending unclassified transactions without committing changes to Actual Budget:
+To examine pending unclassified transactions without changes to Actual Budget, run this command:
 
 ```bash
 cd apps/actual-classifier
 uv run python -m actual_classifier.main --dry-run --limit 10
 ```
 
-The output displays raw imported payees alongside proposed categories, tags, normalized payees, and confidence levels.
+The output shows the raw imported payees next to the proposed categories, tags, normalized payees, and confidence levels.
 
 ## Step 5: Trigger Scheduled CronJob Manually
 
-To trigger an on-demand batch run inside the Kubernetes cluster:
+To start a batch run on demand in the Kubernetes cluster, run these commands:
 
 ```bash
 kubectl -n actual-classifier create job --from=cronjob/actual-classifier manual-actual-run
 kubectl -n actual-classifier logs -f job/manual-actual-run
 ```
 
-Once completed, changes are synced immediately to Actual Budget and reflected in category and subscription dashboards.
+When the job completes, the changes sync immediately to Actual Budget. The category and subscription dashboards then show the changes.

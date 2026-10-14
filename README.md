@@ -1,13 +1,13 @@
 # Homelab
 
-A self-hosted bare-metal Kubernetes cluster on Ubuntu 26.04 LTS (node `legion`) powered by K3s `v1.36+` (`v1.36.4+k3s1`) and managed 100% via GitOps with ArgoCD.
+A self-hosted bare-metal Kubernetes cluster on Ubuntu 26.04 LTS (node `legion`). It runs K3s `v1.36+` (`v1.36.4+k3s1`). ArgoCD manages 100% of the cluster through GitOps.
 
-- Provisioned from scratch using automated Ansible playbooks for zero-touch bare-metal bring-up
-- Traffic flows through Tailscale for secure ingress and Envoy Gateway for routing, with Vault and External Secrets handling credentials
-- High-performance local SSD storage backed by K3s Local-Path Provisioner on `/home/k3s-storage`
-- Full hardware GPU acceleration with NVIDIA GTX 1050 Ti passed through via NVIDIA GPU Operator `v26.7.0` with Container Device Interface (CDI)
-- Automated zero-downtime K3s upgrades orchestrated by Rancher System Upgrade Controller
-- Immutable GitOps operations where ArgoCD reconciles all infrastructure and user applications from this repository
+- Ansible playbooks install the bare-metal host from scratch with no manual steps
+- Tailscale gives secure ingress and Envoy Gateway routes the traffic. Vault and External Secrets keep the credentials
+- Local SSD storage uses the K3s Local-Path Provisioner on `/home/k3s-storage`
+- The NVIDIA GPU Operator `v26.7.0` gives the NVIDIA GTX 1050 Ti to workloads through the Container Device Interface (CDI)
+- The Rancher System Upgrade Controller upgrades K3s automatically with zero downtime
+- ArgoCD applies all infrastructure and user applications from this repository through GitOps
 
 ## Table of contents
 
@@ -30,21 +30,21 @@ A self-hosted bare-metal Kubernetes cluster on Ubuntu 26.04 LTS (node `legion`) 
 ## Features
 
 - Single-node / multi-node bare-metal K3s Kubernetes `v1.36.4+k3s1` on node `legion` with Flannel CNI
-- Automated Ansible playbooks for host preparation, runtime configuration, and cluster bootstrap
+- Ansible playbooks for host preparation, runtime configuration, and cluster bootstrap
 - NVIDIA GPU Operator `v26.7.0` with Container Device Interface (CDI) for GTX 1050 Ti transcoding
-- Rancher System Upgrade Controller for automated, declarative zero-downtime K3s upgrades
-- GitOps-managed infrastructure and apps via ArgoCD ApplicationSets
+- Rancher System Upgrade Controller for declarative K3s upgrades with zero downtime
+- ArgoCD ApplicationSets that manage the infrastructure and apps through GitOps
 - Tailscale Gateway API ingress with split-horizon DNS
-- Vault + External Secrets Operator for centralized secret management
-- Native high-speed SSD storage on `/home/k3s-storage` via Local-Path Provisioner
+- Vault and External Secrets Operator for central secret management
+- Local SSD storage on `/home/k3s-storage` through the Local-Path Provisioner
 - Prometheus monitoring stack with Alertmanager and Grafana
-- Telegram alerting via @ManassuHomelabBot integrated with Alertmanager and Grafana
-- Local AI inference with Google Gemma 4 (E2B) on NVIDIA GTX 1050 Ti via llama.cpp
-- Autonomous Gmail classifier running daily triage with local Gemma 4 and Telegram summaries
-- Autonomous symmetrical Google Drive organizer with local Gemma 4 document classification and partner syncing
-- Automated container image updates with ArgoCD Image Updater
-- Envoy Gateway data plane for Kubernetes Gateway API
-- Kubescape operator for automated cluster security scanning
+- Telegram alerts through @ManassuHomelabBot from Alertmanager and Grafana
+- Local AI inference with Google Gemma 4 (E2B) on the NVIDIA GTX 1050 Ti through llama.cpp
+- A Gmail classifier that sorts mail each day with local Gemma 4 and sends Telegram summaries
+- A symmetrical Google Drive organizer that classifies documents with local Gemma 4 and syncs with a partner
+- Automatic container image updates with ArgoCD Image Updater
+- Envoy Gateway data plane for the Kubernetes Gateway API
+- Kubescape operator for automatic cluster security scans
 
 ## Architecture
 
@@ -163,13 +163,13 @@ flowchart LR
 
 ### Automated bare metal bring-up
 
-Ensure your target machine `legion` is running Ubuntu with SSH and sudo access configured, then run one command from your workstation:
+Make sure that the target machine `legion` runs Ubuntu and has SSH and sudo access. Then run this command from your workstation:
 
 ```bash
 ./scripts/provision.sh
 ```
 
-To interact with the newly provisioned cluster:
+To use the new cluster, run these commands:
 
 ```bash
 export KUBECONFIG=$PWD/k3s.kubeconfig
@@ -221,9 +221,9 @@ flowchart TB
 
 ## Documentation
 
-The full documentation website is published at [homelab.sudhanva.me](https://homelab.sudhanva.me). Documentation sources are maintained under `docs/` using Astro Starlight.
+The full documentation website is at [homelab.sudhanva.me](https://homelab.sudhanva.me). The documentation source files are in `docs/` and use Astro Starlight.
 
-Build documentation locally:
+To build the documentation locally, run these commands:
 
 ```bash
 cd docs
@@ -231,7 +231,7 @@ bun install
 bun dev
 ```
 
-Key reference guides:
+Main guides:
 
 - From scratch installation: [Build K3s Cluster from Scratch](docs/src/content/docs/how-to/from-scratch.md)
 - Secrets management: [HashiCorp Vault Secrets Management](docs/src/content/docs/how-to/vault.md)
@@ -254,34 +254,34 @@ docs/             Astro Starlight documentation
 | App | Purpose | Hostname |
 | --- | --- | --- |
 | Docs | Documentation site for cluster guides | `homelab.sudhanva.me` |
-| Headlamp | Kubernetes UI with OIDC support and metrics integration | `headlamp.sudhanva.me` |
+| Headlamp | Kubernetes UI with OIDC support and metrics | `headlamp.sudhanva.me` |
 | Homer | Home dashboard with service shortcuts | `home.sudhanva.me` |
 | Jellyfin | Media streaming with NVIDIA GPU acceleration | `jellyfin.sudhanva.me` |
 | Filebrowser | File manager for persistent media volumes | `filebrowser.sudhanva.me` |
 | Technitium DNS | Authoritative and recursive DNS server | `dns.sudhanva.me` |
 | Home Assistant | Smart home automation platform | `homeassistant.sudhanva.me` |
 | Gemma 4 AI | Local LLM inference on NVIDIA GPU | `ai.sudhanva.me` |
-| Gmail Classifier | Symmetrical local LLM email triage and daily briefing | Background CronJob |
+| Gmail Classifier | Symmetrical email sorting and daily summary with a local LLM | Background CronJob |
 | Drive Organizer | Symmetrical family document organizer with local Gemma 4 | Background CronJob |
 | ArgoCD | GitOps control plane UI | `argocd.sudhanva.me` |
-| Vault | Centralized secrets management | `vault.sudhanva.me` |
+| Vault | Central secrets management | `vault.sudhanva.me` |
 | Grafana | Metrics dashboards | `grafana.sudhanva.me` |
 | Prometheus | Metrics collector and query engine | `prometheus.sudhanva.me` |
 | Alertmanager | Alert routing and notifications | `alertmanager.sudhanva.me` |
 
 ## GitOps model
 
-ArgoCD reconciles everything under `infrastructure/` and `apps/` using ApplicationSets. Manual `kubectl apply` is discouraged after initial bootstrap.
+ArgoCD uses ApplicationSets to apply all items in `infrastructure/` and `apps/`. After the initial bootstrap, avoid manual `kubectl apply`.
 
-Adding apps:
+To add an app, do these steps:
 
-- Step 1: Create `apps/<app>/app.yaml` to define the ArgoCD app name, path, and namespace
-- Step 2: Add Kubernetes manifests in the same folder
-- Step 3: Add `kustomization.yaml` if you want Image Updater to write overrides
+- Step 1: Create `apps/<app>/app.yaml`. This file sets the ArgoCD app name, path, and namespace
+- Step 2: Add the Kubernetes manifests in the same folder
+- Step 3: If you want Image Updater to write overrides, add `kustomization.yaml`
 
 ## Operations
 
-Routine cluster health checks:
+To do a routine check of the cluster health, run these commands:
 
 ```bash
 export KUBECONFIG=$PWD/k3s.kubeconfig
@@ -290,7 +290,7 @@ kubectl get pods -A
 kubectl get apps -n argocd
 ```
 
-Before pushing code changes:
+Before you push code changes, run this command:
 
 ```bash
 pre-commit run --all-files

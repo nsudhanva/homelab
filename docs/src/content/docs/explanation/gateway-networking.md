@@ -1,6 +1,6 @@
 ---
 title: Kubernetes Gateway API and Tailscale Networking
-description: Deep dive into the networking architecture using Gateway API, Envoy Gateway, and Tailscale. Understand traffic flow from tailnet clients to cluster services with TLS termination and HTTPRoute matching.
+description: The networking architecture with Gateway API, Envoy Gateway, and Tailscale. How traffic goes from tailnet clients to cluster services, with TLS termination and HTTPRoute matching.
 keywords:
   - kubernetes gateway api
   - envoy gateway
@@ -14,11 +14,11 @@ sidebar:
 
 # Gateway API and Networking
 
-This document explains how traffic flows from your Tailnet clients to applications running in the cluster.
+This document tells how traffic goes from your Tailnet clients to the applications in the cluster.
 
 ## Overview
 
-The homelab uses a layered approach to expose HTTPS services:
+The homelab uses a set of layers to expose HTTPS services:
 
 ```mermaid
 flowchart TB
@@ -112,63 +112,63 @@ flowchart LR
 
 ### Tailscale Operator
 
-The Tailscale Kubernetes Operator creates proxy pods for `LoadBalancer` services when `spec.loadBalancerClass: tailscale` is set. Each proxy pod:
+The Tailscale Kubernetes Operator creates proxy pods for `LoadBalancer` services that set `spec.loadBalancerClass: tailscale`. Each proxy pod does these tasks:
 
-- Joins your Tailnet as a device (e.g., `gateway-envoy`)
-- Gets a Tailscale IP (for example, `TAILSCALE_GATEWAY_IP`)
-- Uses iptables DNAT to forward traffic to the Kubernetes ClusterIP
+- It joins your Tailnet as a device (for example, `gateway-envoy`).
+- It gets a Tailscale IP (for example, `TAILSCALE_GATEWAY_IP`).
+- It uses iptables DNAT to send traffic to the Kubernetes ClusterIP.
 
 ### Envoy Gateway
 
-Envoy Gateway implements the Gateway API and handles:
+Envoy Gateway implements the Gateway API and does these tasks:
 
-- TLS termination using certificates from cert-manager
-- SNI-based routing to select the correct filter chain
-- HTTPRoute matching to forward requests to backend services
+- It does TLS termination with certificates from cert-manager.
+- It uses SNI to select the correct filter chain.
+- It matches HTTPRoutes and sends requests to the backend services.
 
-The `EnvoyProxy` resource configures the Envoy deployment as a `LoadBalancer` with `loadBalancerClass: tailscale`, which triggers the Tailscale Operator to create the proxy.
+The `EnvoyProxy` resource configures the Envoy deployment as a `LoadBalancer` with `loadBalancerClass: tailscale`. This setting causes the Tailscale Operator to create the proxy.
 
 ### ExternalDNS
 
-ExternalDNS watches HTTPRoute resources with the annotation `external-dns.alpha.kubernetes.io/expose: "true"` and creates DNS records in Cloudflare:
+ExternalDNS watches HTTPRoute resources that have the annotation `external-dns.alpha.kubernetes.io/expose: "true"`. It creates these DNS records in Cloudflare:
 
-- Subdomain CNAMEs (e.g., `homelab.sudhanva.me`)
-- Pointing to the Tailscale hostname (`gateway-envoy.TAILNET.ts.net`)
+- Subdomain CNAMEs (for example, `homelab.sudhanva.me`).
+- Each CNAME points to the Tailscale hostname (`gateway-envoy.TAILNET.ts.net`).
 
 ### cert-manager
 
-cert-manager obtains wildcard TLS certificates from Let's Encrypt using DNS-01 challenges:
+cert-manager gets wildcard TLS certificates from Let's Encrypt with DNS-01 challenges:
 
-- The `ClusterIssuer` is configured with a Cloudflare API token
-- A single `Certificate` resource covers `*.sudhanva.me`
-- The certificate is stored in a Secret and referenced by the Gateway
+- The `ClusterIssuer` uses a Cloudflare API token.
+- One `Certificate` resource covers `*.sudhanva.me`.
+- A Secret holds the certificate, and the Gateway refers to that Secret.
 
-## Required wiring for Tailnet ingress
+## Necessary configuration for Tailnet ingress
 
-These resources have to align or HTTPS routing through Tailscale will break:
+All of these resources must agree. If one is incorrect, HTTPS routing through Tailscale stops.
 
-- Flannel CNI preserves iptables DNAT from Tailscale proxy pods directly to the target ClusterIP.
+- Flannel CNI keeps the iptables DNAT from the Tailscale proxy pods directly to the target ClusterIP.
 - EnvoyProxy exposes a `LoadBalancer` service with `loadBalancerClass: tailscale` and a stable Tailscale hostname.
-- Gateway uses `gatewayClassName: tailscale` and points to the wildcard certificate.
-- ExternalDNS targets the Tailscale hostname via the Gateway annotation.
+- The Gateway uses `gatewayClassName: tailscale` and points to the wildcard certificate.
+- ExternalDNS uses the Gateway annotation to target the Tailscale hostname.
 - cert-manager creates the wildcard certificate in the `tailscale` namespace.
-- HTTPRoutes live in app namespaces and include the ExternalDNS expose annotation.
-- Cloudflare API tokens and Tailscale OAuth credentials are synced from Vault through External Secrets Operator.
+- HTTPRoutes are in the app namespaces and have the ExternalDNS expose annotation.
+- External Secrets Operator syncs the Cloudflare API tokens and the Tailscale OAuth credentials from Vault.
 
 ## Split-horizon DNS for public hostnames
 
-Some hostnames need different targets on and off the tailnet. For example, `homelab.sudhanva.me` should resolve to the cluster on tailnet clients and to Cloudflare for public clients.
+Some hostnames need one target on the tailnet and a different target off the tailnet. For example, `homelab.sudhanva.me` must resolve to the cluster for tailnet clients and to Cloudflare for public clients.
 
-To make this work:
+To get this result, do these steps:
 
-- Keep the public Cloudflare DNS record pointing at Pages.
-- Route tailnet DNS through the `tailscale-dns` resolver, which answers `*.sudhanva.me` with the Tailscale Gateway IP.
-- Do not annotate the HTTPRoute with `external-dns.alpha.kubernetes.io/expose: "true"` so ExternalDNS does not overwrite the public record.
-- The `tailscale-dns-updater` CronJob refreshes the Gateway IP in the resolver config.
+- Keep the public Cloudflare DNS record that points to Pages.
+- Send tailnet DNS through the `tailscale-dns` resolver. This resolver answers `*.sudhanva.me` with the Tailscale Gateway IP.
+- Do not add the `external-dns.alpha.kubernetes.io/expose: "true"` annotation to the HTTPRoute. Without it, ExternalDNS does not overwrite the public record.
+- Let the `tailscale-dns-updater` CronJob update the Gateway IP in the resolver configuration.
 
 ## In-cluster access to Gateway services
 
-Pods inside the cluster cannot route to Tailscale IPs (`100.x.x.x`). When a pod needs to reach a service exposed via the Tailscale Gateway (e.g., Vault for OIDC token exchange), DNS must resolve to an internal IP.
+Pods in the cluster cannot route to Tailscale IPs (`100.x.x.x`). Some pods must connect to a service that the Tailscale Gateway exposes (for example, Vault for OIDC token exchange). For these pods, DNS must resolve to an internal IP.
 
 ```mermaid
 flowchart LR
@@ -196,7 +196,7 @@ sudhanva.me:53 {
 }
 ```
 
-The `gateway-internal` service selects Envoy pods by label, so it tracks the gateway dynamically:
+The `gateway-internal` service selects the Envoy pods by label. Thus it follows the gateway when the pods change:
 
 ```yaml
 selector:
@@ -204,11 +204,11 @@ selector:
   gateway.envoyproxy.io/owning-gateway-namespace: tailscale
 ```
 
-This enables pods to use the same hostnames as external clients while routing internally.
+With this configuration, pods use the same hostnames as external clients, and the traffic stays in the cluster.
 
 ## Quick validation commands
 
-Run these from any kubectl context that can reach the cluster:
+Run these commands from a kubectl context that can connect to the cluster:
 
 ```bash
 kubectl get gatewayclass
@@ -223,19 +223,19 @@ kubectl get httproute -A
 
 ## Traffic Flow
 
-When you visit `https://homelab.sudhanva.me` from your Mac:
+When you open `https://homelab.sudhanva.me` from your Mac, these events occur:
 
-- **DNS Resolution**: Your Tailscale client queries Tailscale DNS (100.100.100.100), which knows that `homelab.sudhanva.me` points to `gateway-envoy.TAILNET.ts.net`, which resolves to `TAILSCALE_GATEWAY_IP`.
+- **DNS resolution**: Your Tailscale client sends a query to Tailscale DNS (100.100.100.100). Tailscale DNS knows that `homelab.sudhanva.me` points to `gateway-envoy.TAILNET.ts.net`. That name resolves to `TAILSCALE_GATEWAY_IP`.
 
-- **TLS Connection**: Your browser connects to `TAILSCALE_GATEWAY_IP:443` via the WireGuard tunnel. The Tailscale proxy pod receives the connection.
+- **TLS connection**: Your browser connects to `TAILSCALE_GATEWAY_IP:443` through the WireGuard tunnel. The Tailscale proxy pod receives the connection.
 
-- **DNAT**: iptables rules in the proxy pod rewrite the destination from `TAILSCALE_GATEWAY_IP:443` to the ClusterIP `10.x.x.x:443`.
+- **DNAT**: iptables rules in the proxy pod change the destination from `TAILSCALE_GATEWAY_IP:443` to the ClusterIP `10.x.x.x:443`.
 
-- **Packet Routing**: Flannel CNI routes the DNAT'd packet across the cluster network to the Envoy Gateway pod.
+- **Packet routing**: Flannel CNI sends the packet across the cluster network to the Envoy Gateway pod.
 
-- **TLS Termination**: Envoy reads the SNI (`homelab.sudhanva.me`) and selects the filter chain with the wildcard certificate.
+- **TLS termination**: Envoy reads the SNI (`homelab.sudhanva.me`) and selects the filter chain with the wildcard certificate.
 
-- **HTTPRoute Matching**: Envoy matches the `Host` header to an HTTPRoute and forwards the request to the backend Service (e.g., `docs.docs.svc.cluster.local:80`).
+- **HTTPRoute matching**: Envoy matches the `Host` header to an HTTPRoute. Then it sends the request to the backend Service (for example, `docs.docs.svc.cluster.local:80`).
 
 ## Key Configuration Files
 
@@ -253,19 +253,19 @@ When you visit `https://homelab.sudhanva.me` from your Mac:
 
 ### Missing SNI
 
-Envoy requires Server Name Indication (SNI) to select the correct TLS certificate. If clients connect by IP without a hostname, Envoy logs `filter_chain_not_found`.
+Envoy needs Server Name Indication (SNI) to select the correct TLS certificate. If a client connects by IP without a hostname, Envoy logs `filter_chain_not_found`.
 
-**Fix:** Always connect using the FQDN, not the Tailscale IP directly.
+Fix: Connect with the FQDN. Do not connect directly to the Tailscale IP.
 
 ### Gateway shows not programmed
 
-If `kubectl get gateways -n tailscale` reports `PROGRAMMED=False`, confirm:
+If `kubectl get gateways -n tailscale` shows `PROGRAMMED=False`, make sure that:
 
-- The GatewayClass points at `tailscale-proxy`.
-- The EnvoyProxy service is `LoadBalancer` with `loadBalancerClass: tailscale`.
-- The Tailscale Operator pod is running and can tag devices.
+- The GatewayClass points to `tailscale-proxy`.
+- The EnvoyProxy service is a `LoadBalancer` with `loadBalancerClass: tailscale`.
+- The Tailscale Operator pod runs and can tag devices.
 
-Reconcile by checking the Envoy Gateway controller logs:
+To find the cause, examine the Envoy Gateway controller logs:
 
 ```bash
 kubectl logs -n envoy-gateway -l app.kubernetes.io/name=envoy-gateway --tail=200

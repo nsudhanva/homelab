@@ -1,6 +1,6 @@
 ---
 title: Ansible Inventory and Configuration
-description: Configure Ansible inventory, group variables, and role settings to prepare the automated K3s provisioning pipeline.
+description: Configure the Ansible inventory, group variables, and role settings for the automatic K3s provisioning pipeline.
 keywords:
   - ansible configuration
   - k3s inventory
@@ -13,20 +13,20 @@ sidebar:
 
 # Ansible Configuration
 
-Every bare-metal node in this homelab is configured through version-controlled Ansible playbooks. Nothing is typed into a node by hand.
+Ansible playbooks in version control configure each bare-metal node in this homelab. No person types commands into a node manually.
 
 ## Step 1: Learn the repository layout
 
-The automation structure in `ansible/` manages the bare-metal lifecycle:
+The automation in `ansible/` manages the bare-metal lifecycle:
 
-- `ansible/inventory/hosts.yaml`: Lists control plane nodes and worker nodes with hostnames, SSH users, and IP addresses.
-- `ansible/group_vars/all.yaml`: Defines global cluster variables including pinned K3s versions, TLS SANs, and storage paths.
-- `ansible/site.yaml`: The master playbook defining the sequence of roles applied to hosts.
-- `ansible/roles/`: Modular tasks for OS preparation (`common`), Tailscale node settings (`tailscale`), GPU setup (`nvidia`), K3s server (`k3s_server`), and ArgoCD bootstrap (`argocd`). Each role has a matching tag in `ansible/site.yaml`, so you can run one role with `--tags`.
+- `ansible/inventory/hosts.yaml`: Lists the control plane nodes and the worker nodes with their hostnames, SSH users, and IP addresses.
+- `ansible/group_vars/all.yaml`: Defines the global cluster variables. These include the pinned K3s versions, the TLS SANs, and the storage paths.
+- `ansible/site.yaml`: The master playbook. It defines the sequence of roles that Ansible applies to the hosts.
+- `ansible/roles/`: Modular tasks for OS preparation (`common`), Tailscale node settings (`tailscale`), GPU setup (`nvidia`), K3s server (`k3s_server`), and ArgoCD bootstrap (`argocd`). Each role has a matching tag in `ansible/site.yaml`. Thus, you can run one role with `--tags`.
 
 ## Step 2: Configure host inventory
 
-Inspect and update `ansible/inventory/hosts.yaml` with your node information:
+Examine `ansible/inventory/hosts.yaml` and add the data for your nodes:
 
 ```yaml
 k3s_cluster:
@@ -42,7 +42,7 @@ k3s_cluster:
 
 ## Step 3: Configure cluster variables
 
-Review `ansible/group_vars/all.yaml` to ensure cluster parameters match your network and storage layout:
+Examine `ansible/group_vars/all.yaml`. Make sure that the cluster parameters agree with your network and storage layout:
 
 ```yaml
 k3s_version: "v1.36.4+k3s1"
@@ -58,14 +58,14 @@ k3s_kubelet_args:
   - "eviction-hard=memory.available<500Mi,nodefs.available<10%,imagefs.available<10%"
 ```
 
-`k3s_node_ip` and `k3s_external_ip` are both the node's Tailscale IP. The Tailscale IP stays the same across LAN, DHCP, and interface changes (Ethernet or Wi-Fi), so the API server, kubelet, and host-network pods always have a reachable address. `k3s_kubelet_args` reserves CPU and memory for K3s and the OS so workloads cannot starve the control plane. See [Node Networking and DNS](../explanation/node-networking.md).
+`k3s_node_ip` and `k3s_external_ip` are both the Tailscale IP of the node. The Tailscale IP does not change when the LAN, the DHCP lease, or the interface (Ethernet or Wi-Fi) changes. Thus, the API server, the kubelet, and host-network pods always have an address that they can reach. `k3s_kubelet_args` keeps CPU and memory for K3s and the OS, so workloads cannot take all resources from the control plane. Refer to [Node Networking and DNS](../explanation/node-networking.md).
 
 ## Step 4: Verify Ansible connectivity
 
-Test connectivity from your workstation to the target node:
+Test the connection from your workstation to the target node:
 
 ```bash
 ansible all -i ansible/inventory/hosts.yaml -m ping
 ```
 
-If the ping reports `SUCCESS`, your automation environment is ready. Proceed to [K3s Bootstrap](./kubernetes.md) to execute the provisioning playbook.
+If the ping shows `SUCCESS`, your automation environment is ready. Go to [K3s Bootstrap](./kubernetes.md) and run the provisioning playbook.

@@ -1,6 +1,6 @@
 ---
 title: How to Organize Google Drive with Local AI
-description: Deploy and operate the symmetrical Google Drive file organizer using local Gemma 4 SLM, Firecrawl single-page inspection, and Google Drive Shortcuts.
+description: Deploy and operate the symmetrical Google Drive file organizer with a local Gemma 4 SLM, Firecrawl single-page inspection, and Google Drive Shortcuts.
 keywords:
   - google drive organizer
   - local llm document triage
@@ -13,52 +13,52 @@ sidebar:
 
 # How to Organize Google Drive with Local AI
 
-This problem-oriented guide explains how to operate, configure, and monitor the automated Google Drive Organizer (`apps/drive-organizer/`).
+This guide tells you how to operate, configure, and monitor the automated Google Drive Organizer (`apps/drive-organizer/`).
 
 ## Architecture and Workflow
 
-The organizer runs as a daily Kubernetes CronJob scheduled at `02:00 UTC` (7:00 PM PDT), running one hour after the daily Gmail classifier.
+The organizer runs as a daily Kubernetes CronJob at `02:00 UTC` (7:00 PM PDT). It starts one hour after the daily Gmail classifier.
 
-Key operational characteristics:
+The organizer has these operational characteristics:
 
-- **Entity Symmetrical Hierarchy**: Every family member (`Sudhanva`, `Maanasa`, `Narayana`, `Narmada`, `Rashmi`) has an identical subfolder depth (`USA/`, `India/`, `Career/`, `Education/`).
-- **Media Pre-Routing**: Photos and videos are organized chronologically (`Media/YYYY/YYYY-MM/`) via EXIF and Drive metadata, bypassing the LLM completely.
-- **Firecrawl Single-Page Inspection**: PDFs stream only the first page (or up to 2,000 characters) to analyze document type and reading order without downloading entire files.
-- **Pydantic AI & Local Inference**: Uses `pydantic-ai` with structured output models pointing to `llama-server.llama.svc.cluster.local:8080/v1` running Google Gemma 4 (E2B).
-- **LLM Folder Triage**: When non-taxonomy folders are dropped in root, Gemma analyzes the folder manifest to classify it as a code repository or an unstructured document batch.
-- **Code & Project Preservation**: Folders identified as software projects, git repositories, or Jupyter notebooks are preserved intact and moved directly to `Code/<Folder_Name>` or `Colab Notebooks/<Folder_Name>`.
-- **Recursive Document Dismantling**: Loose document collections are recursively traversed, files are individually filed into the symmetrical taxonomy with folder breadcrumb context, and empty folder shells are pruned bottom-up.
-- **Joint Drive Shortcuts**: Joint records (Marriage Certificate, apartment leases, joint tax returns) physically reside in one place and automatically generate native Google Drive Shortcuts (`application/vnd.google-apps.shortcut`) in the partner's corresponding folder.
-- **Idempotency**: Tags every processed file with `appProperties.ai_processed = true` to prevent reprocessing.
+- **Entity Symmetrical Hierarchy**: Each family member (`Sudhanva`, `Maanasa`, `Narayana`, `Narmada`, `Rashmi`) has the same subfolder depth (`USA/`, `India/`, `Career/`, `Education/`).
+- **Media Pre-Routing**: The organizer sorts photos and videos by date (`Media/YYYY/YYYY-MM/`) from EXIF and Drive metadata. The LLM does not process these files.
+- **Firecrawl Single-Page Inspection**: The organizer streams only the first page of a PDF (or up to 2,000 characters). It uses this text to find the document type and reading order, and does not download the full file.
+- **Pydantic AI & Local Inference**: The organizer uses `pydantic-ai` with structured output models. These models point to `llama-server.llama.svc.cluster.local:8080/v1`, which runs Google Gemma 4 (E2B).
+- **LLM Folder Triage**: If you put a non-taxonomy folder in the root, Gemma reads the folder manifest. It classifies the folder as a code repository or as an unstructured document batch.
+- **Code & Project Preservation**: The organizer keeps software projects, git repositories, and Jupyter notebook folders intact. It moves them directly to `Code/<Folder_Name>` or `Colab Notebooks/<Folder_Name>`.
+- **Recursive Document Dismantling**: The organizer reads loose document folders recursively. It files each document into the symmetrical taxonomy and uses the folder path as context. Then it removes the empty folders from the bottom up.
+- **Joint Drive Shortcuts**: Each joint record (Marriage Certificate, apartment leases, joint tax returns) is in one location only. The organizer automatically makes a native Google Drive Shortcut (`application/vnd.google-apps.shortcut`) in the related folder of the partner.
+- **Idempotency**: The organizer tags each processed file with `appProperties.ai_processed = true`. This tag stops a second run from processing the file again.
 
-## Step 1: Verify Scheduled CronJob
+## Step 1: Examine the Scheduled CronJob
 
-To check the status and schedule of the CronJob:
+Examine the status and the schedule of the CronJob.
 
 ```bash
 kubectl -n drive-organizer get cronjob,jobs,pods
 ```
 
-The schedule should reflect `0 2 * * *` with `concurrencyPolicy: Forbid`.
+The schedule must show `0 2 * * *` with `concurrencyPolicy: Forbid`.
 
-## Step 2: Ingesting Loose Files or Folders
+## Step 2: Add Loose Files or Folders
 
-You can drop items directly into the root of Google Drive (`My Drive`):
+You can put items directly in the root of Google Drive (`My Drive`).
 
-- **Loose Files**: Single PDFs, images, or documents are classified and filed directly.
-- **Unorganized Document Folders**: Folders such as `Scans/`, `2024 Taxes/`, or nested folders are automatically crawled. Files inside inherit parent folder names as context for high-confidence classification, and the empty parent folders are automatically pruned after all files are evacuated.
-- **Code Repositories**: Folders containing scripts, software projects, or Jupyter notebooks are detected by the local LLM and moved intact without shredding files.
-- **Protected Taxonomy**: Root taxonomy directories (`Sudhanva/`, `Maanasa/`, `Code/`, `Media/`, `Review/`) are protected and will never be dismantled.
+- **Loose Files**: The organizer classifies and files single PDFs, images, and documents directly.
+- **Unorganized Document Folders**: The organizer automatically reads folders such as `Scans/`, `2024 Taxes/`, and nested folders. The files use the parent folder names as context, which gives high-confidence classification. When all files are moved out, the organizer removes the empty parent folders automatically.
+- **Code Repositories**: The local LLM finds folders that contain scripts, software projects, or Jupyter notebooks. The organizer moves these folders intact and does not split them into separate files.
+- **Protected Taxonomy**: The root taxonomy directories (`Sudhanva/`, `Maanasa/`, `Code/`, `Media/`, `Review/`) are protected. The organizer never dismantles them.
 
 ## Step 3: Trigger an Ad-Hoc Run
 
-To trigger an immediate run outside the scheduled cron window:
+To start a run immediately, outside the scheduled cron window, run this command.
 
 ```bash
 kubectl -n drive-organizer create job --from=cronjob/drive-organizer drive-manual-test
 ```
 
-To monitor logs in real-time:
+To monitor the logs in real time, run this command.
 
 ```bash
 kubectl -n drive-organizer logs -f job/drive-manual-test
@@ -66,7 +66,7 @@ kubectl -n drive-organizer logs -f job/drive-manual-test
 
 ## Step 4: Run in Dry-Run Mode
 
-To test file classification without modifying files in Google Drive:
+To test the file classification without changes to the files in Google Drive, run this command.
 
 ```bash
 kubectl -n drive-organizer run drive-dry-run \
@@ -78,23 +78,23 @@ kubectl -n drive-organizer run drive-dry-run \
 
 ## Step 5: Model Fallback Routing and Provider Toggling
 
-The organizer uses Pydantic AI's `FallbackModel` to guarantee high availability across local and cloud inference:
+The organizer uses the Pydantic AI `FallbackModel` to keep inference available across local and cloud providers.
 
-- **Primary Model**: Defaults to local **Google Gemma 4 E2B** (`http://llama-server.llama.svc.cluster.local:8080/v1`).
-- **Fallback Model**: Seamlessly routes requests to **OpenRouter Google Gemma 4 31B** (`google/gemma-4-31b-it`) if the local server experiences connection drops, timeouts, or OOM errors.
-- **Zero-Secret Vault Integration**: The OpenRouter API key is managed via HashiCorp Vault at `kv/openrouter` (`api_key`) and synchronized via Kubernetes `ExternalSecret` into `openrouter-credentials`.
+- **Primary Model**: The default is the local Google Gemma 4 E2B model (`http://llama-server.llama.svc.cluster.local:8080/v1`).
+- **Fallback Model**: If the local server has connection drops, timeouts, or OOM errors, the organizer sends requests to OpenRouter Google Gemma 4 31B (`google/gemma-4-31b-it`).
+- **Zero-Secret Vault Integration**: HashiCorp Vault keeps the OpenRouter API key at `kv/openrouter` (`api_key`). A Kubernetes `ExternalSecret` syncs the key into `openrouter-credentials`.
 
-### Provisioning the OpenRouter Key in Vault
+### Add the OpenRouter Key to Vault
 
-Before enabling OpenRouter fallback in a new cluster environment, write the API key to Vault:
+Before you enable the OpenRouter fallback in a new cluster environment, write the API key to Vault.
 
 ```bash
 vault kv put kv/openrouter api_key="sk-or-v1-xxxxxxxxxxxxxxxx"
 ```
 
-### Switching the Default Model
+### Change the Default Model
 
-To toggle between local inference and OpenRouter without rebuilding containers, adjust `PRIMARY_LLM_PROVIDER` and `FALLBACK_LLM_PROVIDER` in `apps/drive-organizer/cronjob.yaml`:
+To change between local inference and OpenRouter without a container rebuild, change `PRIMARY_LLM_PROVIDER` and `FALLBACK_LLM_PROVIDER` in `apps/drive-organizer/cronjob.yaml`.
 
 ```yaml
             env:
@@ -104,7 +104,7 @@ To toggle between local inference and OpenRouter without rebuilding containers, 
               value: "local"
 ```
 
-Or switch it dynamically using `kubectl`:
+You can also change the provider at runtime with `kubectl`.
 
 ```bash
 # Make OpenRouter Gemma 4 31B primary
@@ -117,6 +117,6 @@ kubectl -n drive-organizer set env cronjob/drive-organizer PRIMARY_LLM_PROVIDER=
 kubectl -n drive-organizer set env cronjob/drive-organizer FALLBACK_LLM_PROVIDER=none
 ```
 
-## Step 6: Reviewing Quarantined Files
+## Step 6: Review Quarantined Files
 
-If a document has a low confidence score or ambiguous entity, the classifier routes it to `Review/Needs Review/` and dispatches an alert to the Telegram bot (`@ManassuHomelabBot`).
+If a document has a low confidence score or an unclear entity, the classifier moves it to `Review/Needs Review/`. The classifier also sends an alert to the Telegram bot (`@ManassuHomelabBot`).

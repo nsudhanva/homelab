@@ -1,6 +1,6 @@
 ---
 title: K3s Cluster Maintenance and Upgrades
-description: Routine maintenance procedures for the bare-metal K3s cluster including OS patching, node draining, automated K3s upgrades via System Upgrade Controller, and storage backups.
+description: Maintenance procedures for the bare-metal K3s cluster. Patch the OS, drain the node, upgrade K3s with System Upgrade Controller, and back up storage.
 keywords:
   - k3s cluster maintenance
   - k3s version upgrade
@@ -14,11 +14,11 @@ sidebar:
 
 # Cluster Maintenance
 
-This guide covers routine maintenance, operating system patching, automated K3s upgrades, and volume backup procedures for bare-metal nodes.
+This guide tells how to do routine maintenance on bare-metal nodes. It includes operating system patches, automatic K3s upgrades, and volume backups.
 
 ## Routine Cluster Health Checks
 
-Perform routine health checks across cluster nodes, pods, and GitOps sync state:
+Examine the health of the cluster nodes, the pods, and the GitOps sync state:
 
 ```bash
 kubectl get nodes -o wide
@@ -26,7 +26,7 @@ kubectl get pods -A
 kubectl get applications -n argocd
 ```
 
-Confirm that the local storage path `/home/k3s-storage` has ample free disk space:
+Make sure that the local storage path `/home/k3s-storage` has enough free disk space:
 
 ```bash
 ssh sudhanva@100.66.139.118 "df -h /home/k3s-storage"
@@ -34,11 +34,11 @@ ssh sudhanva@100.66.139.118 "df -h /home/k3s-storage"
 
 ## Node Maintenance and OS Patching
 
-When updating the host operating system (Ubuntu 26.04 LTS) or applying kernel updates, drain workloads cleanly before rebooting.
+Before you update the host operating system (Ubuntu 26.04 LTS) or apply kernel updates, drain the workloads. Then reboot the node.
 
 ### Step 1: Cordon the node
 
-Mark the node as unschedulable to prevent new pods from being assigned:
+Mark the node as unschedulable. This stops the scheduler from putting new pods on the node:
 
 ```bash
 kubectl cordon legion
@@ -46,7 +46,7 @@ kubectl cordon legion
 
 ### Step 2: Drain active workloads
 
-Evict running pods gracefully while honoring DaemonSets and local data volumes:
+Evict the running pods. The drain command respects DaemonSets and local data volumes:
 
 ```bash
 kubectl drain legion --ignore-daemonsets --delete-emptydir-data --force
@@ -54,7 +54,7 @@ kubectl drain legion --ignore-daemonsets --delete-emptydir-data --force
 
 ### Step 3: Apply host updates and reboot
 
-Log in to the host machine, run package updates, and reboot the node:
+Log in to the host machine. Update the packages and reboot the node:
 
 ```bash
 ssh sudhanva@100.66.139.118
@@ -64,13 +64,13 @@ sudo reboot
 
 ### Step 4: Uncordon the node
 
-After the node boots up and reports `Ready`, uncordon it to resume scheduling:
+When the node starts and shows `Ready`, uncordon it. The scheduler can then put pods on the node again:
 
 ```bash
 kubectl uncordon legion
 ```
 
-Verify that all workloads in `media`, `argocd`, `vault`, and `monitoring` return to `Running` state:
+Make sure that all workloads in `media`, `argocd`, `vault`, and `monitoring` go back to the `Running` state:
 
 ```bash
 kubectl get pods -A
@@ -78,11 +78,11 @@ kubectl get pods -A
 
 ## Automated K3s Upgrades with System Upgrade Controller
 
-The cluster utilizes Rancher System Upgrade Controller (`infrastructure/system-upgrade-controller/`) to execute automated, zero-downtime upgrades of K3s.
+The cluster uses Rancher System Upgrade Controller (`infrastructure/system-upgrade-controller/`) to upgrade K3s automatically with no downtime.
 
 ### Step 1: Update the upgrade plan
 
-Open `infrastructure/system-upgrade-controller/k3s-upgrade-plan.yaml` and update the target K3s version tag in `spec.version`:
+Open `infrastructure/system-upgrade-controller/k3s-upgrade-plan.yaml`. Change the target K3s version tag in `spec.version`:
 
 ```yaml
 apiVersion: upgrade.cattle.io/v1
@@ -109,7 +109,7 @@ spec:
 
 ### Step 2: Commit and push changes
 
-Commit the manifest change and push to master:
+Commit the manifest change. Push it to master:
 
 ```bash
 git add infrastructure/system-upgrade-controller/k3s-upgrade-plan.yaml
@@ -119,7 +119,7 @@ git push origin master
 
 ### Step 3: Monitor the upgrade job
 
-ArgoCD syncs the updated Plan. The System Upgrade Controller deploys a privileged upgrade job that drains the node, installs the specified K3s binary, restarts the service, and uncordons the node:
+ArgoCD syncs the updated Plan. The System Upgrade Controller then deploys a privileged upgrade job. This job drains the node and installs the specified K3s binary. It then restarts the service and uncordons the node. Monitor the job:
 
 ```bash
 kubectl get pods -n system-upgrade -w
@@ -128,11 +128,11 @@ kubectl get nodes
 
 ## Storage and Application Backups
 
-Because all persistent storage is backed by the native Local-Path Provisioner on `/home/k3s-storage`, disaster recovery is straightforward.
+The native Local-Path Provisioner keeps all persistent storage on `/home/k3s-storage`. Thus, disaster recovery is easy.
 
 ### Local-Path Volume Backups
 
-Create snapshot backups of application data directories located at `/home/k3s-storage/`:
+Make snapshot backups of the application data directories in `/home/k3s-storage/`:
 
 ```bash
 ssh sudhanva@100.66.139.118 "sudo tar -czvf /home/k3s-storage-backup-$(date +%F).tar.gz /home/k3s-storage"
@@ -140,7 +140,7 @@ ssh sudhanva@100.66.139.118 "sudo tar -czvf /home/k3s-storage-backup-$(date +%F)
 
 ### Vault Unseal Keys
 
-Ensure your five Shamir unseal keys and root token in `vault-keys.json` are securely preserved in an offline password manager. If the Vault pod is rescheduled or restarted, unseal Vault using:
+Keep the five Shamir unseal keys and the root token from `vault-keys.json` in an offline password manager. If Kubernetes reschedules the Vault pod or the pod restarts, unseal Vault:
 
 ```bash
 kubectl -n vault exec -it vault-0 -- vault operator unseal <key>

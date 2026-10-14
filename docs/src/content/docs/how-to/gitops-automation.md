@@ -1,6 +1,6 @@
 ---
 title: GitOps-Driven Infrastructure Automation
-description: Automate host-level provisioning and Kubernetes upgrades using GitHub Actions, Tailscale, and Rancher System Upgrade Controller.
+description: Automate host provisioning and Kubernetes upgrades with GitHub Actions, Tailscale, and the Rancher System Upgrade Controller.
 keywords:
   - gitops automation
   - system upgrade controller
@@ -13,7 +13,7 @@ sidebar:
 
 # GitOps-Driven Infrastructure Automation
 
-This repository eliminates manual bash scripts by automating both cluster upgrades and host provisioning directly through Git.
+This repository uses Git to automate cluster upgrades and host provisioning. You do not run manual bash scripts.
 
 ```mermaid
 flowchart TD
@@ -31,15 +31,15 @@ flowchart TD
   end
 ```
 
-## Host Provisioning via GitHub Actions
+## Host Provisioning with GitHub Actions
 
-Instead of running playbooks manually from your workstation, GitHub Actions executes Ansible whenever changes to `ansible/` land on `master`.
+You do not run playbooks manually from your workstation. When changes to `ansible/` are pushed to `master`, GitHub Actions runs Ansible.
 
 ### Step 1: Secure Tailscale Connection
 
-The workflow (`.github/workflows/provision.yaml`) uses `tailscale/github-action` with a Tailscale OAuth client to join the tailnet as an ephemeral `tag:ci` node and reach `legion` (`100.66.139.118`) over SSH.
+The workflow (`.github/workflows/provision.yaml`) uses `tailscale/github-action` with a Tailscale OAuth client. The runner joins the tailnet as an ephemeral `tag:ci` node and connects to `legion` (`100.66.139.118`) through SSH.
 
-The tailnet policy must let the OAuth client assign `tag:ci` and allow `tag:ci` to reach the node on port 22:
+The tailnet policy must let the OAuth client assign `tag:ci`. It must also let `tag:ci` reach the node on port 22:
 
 ```json
 {
@@ -60,19 +60,19 @@ Create the OAuth client at `https://login.tailscale.com/admin/settings/oauth` wi
 
 ### Step 2: Repository Secrets
 
-Configure these secrets in your GitHub repository (`Settings > Secrets and variables > Actions`):
+Add these secrets to your GitHub repository (`Settings > Secrets and variables > Actions`):
 
 - `TS_OAUTH_CLIENT_ID`: The Tailscale OAuth client ID.
 - `TS_OAUTH_SECRET`: The Tailscale OAuth client secret.
 - `SSH_PRIVATE_KEY`: An SSH private key whose public key is in `~/.ssh/authorized_keys` for `sudhanva` on `legion`.
 
-### Step 3: Triggering Provisioning
+### Step 3: Trigger Provisioning
 
-Provisioning runs automatically on any push modifying `ansible/**` or can be manually triggered via the GitHub Actions **Run workflow** button (`workflow_dispatch`).
+Provisioning starts automatically when a push changes `ansible/**`. You can also start it manually with the GitHub Actions **Run workflow** button (`workflow_dispatch`).
 
-## Automated K3s Upgrades via System Upgrade Controller
+## Automated K3s Upgrades with System Upgrade Controller
 
-The cluster runs Rancher's official **System Upgrade Controller** (`infrastructure/system-upgrade-controller/`).
+The cluster runs the official Rancher System Upgrade Controller (`infrastructure/system-upgrade-controller/`).
 
 ### Step 1: Define Target K3s Version
 
@@ -103,4 +103,4 @@ Commit and push your change. ArgoCD syncs the `Plan` resource to the cluster.
 
 ### Step 3: Automated Execution
 
-The System Upgrade Controller detects the new version, automatically drains/cordons the node, executes the official `rancher/k3s-upgrade` container to update the binary, restarts the service, and uncordons the node when healthy.
+The System Upgrade Controller finds the new version and automatically drains/cordons the node. It runs the official `rancher/k3s-upgrade` container to update the binary and restarts the service. When the node is healthy, the controller uncordons it.

@@ -1,6 +1,6 @@
 ---
 title: Connect Git Repository to ArgoCD
-description: Add a Git repository to ArgoCD for GitOps deployments. Configure repository access via CLI or UI and verify ApplicationSets can sync.
+description: Add a Git repository to ArgoCD for GitOps deployments. Configure repository access with the CLI or the UI, and make sure that ApplicationSets can sync.
 keywords:
   - argocd add repository
   - argocd repo connection
@@ -13,11 +13,11 @@ sidebar:
 
 # Connect This Repo To ArgoCD
 
-This guide connects `https://github.com/nsudhanva/homelab` to ArgoCD so ApplicationSets can sync from Git.
+This guide connects `https://github.com/nsudhanva/homelab` to ArgoCD. Then the ApplicationSets can sync from Git.
 
 ## Step 1: Get the initial admin password
 
-Fetch the bootstrap password from the `argocd-initial-admin-secret` Secret:
+Get the bootstrap password from the `argocd-initial-admin-secret` Secret:
 
 ```bash
 kubectl -n argocd get secret argocd-initial-admin-secret \
@@ -26,7 +26,7 @@ kubectl -n argocd get secret argocd-initial-admin-secret \
 
 ## Step 2: Sign in to ArgoCD
 
-Use the CLI or UI. If you are on the tailnet, the UI is at `https://argocd.sudhanva.me`.
+Use the CLI or the UI. If you are on the tailnet, the UI is at `https://argocd.sudhanva.me`.
 
 ### CLI
 
@@ -37,17 +37,17 @@ argocd login argocd.sudhanva.me \
   --grpc-web
 ```
 
-If the CLI cannot resolve `argocd.sudhanva.me`, verify split DNS is configured and the tailnet resolver is reachable:
+If the CLI cannot resolve `argocd.sudhanva.me`, make sure that split DNS is configured. Also make sure that you can reach the tailnet resolver:
 
 ```bash
 dig +short argocd.sudhanva.me @100.100.100.100
 ```
 
-Follow [Tailscale](./tailscale.md) if the query times out or returns no records.
+If the query times out or returns no records, follow the [Tailscale](./tailscale.md) guide.
 
 ## Step 3: Add the repository
 
-The repo is public, so HTTPS is enough.
+The repository is public. Thus, HTTPS is enough.
 
 ### CLI
 
@@ -57,12 +57,12 @@ argocd repo add https://github.com/nsudhanva/homelab.git
 
 ### UI
 
-Open ArgoCD, go to Settings, then Repositories, then Connect Repo. Use the HTTPS URL.
+Open ArgoCD. Go to Settings, then Repositories, then Connect Repo. Use the HTTPS URL.
 
-## Step 4: Verify ArgoCD can see the repo
+## Step 4: Make sure that ArgoCD can see the repository
 
 ```bash
 argocd repo list
 ```
 
-You should see `https://github.com/nsudhanva/homelab.git` listed as a repository.
+The output shows `https://github.com/nsudhanva/homelab.git` as a repository.

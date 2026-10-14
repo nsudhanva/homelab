@@ -1,6 +1,6 @@
 ---
 title: Infrastructure Components Reference
-description: Complete reference of all infrastructure components managed by ArgoCD including networking, storage, secrets, monitoring, and security tools with their configuration paths.
+description: A reference of all infrastructure components that ArgoCD manages, with their configuration paths. It includes networking, storage, secrets, monitoring, and security tools.
 keywords:
   - kubernetes infrastructure components
   - argocd applications
@@ -17,7 +17,7 @@ sidebar:
 
 # Infrastructure Components
 
-This page maps the infrastructure folders to their roles in the cluster.
+This page shows the function of each infrastructure folder in the cluster.
 
 ```mermaid
 flowchart TB
@@ -63,7 +63,7 @@ flowchart TB
 
 ## ArgoCD ApplicationSets
 
-ApplicationSets watch `apps/` and `infrastructure/` and create ArgoCD Applications automatically:
+ApplicationSets watch `apps/` and `infrastructure/` and automatically create ArgoCD Applications. These files define them:
 
 - `bootstrap/templates/infra-appset.yaml`
 - `bootstrap/templates/apps-appset.yaml`
@@ -73,16 +73,16 @@ ApplicationSets watch `apps/` and `infrastructure/` and create ArgoCD Applicatio
 | Component | Path | Purpose | Notes |
 | --- | --- | --- | --- |
 | ArgoCD | `bootstrap/argocd/` | GitOps controller install | Apply once before bootstrap |
-| ArgoCD Image Updater | `infrastructure/argocd-image-updater/` | Automated image updates | Uses ImageUpdater CRD and Vault creds |
+| ArgoCD Image Updater | `infrastructure/argocd-image-updater/` | Automated image updates | Uses the ImageUpdater CRD and Vault credentials |
 | Gateway API CRDs | `infrastructure/gateway-api-crds/gateway-api-crds.yaml` | Installs Gateway API CRDs | ArgoCD pulls upstream `config/crd` |
 | Envoy Gateway CRDs | `infrastructure/envoy-gateway-crds/` | Installs Envoy Gateway CRDs | Kustomize pulls upstream CRD bundle |
 | Envoy Gateway | `infrastructure/envoy-gateway/envoy-gateway.yaml` | Ingress controller for Gateway API | Helm chart with pinned image tag |
-| Tailscale Operator | `infrastructure/tailscale/tailscale-operator.yaml` | Tailnet integration and LoadBalancer proxy pods | Requires `operator-oauth` Secret |
+| Tailscale Operator | `infrastructure/tailscale/tailscale-operator.yaml` | Tailnet integration and LoadBalancer proxy pods | Needs the `operator-oauth` Secret |
 | cert-manager | `infrastructure/cert-manager/cert-manager.yaml` | TLS certificate management | Used with DNS-01 |
 | ClusterIssuer | `infrastructure/cert-manager-issuer/cluster-issuer.yaml` | ACME issuer for wildcard certs | Cloudflare API token solver |
 | ExternalDNS | `infrastructure/external-dns/external-dns.yaml` | Creates DNS records for HTTPRoutes | Watches `external-dns.alpha.kubernetes.io/expose=true` |
 | CoreDNS override | `infrastructure/coredns/configmap.yaml` | Rewrites `*.sudhanva.me` to `gateway-internal` | Split-horizon DNS for in-cluster access |
-| Tailscale DNS | `infrastructure/tailscale-dns/` | Split-horizon DNS for tailnet clients | CoreDNS exposed via Tailscale LoadBalancer |
+| Tailscale DNS | `infrastructure/tailscale-dns/` | Split-horizon DNS for tailnet clients | CoreDNS exposed through a Tailscale LoadBalancer |
 | External Secrets CRDs | `infrastructure/external-secrets-crds/` | Installs External Secrets CRDs | Kustomize pulls upstream CRD bundle |
 | External Secrets Operator | `infrastructure/external-secrets/external-secrets.yaml` | Syncs secrets from Vault | ClusterSecretStore and ExternalSecret manifests |
 | Gateway | `infrastructure/gateway/` | GatewayClass, Gateway, EnvoyProxy, cert, internal-service | Uses Tailscale `gatewayClassName` |
@@ -90,13 +90,13 @@ ApplicationSets watch `apps/` and `infrastructure/` and create ArgoCD Applicatio
 | Prometheus Operator CRDs | `infrastructure/prometheus-operator-crds/` | Prometheus CRDs | Installed before the monitoring stack |
 | Prometheus stack | `infrastructure/prometheus/` | Metrics, alerting, dashboards | Grafana, Prometheus, Alertmanager, and HTTPRoutes |
 | Kubescape | `infrastructure/kubescape/` | Cluster security scanning | Operator runs in offline mode |
-| Metrics Server | `infrastructure/metrics-server/` | CPU and memory metrics API | Required for Headlamp usage graphs |
+| Metrics Server | `infrastructure/metrics-server/` | CPU and memory metrics API | Necessary for the Headlamp usage graphs |
 | GPU Operator | `infrastructure/gpu/` | NVIDIA GPU Operator | Helm chart v26.7.0 with Container Device Interface (CDI) |
-| System Upgrade Controller | `infrastructure/system-upgrade-controller/` | Automated K3s cluster upgrades | Managed via system-upgrade-controller Plans |
+| System Upgrade Controller | `infrastructure/system-upgrade-controller/` | Automated K3s cluster upgrades | Managed with system-upgrade-controller Plans |
 
 ## Gateway and route definitions
 
-Gateway resources are split by purpose:
+Each gateway and route resource has its own file:
 
 - `infrastructure/gateway/gatewayclass.yaml`
 - `infrastructure/gateway/gateway.yaml`

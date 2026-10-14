@@ -1,30 +1,30 @@
 # AI Alert Summarizer
 
-AI-powered Alertmanager Webhook Relay for Telegram.
+An Alertmanager webhook relay that sends AI alert summaries to Telegram.
 
 ## Overview
 
-The AI Alert Summarizer receives Prometheus Alertmanager webhook payloads, sends the alert context to the local in-cluster LLM (Google Gemma 4 on NVIDIA GPU), and dispatches executive, human-readable summaries directly to Telegram.
+The AI Alert Summarizer receives Prometheus Alertmanager webhook payloads. It sends the alert context to the local LLM in the cluster (Google Gemma 4 on an NVIDIA GPU). It then sends short, human-readable summaries directly to Telegram.
 
 ## Features
 
-- Pydantic AI agent architecture with strongly typed, schema-validated outputs (`AlertSummary`)
-- Automatic LLM self-correction retries if generated output violates schema constraints
-- Dynamic system prompts injected with cluster context dependencies (`SummarizerDeps`)
+- Pydantic AI agent with strongly typed, schema-validated outputs (`AlertSummary`)
+- Automatic LLM retries for self-correction if the output does not match the schema constraints
+- Dynamic system prompts that include cluster context dependencies (`SummarizerDeps`)
 - Non-blocking async processing with FastAPI and HTTPX
-- Zero external cloud dependencies (runs 100% locally on node `legion` with in-cluster Gemma 4)
-- Automatic fallback: If LLM is unreachable or times out, dispatches a clean standard template so alerts are never missed
+- No external cloud dependencies (runs 100% locally on node `legion` with Gemma 4 in the cluster)
+- Automatic fallback: if the LLM is unreachable or times out, the service sends a standard template, so no alert is lost
 - Native HTML formatting for Telegram messages
 
 ## Endpoints
 
 - `GET /healthz`: Liveness probe
-- `GET /readyz`: Readiness probe (verifies configuration and tokens)
+- `GET /readyz`: Readiness probe (examines the configuration and tokens)
 - `POST /webhook`: Alertmanager v4 webhook receiver
 
 ## Development & Quality Standards
 
-This project follows strict Astral-based toolchain standards:
+This project uses an Astral-based toolchain:
 
 - Package and virtual environment management: `uv`
 - Code formatting and linting: `ruff`

@@ -1,6 +1,6 @@
 ---
 title: Kubescape Security Scanning for Kubernetes
-description: Enable Kubescape security scanning in offline mode for Kubernetes configuration and vulnerability analysis. View workload security scans and image vulnerability reports.
+description: Enable Kubescape in offline mode to scan Kubernetes configuration and vulnerabilities. See workload security scans and image vulnerability reports.
 keywords:
   - kubescape kubernetes
   - kubernetes security scanning
@@ -15,11 +15,11 @@ sidebar:
 
 # Kubescape Security Scanning
 
-This guide enables Kubescape in offline mode for lightweight configuration and vulnerability scanning.
+This guide shows how to enable Kubescape in offline mode. In this mode, Kubescape does lightweight configuration and vulnerability scans.
 
 ## Step 1: Sync the Kubescape application
 
-ArgoCD deploys Kubescape from `infrastructure/kubescape/`.
+ArgoCD deploys Kubescape from `infrastructure/kubescape/`. Run this command to find the application:
 
 ```bash
 kubectl -n argocd get applications | rg kubescape
@@ -27,19 +27,21 @@ kubectl -n argocd get applications | rg kubescape
 
 ## Step 2: Verify the pods
 
+Run this command to examine the pods:
+
 ```bash
 kubectl -n kubescape get pods
 ```
 
 ## Step 3: View scan results
 
-Configuration scans:
+To see the configuration scans, run this command:
 
 ```bash
 kubectl get workloadconfigurationscans -A
 ```
 
-Image vulnerability scans:
+To see the image vulnerability scans, run this command:
 
 ```bash
 kubectl get vulnerabilitymanifests -A
@@ -47,6 +49,6 @@ kubectl get vulnerabilitymanifests -A
 
 ## Step 4: Tune what gets scanned
 
-Edit `infrastructure/kubescape/kubescape.yaml` to adjust capabilities or namespace filters, then let ArgoCD sync.
+To change the capabilities or namespace filters, edit `infrastructure/kubescape/kubescape.yaml`. Then let ArgoCD sync the change.
 
-The defaults keep admission control and runtime detections disabled to avoid disrupting workloads.
+By default, admission control and runtime detections are disabled. This prevents interruptions to workloads.

@@ -1,6 +1,6 @@
 ---
 title: Persistent Storage Architecture with Local-Path Provisioner
-description: Deep dive into the homelab storage architecture using K3s local-path provisioner on high-performance host SSD storage.
+description: How the homelab stores persistent data with the K3s local-path provisioner on fast host SSD storage.
 keywords:
   - k3s local-path provisioner
   - kubernetes hostpath storage
@@ -13,11 +13,11 @@ sidebar:
 
 # Local-Path Storage Architecture
 
-This document explains why and how the homelab uses K3s built-in Local-Path Provisioner rather than distributed block storage.
+This document tells why and how the homelab uses the K3s built-in Local-Path Provisioner. The homelab does not use distributed block storage.
 
 ## Architecture Overview
 
-The homelab cluster relies on native host NVMe/SSD partitions mounted at `/home/k3s-storage` for all persistent workloads:
+All persistent workloads in the homelab cluster use host NVMe/SSD partitions mounted at `/home/k3s-storage`:
 
 ```mermaid
 flowchart TB
@@ -62,26 +62,26 @@ flowchart TB
 
 ## Why Local-Path Over Distributed Storage
 
-In a compact bare-metal homelab environment, distributed block storage solutions (such as Longhorn or Ceph) introduce significant trade-offs:
+In a small bare-metal homelab, distributed block storage (such as Longhorn or Ceph) has these disadvantages:
 
-- **CPU and Memory Overhead**: Distributed storage engines consume substantial CPU and RAM for replica synchronization, health heartbeats, and storage engine daemons.
-- **I/O Latency**: Synchronous network replication amplifies write latency compared to direct NVMe access.
-- **Complexity**: Corrupted replica state engines and quorum loss during single-node reboots can stall cluster boot cycles.
+- **CPU and memory overhead**: Distributed storage engines use much CPU and RAM. They use it for replica synchronization, health heartbeats, and storage engine daemons.
+- **I/O latency**: Synchronous network replication causes more write latency than direct NVMe access.
+- **Complexity**: Corrupted replica state engines and quorum loss during single-node reboots can stop the cluster boot.
 
-Local-path storage bypasses network abstractions entirely by creating hostPath volumes directly on the dedicated SSD partition, maximizing raw I/O throughput and operational simplicity.
+Local-path storage does not use a network layer. It creates hostPath volumes directly on the dedicated SSD partition. This gives the maximum raw I/O throughput and keeps operations simple.
 
 ## Volume Lifecycle and WaitForFirstConsumer
 
-The default `local-path` StorageClass configures volume binding with `volumeBindingMode: WaitForFirstConsumer`:
+The default `local-path` StorageClass sets volume binding to `volumeBindingMode: WaitForFirstConsumer`:
 
-- When a PersistentVolumeClaim is applied, it remains in `Pending` state until a consumer pod is scheduled.
-- Once a workload Pod referencing the PVC is scheduled to a specific node, the scheduler assigns the node to the PVC.
-- The `local-path-provisioner` controller spins up a transient helper pod on that node to create the dedicated directory under `/home/k3s-storage/pvc-<uuid>_<namespace>_<pvc-name>/`.
-- The PersistentVolume is bound to the PVC and mounted directly into the container filesystem.
+- When you apply a PersistentVolumeClaim, it stays in the `Pending` state until the scheduler puts a consumer pod on a node.
+- When the scheduler puts a workload Pod that refers to the PVC on a node, the scheduler assigns that node to the PVC.
+- The `local-path-provisioner` controller starts a temporary helper pod on that node. The helper pod creates the dedicated directory under `/home/k3s-storage/pvc-<uuid>_<namespace>_<pvc-name>/`.
+- Kubernetes binds the PersistentVolume to the PVC and mounts it directly into the container filesystem.
 
 ## Host Directory Structure
 
-All persistent volume data is structured deterministically on the node:
+All persistent volume data has a fixed, predictable structure on the node:
 
 ```text
 /home/k3s-storage/
@@ -92,7 +92,7 @@ All persistent volume data is structured deterministically on the node:
 
 ## Backup and Disaster Recovery Strategy
 
-Because data is held directly in standard Linux directories on the host filesystem:
+The data is in standard Linux directories on the host filesystem. This gives these advantages:
 
-- **Deduplicated Snapshots**: Host-level tooling (such as Restic or Borg) can snapshot `/home/k3s-storage/` without cluster-level storage locks.
-- **Node-level Portability**: Backups can be restored to any replacement hardware without complex CSI volume reattachment procedures.
+- **Deduplicated snapshots**: Host-level tools (such as Restic or Borg) can make snapshots of `/home/k3s-storage/` without cluster-level storage locks.
+- **Node-level portability**: You can restore backups to any replacement hardware. You do not need complex procedures to attach CSI volumes again.

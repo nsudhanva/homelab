@@ -1,6 +1,6 @@
 ---
 title: Build K3s Cluster from Scratch
-description: Complete guide to provisioning a bare-metal Kubernetes cluster on Ubuntu 26.04 using K3s, automated Ansible provisioning, ArgoCD GitOps, and Vault secrets management.
+description: Provision a bare-metal Kubernetes cluster on Ubuntu 26.04 with K3s, automated Ansible provisioning, ArgoCD GitOps, and Vault secrets management.
 keywords:
   - k3s from scratch
   - build kubernetes cluster
@@ -14,11 +14,11 @@ sidebar:
 
 # From Scratch
 
-Use this guide to provision a bare-metal Kubernetes cluster on Ubuntu 26.04 using Ansible and K3s with this repo as the single source of truth. One command takes a machine from base OS to a running GitOps-managed cluster.
+Use this guide to provision a bare-metal Kubernetes cluster on Ubuntu 26.04 with Ansible and K3s. This repo is the single source of truth. One command changes a machine from a base OS to a running cluster that GitOps manages.
 
 ## Step 1: Configure Inventory
 
-Review the host target in `ansible/inventory/hosts.yaml` and cluster settings in `ansible/group_vars/all.yaml`. Ensure SSH access and sudo privileges are active on the target machine.
+Examine the target host in `ansible/inventory/hosts.yaml` and the cluster settings in `ansible/group_vars/all.yaml`. Make sure that you have SSH access and sudo privileges on the target machine.
 
 ```yaml
 all:
@@ -37,24 +37,24 @@ all:
 
 ## Step 2: Run Automated Provisioning
 
-Run the automated provisioning script from the repository root:
+Run the automated provisioning script from the repository root.
 
 ```bash
 ./scripts/provision.sh
 ```
 
-The script executes the Ansible playbook `ansible/site.yaml` which handles:
+The script runs the Ansible playbook `ansible/site.yaml`. The playbook does these tasks:
 
-- Host prerequisites: Kernel modules (`overlay`, `br_netfilter`), sysctls, and storage path creation on the dedicated SSD (`/home/k3s-storage`).
-- NVIDIA integration: Installs NVIDIA Container Toolkit, generates CDI specifications, and configures containerd GPU runtime.
-- Tailscale: Verifies Tailscale is running and disables Tailscale DNS on the node so the host resolves through its upstream network resolvers.
-- K3s Server: Installs K3s, disables Traefik and ServiceLB, uses the Tailscale IP as the node IP, reserves CPU and memory for the system, orders K3s after `tailscaled`, and starts the systemd service.
-- Kubeconfig: Fetches the cluster credentials and configures the Tailscale endpoint.
-- GitOps bootstrap: Deploys ArgoCD with server-side apply and applies the root Application (`bootstrap/root.yaml`).
+- Host prerequisites: It loads the kernel modules (`overlay`, `br_netfilter`), sets the sysctls, and creates the storage path on the dedicated SSD (`/home/k3s-storage`).
+- NVIDIA integration: It installs the NVIDIA Container Toolkit, generates the CDI specifications, and configures the containerd GPU runtime.
+- Tailscale: It makes sure that Tailscale runs. It disables Tailscale DNS on the node, so the host uses its upstream network resolvers.
+- K3s Server: It installs K3s and disables Traefik and ServiceLB. It uses the Tailscale IP as the node IP and reserves CPU and memory for the system. It sets K3s to start after `tailscaled`, then starts the systemd service.
+- Kubeconfig: It gets the cluster credentials and configures the Tailscale endpoint.
+- GitOps bootstrap: It deploys ArgoCD with server-side apply and applies the root Application (`bootstrap/root.yaml`).
 
 ## Step 3: Validate the Cluster
 
-Confirm the node is ready and pods are running:
+Make sure that the node is ready and that the pods run.
 
 ```bash
 export KUBECONFIG="./k3s.kubeconfig"
@@ -65,4 +65,4 @@ kubectl get apps -n argocd
 
 ## Step 4: Configure Vault and External Secrets
 
-Follow [Vault](../how-to/vault.md) to initialize Vault and sync the required secrets for ExternalDNS, cert-manager, and the Tailscale operator.
+Follow [Vault](../how-to/vault.md) to initialize Vault. Then sync the necessary secrets for ExternalDNS, cert-manager, and the Tailscale operator.

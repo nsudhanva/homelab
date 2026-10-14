@@ -1,6 +1,6 @@
 ---
 title: Validate Kubernetes Cluster Health
-description: Verify cluster health, GitOps sync status, Tailscale ingress, External Secrets, and split-horizon DNS configuration. Run pre-push validation checks.
+description: Examine cluster health, GitOps sync status, Tailscale ingress, External Secrets, and the split-horizon DNS configuration. Run the validation checks before you push.
 keywords:
   - kubernetes cluster validation
   - kubectl get nodes
@@ -40,31 +40,31 @@ kubectl get svc -n tailscale-dns
 kubectl get httproute -A
 ```
 
-If a route is not accepting, describe it to see conditions:
+If a route does not show the Accepted condition, describe the route to see its conditions:
 
 ```bash
 kubectl describe httproute <name> -n <namespace>
 ```
 
-Homer dashboard is available at `https://home.sudhanva.me` from a Tailnet client once the HTTPRoute syncs.
+After the HTTPRoute syncs, a Tailnet client can open the Homer dashboard at `https://home.sudhanva.me`.
 
 ### Validate split-horizon DNS
 
-On a tailnet client, `homelab.sudhanva.me` should resolve to the Tailscale Gateway IP:
+On a tailnet client, `homelab.sudhanva.me` must resolve to the Tailscale Gateway IP:
 
 ```bash
 dig +short homelab.sudhanva.me @100.100.100.100
 curl -I https://homelab.sudhanva.me
 ```
 
-If you have other apps exposed through the Gateway, validate one of them as well:
+If the Gateway exposes other apps, validate one of them also:
 
 ```bash
 dig +short home.sudhanva.me @100.100.100.100
 curl -I https://home.sudhanva.me
 ```
 
-Off the tailnet, it should resolve to Cloudflare:
+Off the tailnet, the hostname must resolve to Cloudflare:
 
 ```bash
 dig +short homelab.sudhanva.me @1.1.1.1
@@ -73,7 +73,7 @@ curl -I https://homelab.sudhanva.me
 
 ## Step 4: Validate External Secrets
 
-If `infra-external-secrets` is Degraded, verify the Vault token secret and ClusterSecretStore:
+If `infra-external-secrets` is Degraded, examine the Vault token secret and the ClusterSecretStore:
 
 ```bash
 kubectl -n external-secrets get secret vault-eso-token

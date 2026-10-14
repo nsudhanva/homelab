@@ -13,28 +13,28 @@ sidebar:
 
 # Host Preparation
 
-This tutorial guides you through preparing a physical machine (node `legion`) running Ubuntu 26.04 LTS to serve as a Kubernetes node.
+This tutorial shows how to prepare a physical machine (node `legion`) with Ubuntu 26.04 LTS for use as a Kubernetes node.
 
 ## Step 1: Install Ubuntu 26.04 LTS
 
-Install Ubuntu 26.04 LTS Server on the machine. During installation:
+Install Ubuntu 26.04 LTS Server on the machine. During the installation, do these steps:
 
-- Select standard OpenSSH server installation.
-- Connect the machine to your local network. DHCP is fine, because the cluster uses the node's Tailscale IP rather than its LAN address.
+- Select the standard OpenSSH server installation.
+- Connect the machine to your local network. You can use DHCP, because the cluster uses the Tailscale IP of the node, not its LAN address.
 - Set the hostname to `legion`.
 
 ## Step 2: Prepare the local storage mount
 
-The homelab uses K3s built-in Local-Path Provisioner. Workloads persist their data to `/home/k3s-storage`, which should reside on a dedicated high-speed SSD or NVMe partition.
+The homelab uses the K3s built-in Local-Path Provisioner. Workloads keep their data in `/home/k3s-storage`. Put this directory on a dedicated fast SSD or NVMe partition.
 
-Format the partition with `ext4` or `xfs` and mount it to `/home/k3s-storage`:
+Format the partition with `ext4` or `xfs`. Then mount it at `/home/k3s-storage`:
 
 ```bash
 sudo mkdir -p /home/k3s-storage
 sudo chmod 0777 /home/k3s-storage
 ```
 
-Add the mount to `/etc/fstab` to persist it across reboots:
+To keep the mount after a reboot, add it to `/etc/fstab`:
 
 ```text
 UUID=<storage-partition-uuid> /home/k3s-storage ext4 defaults,noatime 0 2
@@ -42,30 +42,32 @@ UUID=<storage-partition-uuid> /home/k3s-storage ext4 defaults,noatime 0 2
 
 ## Step 3: Install NVIDIA GPU drivers (Optional for GPU Nodes)
 
-If your bare-metal node includes an NVIDIA GPU (such as the GeForce GTX 1050 Ti on `legion`), install the proprietary NVIDIA driver:
+If your bare-metal node has an NVIDIA GPU (such as the GeForce GTX 1050 Ti on `legion`), install the proprietary NVIDIA driver:
 
 ```bash
 sudo apt update
 sudo apt install -y nvidia-driver-580
 ```
 
-Reboot the node to initialize the NVIDIA kernel module:
+Reboot the node to load the NVIDIA kernel module:
 
 ```bash
 sudo reboot
 ```
 
-After rebooting, verify driver initialization:
+After the reboot, make sure that the driver is loaded:
 
 ```bash
 nvidia-smi
 ```
 
-The output confirms the GPU model, driver version, and CUDA version.
+The output shows the GPU model, the driver version, and the CUDA version.
 
 ## Step 4: Install and join Tailscale
 
-Install Tailscale and join the node to your tailnet. Provisioning fails early if Tailscale is missing, because K3s uses the Tailscale IP as the node IP.
+K3s uses the Tailscale IP as the node IP. If Tailscale is not installed, provisioning fails at an early stage.
+
+Install Tailscale and join the node to your tailnet:
 
 ```bash
 curl -fsSL https://tailscale.com/install.sh | sh
@@ -73,8 +75,8 @@ sudo tailscale up
 tailscale ip -4
 ```
 
-Use the address from `tailscale ip -4` for `ansible_host`, `k3s_node_ip`, and `k3s_external_ip` in the inventory.
+In the inventory, use the address from `tailscale ip -4` for `ansible_host`, `k3s_node_ip`, and `k3s_external_ip`.
 
 ## Step 5: Next steps
 
-With the bare-metal host installed, networked, and storage mounted, proceed to [Ansible Configuration](./containerd.md) to define cluster inventory variables.
+The bare-metal host now has the operating system, the network, and the storage mount. Go to [Ansible Configuration](./containerd.md) to define the cluster inventory variables.

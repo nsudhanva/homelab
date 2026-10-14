@@ -1,6 +1,6 @@
 ---
 title: Documentation Structure
-description: Guidelines for contributing to the homelab documentation including file naming, frontmatter requirements, and content organization following the Divio documentation system.
+description: Rules for contributions to the homelab documentation. Covers file names, frontmatter, and content organization with the Divio documentation system.
 keywords:
   - documentation guidelines
   - divio documentation system
@@ -13,7 +13,7 @@ sidebar:
 
 # Documentation Structure
 
-Documentation is built with [Astro Starlight](https://starlight.astro.build/) and follows the [Divio documentation system](https://docs.divio.com/documentation-system/).
+The documentation uses [Astro Starlight](https://starlight.astro.build/) and the [Divio documentation system](https://docs.divio.com/documentation-system/).
 
 ## Content Organization
 
@@ -37,7 +37,7 @@ docs/src/content/docs/
 
 ## Frontmatter Requirements
 
-Each document must include SEO-optimized frontmatter:
+Each document must have SEO-optimized frontmatter:
 
 ```yaml
 ---
@@ -56,11 +56,11 @@ sidebar:
 
 - Use lowercase kebab-case: `add-worker-node.md`
 - Use task-based names: `deploy-apps.md` not `apps.md`
-- Avoid numeric prefixes in filenames
+- Do not use numeric prefixes in filenames
 
 ## Mermaid Diagrams
 
-Diagrams are rendered with the astro-mermaid plugin:
+The astro-mermaid plugin renders the diagrams:
 
 ```mermaid
 flowchart LR
@@ -70,7 +70,7 @@ flowchart LR
 
 ## Writing Guidelines
 
-- Follow [AGENTS.md](https://github.com/nsudhanva/homelab/blob/master/AGENTS.md) conventions
-- Use tables instead of numbered lists for steps
-- Avoid inline YAML comments
-- Keep prose professional without marketing language
+- Follow the [AGENTS.md](https://github.com/nsudhanva/homelab/blob/master/AGENTS.md) conventions
+- Use tables, not numbered lists, for steps
+- Do not use inline YAML comments
+- Write professional prose with no marketing language

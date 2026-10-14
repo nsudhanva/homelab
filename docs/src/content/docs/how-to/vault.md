@@ -1,6 +1,6 @@
 ---
 title: HashiCorp Vault Secrets Management
-description: Deploy HashiCorp Vault for centralized secrets management. Initialize and unseal Vault, configure External Secrets Operator, and sync secrets to Kubernetes workloads.
+description: Deploy HashiCorp Vault to keep secrets in one location. Initialize and unseal Vault, configure External Secrets Operator, and sync secrets to Kubernetes workloads.
 keywords:
   - hashicorp vault kubernetes
   - vault secrets management
@@ -16,7 +16,7 @@ sidebar:
 
 # Vault Secrets
 
-Move cluster secrets into Vault and sync them into Kubernetes with External Secrets Operator.
+Move the cluster secrets into Vault. Then use External Secrets Operator to sync them into Kubernetes.
 
 ```mermaid
 flowchart LR
@@ -38,16 +38,16 @@ flowchart TB
 
 ## Step 1: Deploy Vault and External Secrets Operator
 
-Push the repo changes and let ArgoCD sync `infrastructure/vault/` and `infrastructure/external-secrets/`.
+Push the repository changes. ArgoCD syncs `infrastructure/vault/` and `infrastructure/external-secrets/`.
 
-Confirm the pods are ready:
+Make sure that the pods are ready:
 
 ```bash
 kubectl -n vault get pods
 kubectl -n external-secrets get pods
 ```
 
-If Vault is Pending, confirm the PVC is bound to local-path storage:
+If Vault is Pending, make sure that the PVC is bound to local-path storage:
 
 ```bash
 kubectl -n vault get pvc
@@ -55,13 +55,15 @@ kubectl -n vault get pvc
 
 ## Step 2: Initialize and unseal Vault
 
-Initialize Vault and save the unseal keys and root token somewhere safe. `vault operator init` prints five unseal keys with a threshold of three. Keep them offline (password manager). If you lose them, the only recovery is wiping the Vault PVC and re-initializing, which destroys stored secrets.
+Keep the unseal keys and the root token offline, for example in a password manager. If you lose them, the only recovery is to wipe the Vault PVC and initialize Vault again. This deletes all stored secrets.
+
+Initialize Vault. The `vault operator init` command prints five unseal keys with a threshold of three. Save the unseal keys and the root token in a safe location.
 
 ```bash
 kubectl -n vault exec -it vault-0 -- vault operator init
 ```
 
-Unseal Vault with the required number of keys:
+Unseal Vault with the necessary number of keys:
 
 ```bash
 kubectl -n vault exec -it vault-0 -- vault operator unseal
@@ -75,7 +77,7 @@ kubectl -n vault exec -it vault-0 -- vault login
 
 ## Step 3: Enable the KV v2 secrets engine
 
-Enable KV v2 at `kv/` to match the ExternalSecret store config:
+Enable KV v2 at `kv/`. This path agrees with the ExternalSecret store configuration:
 
 ```bash
 kubectl -n vault exec -it vault-0 -- vault secrets enable -path=kv kv-v2
@@ -83,7 +85,7 @@ kubectl -n vault exec -it vault-0 -- vault secrets enable -path=kv kv-v2
 
 ## Step 4: Create secrets in Vault
 
-Write the secrets that Kubernetes currently expects:
+Write the secrets that Kubernetes uses now:
 
 ```bash
 kubectl -n vault exec -it vault-0 -- vault kv put kv/external-dns/cloudflare api-token="REPLACE_ME"
@@ -93,7 +95,7 @@ kubectl -n vault exec -it vault-0 -- vault kv put kv/tailscale/operator-oauth cl
 
 ### Step 4a: Filebrowser credentials
 
-Generate a bcrypt hash for the password:
+Make a bcrypt hash of the password:
 
 ```bash
 htpasswd -bnBC 12 filebrowser "REPLACE_ME" | cut -d ':' -f2
@@ -125,7 +127,7 @@ kubectl -n vault exec -it vault-0 -- vault kv put kv/argocd/repo-creds \
 
 ## Step 5: Create a token for External Secrets Operator
 
-Create a minimal policy and a token that can read from `kv/`.
+Create a minimal policy and a token that can read from `kv/`:
 
 ```bash
 kubectl -n vault exec -it vault-0 -- /bin/sh -c 'cat > /tmp/external-secrets.hcl <<EOF
@@ -148,7 +150,7 @@ kubectl -n external-secrets create secret generic vault-eso-token --from-literal
 
 ## Step 6: Add new secrets and ExternalSecret resources
 
-When you add a new secret, write it to Vault first, then create an ExternalSecret manifest in the same folder as the consuming workload.
+To add a new secret, write it to Vault first. Then create an ExternalSecret manifest in the same folder as the workload that uses the secret.
 
 Example Vault write:
 
@@ -156,7 +158,7 @@ Example Vault write:
 kubectl -n vault exec -it vault-0 -- vault kv put kv/my-app/api token="REPLACE_ME"
 ```
 
-Example ExternalSecret (save as a standalone YAML file like `apps/my-app/externalsecret.yaml` or `infrastructure/<component>/external-secret.yaml`):
+Example ExternalSecret. Save it as a separate YAML file, for example `apps/my-app/externalsecret.yaml` or `infrastructure/<component>/external-secret.yaml`:
 
 ```yaml
 apiVersion: external-secrets.io/v1
@@ -179,11 +181,11 @@ spec:
       property: token
 ```
 
-Commit the new manifest and let ArgoCD sync it.
+Commit the new manifest. ArgoCD syncs it.
 
 ## Step 7: Validate ExternalSecret sync
 
-Check that External Secrets Operator created or updated the target secrets:
+Make sure that External Secrets Operator created or updated the target secrets:
 
 ```bash
 kubectl -n external-dns get secret cloudflare-api-token
@@ -191,17 +193,17 @@ kubectl -n cert-manager get secret cloudflare-api-token
 kubectl -n tailscale get secret operator-oauth
 ```
 
-Once the secrets match Vault, remove any manually created secrets so External Secrets Operator owns them.
+When the secrets agree with Vault, remove all secrets that you created manually. External Secrets Operator then owns the secrets.
 
 ## Step 8: Access the Vault UI
 
-Vault is exposed at `https://vault.sudhanva.me` via the Tailscale Gateway.
+Vault is available at `https://vault.sudhanva.me` through the Tailscale Gateway.
 
 ## Troubleshooting
 
 ### Vault UI blank page
 
-If the Vault UI loads a blank page in the browser while `curl` works, check the Envoy Gateway logs for `response_timeout` entries on `/ui/assets/...`. Large UI bundles can time out through the Gateway.
+Large UI bundles can time out through the Gateway. If the Vault UI shows a blank page in the browser but `curl` works, examine the Envoy Gateway logs. Look for `response_timeout` entries on `/ui/assets/...`.
 
 Update the Vault HTTPRoute to increase the request timeout:
 
@@ -218,22 +220,22 @@ spec:
       backendRequest: 60s
 ```
 
-Commit the change and let ArgoCD sync `infrastructure/gateway/vault-httproute.yaml`.
+Commit the change. ArgoCD syncs `infrastructure/gateway/vault-httproute.yaml`.
 
 ### ClusterSecretStore not ready
 
-If `infra-external-secrets` is Degraded or ExternalSecrets show `SecretSyncedError`, check the Vault token secret:
+If `infra-external-secrets` is Degraded or ExternalSecrets show `SecretSyncedError`, examine the Vault token secret:
 
 ```bash
 kubectl -n external-secrets get secret vault-eso-token
 kubectl -n external-secrets get clustersecretstore vault -o yaml
 ```
 
-The ClusterSecretStore will not become Ready until `vault-eso-token` exists and contains a valid token.
+The ClusterSecretStore becomes Ready only when `vault-eso-token` exists and contains a valid token.
 
 ### ExternalSecrets still failing after Vault recovery
 
-If Vault was re-initialized or secrets were added after External Secrets failed, force a resync.
+If you initialized Vault again, or added secrets after External Secrets failed, force a resync.
 
 Step 1: Request a reconcile for all ExternalSecrets.
 
@@ -243,7 +245,7 @@ kubectl get externalsecrets -A -o jsonpath='{range .items[*]}{.metadata.namespac
 done
 ```
 
-Step 2: Confirm the sync status.
+Step 2: Examine the sync status.
 
 ```bash
 kubectl get externalsecrets -A

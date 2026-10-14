@@ -1,6 +1,6 @@
 ---
 title: CI/CD Pipeline with GitHub Actions
-description: Configure GitHub Actions for Kubernetes manifest validation, pre-commit checks, and docs image builds. Understand the relationship between CI validation and ArgoCD deployment.
+description: Configure GitHub Actions for Kubernetes manifest validation, pre-commit checks, and docs image builds. Learn how CI validation and ArgoCD deployment work together.
 keywords:
   - github actions kubernetes
   - kubeconform validation
@@ -15,28 +15,28 @@ sidebar:
 
 # CI And CD With GitHub Actions
 
-This guide explains how CI runs in GitHub Actions and how CD flows through ArgoCD and the docs image build.
+This guide shows how CI runs in GitHub Actions. It also shows how CD goes through ArgoCD and the docs image build.
 
 ## Step 1: Review the workflows
 
-These workflows live in `.github/workflows/`:
+These workflows are in `.github/workflows/`:
 
-- `ci.yaml` runs pre-commit, kubeconform validation, a docs build check, and pushes the docs image on changes under `docs/`.
-- `cluster-smoke.yaml` is a manual and scheduled workflow that connects to the tailnet and runs `kubectl get nodes` and `kubectl get pods -A`.
+- `ci.yaml` runs pre-commit, kubeconform validation, and a docs build check. When files under `docs/` change, it also pushes the docs image.
+- `cluster-smoke.yaml` is a manual and scheduled workflow. It connects to the tailnet and runs `kubectl get nodes` and `kubectl get pods -A`.
 
 ## Step 2: Configure GitHub secrets
 
-Add these repository secrets for the tailnet-enabled workflow:
+Add these repository secrets for the workflow that uses the tailnet:
 
 - `TS_OAUTH_CLIENT_ID`
 - `TS_OAUTH_SECRET`
 - `KUBECONFIG_B64`
 
-`KUBECONFIG_B64` should be a base64-encoded kubeconfig that can reach the cluster API on the tailnet.
+`KUBECONFIG_B64` must be a base64-encoded kubeconfig that can connect to the cluster API on the tailnet.
 
 ## Step 3: Understand what each check covers
 
-CI validation focuses on the Kubernetes and GitOps manifests in this repo.
+CI validation examines the Kubernetes and GitOps manifests in this repo.
 
 | Area | Coverage | Workflow |
 | --- | --- | --- |
@@ -47,13 +47,13 @@ CI validation focuses on the Kubernetes and GitOps manifests in this repo.
 
 ## Step 4: Trigger a cluster smoke test
 
-Run the workflow manually when you want to validate the live cluster health over Tailscale.
+To examine the health of the live cluster over Tailscale, run the workflow manually.
 
 - Workflow: `Cluster Smoke` in GitHub Actions
 - Checks: `kubectl get nodes`, `kubectl get pods -A`, and ArgoCD app status
 
-The workflow also runs every six hours via a scheduled trigger.
+A scheduled trigger also runs the workflow every six hours.
 
 ## Step 5: Rely on ArgoCD for CD
 
-ArgoCD watches this repo and applies changes via ApplicationSets. GitHub Actions validates and builds artifacts, while ArgoCD handles the deployment and reconciliation in-cluster.
+ArgoCD watches this repo and applies changes through ApplicationSets. GitHub Actions validates and builds artifacts. ArgoCD does the deployment and reconciliation in the cluster.

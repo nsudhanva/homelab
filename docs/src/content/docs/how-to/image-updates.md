@@ -1,6 +1,6 @@
 ---
 title: Automated Container Image Updates with ArgoCD
-description: Configure ArgoCD Image Updater to automatically track container image versions and commit updates back to Git for GitOps deployments.
+description: Configure ArgoCD Image Updater to track container image versions and commit the updates to Git for GitOps deployments.
 keywords:
   - argocd image updater
   - automated image updates
@@ -15,7 +15,7 @@ sidebar:
 
 # Automated Image Updates
 
-This guide enables ArgoCD Image Updater to track container images and commit updates back to Git.
+This guide configures ArgoCD Image Updater. Image Updater tracks container images and commits the updates to Git.
 
 ## Step 1: Store registry credentials in Vault
 
@@ -31,7 +31,7 @@ kubectl -n vault exec -it vault-0 -- vault kv put kv/argocd-image-updater/docker
 
 ## Step 2: Store Git write-back credentials in Vault
 
-Create a GitHub token with repo write access and store it:
+Create a GitHub token with write access to the repository. Store the token in Vault:
 
 ```bash
 kubectl -n vault exec -it vault-0 -- vault kv put kv/argocd/repo-creds \
@@ -40,17 +40,17 @@ kubectl -n vault exec -it vault-0 -- vault kv put kv/argocd/repo-creds \
 
 ## Step 3: Let ArgoCD sync
 
-ArgoCD will install ArgoCD Image Updater, create the registry secret, and create the repo credentials.
+ArgoCD installs ArgoCD Image Updater. It also creates the registry secret and the repository credentials.
 
-## Step 4: Verify image updates
+## Step 4: Examine the image updates
 
-Look for `.argocd-source-<appName>.yaml` files added under `apps/` after Image Updater runs.
+After Image Updater runs, look for new `.argocd-source-<appName>.yaml` files under `apps/`.
 
 ## Notes
 
-- Image rules live in `infrastructure/argocd-image-updater/image-updater.yaml`.
-- Registry secrets are created by External Secrets in `infrastructure/external-secrets/`.
-- Updates commit to the tracked branch (`master`) so ArgoCD can auto-sync.
-- Apps should include a `kustomization.yaml` so ArgoCD can apply Image Updater overrides.
-- Third-party images (Headlamp, Homer, Filebrowser) follow semver tags. Jellyfin and the in-house Deployments (`alert-summarizer`, `docs`) track the `latest` tag by digest, so each image that CI pushes to GHCR rolls out through a Git commit.
-- CronJobs that use `imagePullPolicy: Always` with the `latest` tag (`gmail-classifier`, `drive-organizer`, `actual-classifier`) pull the newest image on every run and do not need Image Updater rules.
+- The image rules are in `infrastructure/argocd-image-updater/image-updater.yaml`.
+- External Secrets creates the registry secrets in `infrastructure/external-secrets/`.
+- Image Updater commits the updates to the tracked branch (`master`). Then ArgoCD can auto-sync them.
+- Each app must have a `kustomization.yaml` file. ArgoCD needs this file to apply the Image Updater overrides.
+- Third-party images (Headlamp, Homer, Filebrowser) use semver tags. Jellyfin and the in-house Deployments (`alert-summarizer`, `docs`) track the `latest` tag by digest. Thus, each image that CI pushes to GHCR rolls out through a Git commit.
+- Some CronJobs use `imagePullPolicy: Always` with the `latest` tag (`gmail-classifier`, `drive-organizer`, `actual-classifier`). These CronJobs pull the newest image on each run. They do not need Image Updater rules.

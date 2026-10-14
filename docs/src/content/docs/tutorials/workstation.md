@@ -13,7 +13,7 @@ sidebar:
 
 # Ubuntu Workstation
 
-The workstation container gives you an Ubuntu 26.04 shell with Docker, Ansible, kubectl, and Helm on any host that runs Apple Containers. Use it whenever a workflow expects Linux tooling.
+The workstation container gives you an Ubuntu 26.04 shell with Docker, Ansible, kubectl, and Helm. It runs on all hosts that run Apple Containers. Use it when a workflow needs Linux tools.
 
 ## Step 1: Start the container
 
@@ -21,7 +21,7 @@ The workstation container gives you an Ubuntu 26.04 shell with Docker, Ansible, 
 ./scripts/dev-container.sh up
 ```
 
-The script pulls `ubuntu:26.04`, allocates CPUs and memory, and prepares the container for nested Docker.
+The script pulls `ubuntu:26.04` and allocates CPUs and memory. It also prepares the container for nested Docker.
 
 ## Step 2: Open a shell
 
@@ -40,7 +40,7 @@ helm version
 
 ## Step 4: Work on the repo from inside
 
-The repo root is mounted into the container, so edits apply directly to your checkout. Run Ansible playbooks and cluster scripts from the mounted path.
+The container mounts the repo root. Thus your edits apply directly to your checkout. Run Ansible playbooks and cluster scripts from the mounted path.
 
 ## Step 5: Stop the container
 
@@ -48,4 +48,4 @@ The repo root is mounted into the container, so edits apply directly to your che
 ./scripts/dev-container.sh down
 ```
 
-The container is stateless by design. Tooling reinstalls on the next `up`, and all state lives in the repo checkout on the host.
+The container is stateless by design. The tools install again on the next `up`. All state stays in the repo checkout on the host.

@@ -1,6 +1,6 @@
 ---
 title: GitOps and Automation Model with Ansible and ArgoCD
-description: Comprehensive guide to the repository automation model combining Ansible host provisioning, ArgoCD declarative GitOps, System Upgrade Controller, and Image Updater.
+description: How the repository automation model uses Ansible host provisioning, ArgoCD declarative GitOps, System Upgrade Controller, and Image Updater.
 keywords:
   - gitops automation
   - ansible k3s
@@ -15,12 +15,12 @@ sidebar:
 
 # Automation Model
 
-This repository is built for 100% infrastructure-as-code and GitOps automation. Every layer of the homelab is declarative and automated through defined control loops:
+This repository uses 100% infrastructure-as-code and GitOps automation. Each layer of the homelab is declarative. A control loop automates each layer:
 
-- **Ansible Automation (`ansible/`)**: Provisions bare-metal Ubuntu hosts, kernel parameters, container runtime with NVIDIA CDI, and initial K3s bootstrap.
+- **Ansible Automation (`ansible/`)**: Installs the bare-metal Ubuntu hosts, the kernel parameters, the container runtime with NVIDIA CDI, and the initial K3s bootstrap.
 - **ArgoCD GitOps Engine (`bootstrap/`, `infrastructure/`, `apps/`)**: Continuously reconciles all cluster infrastructure and user applications against git HEAD.
-- **Rancher System Upgrade Controller (`infrastructure/system-upgrade-controller/`)**: Declaratively orchestrates rolling K3s upgrades via Kubernetes Custom Resources (`Plan`).
-- **ArgoCD Image Updater (`infrastructure/argocd-image-updater/`)**: Scans container registries and automatically commits updated image tags back to git.
+- **Rancher System Upgrade Controller (`infrastructure/system-upgrade-controller/`)**: Does rolling K3s upgrades declaratively through Kubernetes Custom Resources (`Plan`).
+- **ArgoCD Image Updater (`infrastructure/argocd-image-updater/`)**: Scans container registries and commits updated image tags back to git automatically.
 
 ```mermaid
 flowchart TB
@@ -64,21 +64,21 @@ flowchart TB
 
 ## Layer 1: Host and Control Plane Automation (Ansible)
 
-Host configuration is completely reproducible via Ansible roles:
+The Ansible roles can make the same host configuration again at any time:
 
-- `ansible/roles/common/`: Installs OS packages, loads kernel modules (`overlay`, `br_netfilter`), tunes sysctl networking, and prepares `/home/k3s-storage`.
-- `ansible/roles/nvidia/`: Configures the NVIDIA Container Toolkit and generates CDI specifications (`/etc/cdi/nvidia.yaml`).
-- `ansible/roles/k3s_server/`: Deploys K3s server with configured flags (`default-runtime: "nvidia"`, `default-local-storage-path: "/home/k3s-storage"`).
-- `ansible/roles/argocd/`: Bootstraps the ArgoCD control plane and applies `bootstrap/root.yaml`.
+- `ansible/roles/common/`: Installs OS packages, loads kernel modules (`overlay`, `br_netfilter`), sets the sysctl network values, and prepares `/home/k3s-storage`.
+- `ansible/roles/nvidia/`: Configures the NVIDIA Container Toolkit and makes the CDI specifications (`/etc/cdi/nvidia.yaml`).
+- `ansible/roles/k3s_server/`: Deploys the K3s server with these flags (`default-runtime: "nvidia"`, `default-local-storage-path: "/home/k3s-storage"`).
+- `ansible/roles/argocd/`: Installs the ArgoCD control plane and applies `bootstrap/root.yaml`.
 
 ## Layer 2: In-Cluster Declarative GitOps (ArgoCD)
 
-ArgoCD acts as the primary reconcile loop. The single root application `bootstrap/root.yaml` creates two core ApplicationSets:
+ArgoCD is the main reconcile loop. The root application `bootstrap/root.yaml` creates two ApplicationSets:
 
-- `infra-appset.yaml`: Watches every directory in `infrastructure/*` and generates individual `infra-<component>` applications.
-- `apps-appset.yaml`: Discovers application definitions in `apps/*/app.yaml` and provisions workloads into their target namespaces.
+- `infra-appset.yaml`: Watches each directory in `infrastructure/*` and makes one `infra-<component>` application for each.
+- `apps-appset.yaml`: Finds the application definitions in `apps/*/app.yaml` and deploys the workloads into their target namespaces.
 
-Both ApplicationSets enforce automated pruning and self-healing:
+Both ApplicationSets use automatic pruning and self-healing:
 
 ```yaml
 syncPolicy:
@@ -89,5 +89,5 @@ syncPolicy:
 
 ## Layer 3: Automated Lifecycle & Image Updates
 
-- **System Upgrade Controller**: Eliminates manual node patching. When a new K3s version tag is set in `k3s-upgrade-plan.yaml`, the controller orchestrates node cordon, drain, in-place binary upgrade, and uncordon.
-- **Image Updater**: Tracks upstream semantic tags or digests, testing container registries on a schedule and pushing Git commits back to `master`.
+- **System Upgrade Controller**: Removes the need for manual node patches. When you set a new K3s version tag in `k3s-upgrade-plan.yaml`, the controller does these steps: node cordon, drain, in-place binary upgrade, and uncordon.
+- **Image Updater**: Monitors upstream semantic tags or digests. It examines the container registries on a schedule and pushes Git commits back to `master`.

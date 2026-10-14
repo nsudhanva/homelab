@@ -1,6 +1,6 @@
 ---
 title: Component Version Matrix
-description: Reference matrix of all pinned component versions including K3s, ArgoCD, Envoy Gateway, Vault, and other infrastructure tools with their configuration file locations.
+description: Pinned versions of all components, such as K3s, ArgoCD, Envoy Gateway, and Vault, with the location of each configuration file.
 keywords:
   - k3s version
   - kubernetes version
@@ -14,7 +14,7 @@ sidebar:
 
 # Version Matrix
 
-Keep these versions aligned when upgrading components.
+When you upgrade components, keep these versions aligned.
 
 :::note
 
@@ -23,8 +23,8 @@ Check the latest stable release before changing any pinned version.
 :::
 
 - K3s: `v1.36.4+k3s1` in `ansible/group_vars/all.yaml`
-- Kubernetes: `v1.36.4` via K3s
-- containerd: `2.3.4` via K3s
+- Kubernetes: `v1.36.4` from K3s
+- containerd: `2.3.4` from K3s
 - Host OS: Ubuntu `26.04.1 LTS`
 - CNI: Flannel (K3s built-in)
 - Storage: Local-Path Provisioner (data path `/home/k3s-storage`)
@@ -53,7 +53,7 @@ Check the latest stable release before changing any pinned version.
 - llama.cpp (Gemma 4): `server-cuda` in `apps/llama/deployment.yaml`
 - Jellyfin: `10.11.7` in `apps/jellyfin/deployment.yaml`
 - Filebrowser: `latest` in `apps/filebrowser/deployment.yaml`
-- Alertmanager: `0.34.0` (via kube-prometheus-stack)
+- Alertmanager: `0.34.0` (from kube-prometheus-stack)
 - Actual Budget: `26.9.0-alpine` in `apps/actual-budget/deployment.yaml`
 - Gmail Classifier: `0.1.0` in `apps/gmail-classifier/pyproject.toml`
 - Astro: `7.3.2` in `docs/package.json`

@@ -1,6 +1,6 @@
 ---
 title: Bare-Metal K3s Homelab - Setup Guide & Architecture
-description: Self-hosted bare-metal Kubernetes cluster on Ubuntu 26.04 LTS (node legion) powered by K3s v1.36+, Flannel CNI, ArgoCD GitOps, Envoy Gateway, Tailscale Gateway API, Vault secrets, native local-path storage, and NVIDIA GPU CDI.
+description: A self-hosted bare-metal Kubernetes cluster on Ubuntu 26.04 LTS (node legion) with K3s v1.36+, Flannel CNI, ArgoCD GitOps, Envoy Gateway, Tailscale Gateway API, Vault secrets, native local-path storage, and NVIDIA GPU CDI.
 keywords:
   - k3s homelab
   - bare metal kubernetes
@@ -14,7 +14,7 @@ keywords:
   - system upgrade controller
 template: splash
 hero:
-  tagline: Production-ready bare-metal Kubernetes on Ubuntu 26.04 LTS (node legion) powered by K3s and GitOps automation. Automated with Ansible and reconciled by ArgoCD.
+  tagline: Bare-metal Kubernetes for production use on Ubuntu 26.04 LTS (node legion), with K3s and GitOps. Ansible provisions the node and ArgoCD reconciles the cluster.
   actions:
     - text: Start from Scratch
       link: /how-to/from-scratch/
@@ -31,17 +31,17 @@ import { Aside, Card, CardGrid, LinkCard, Tabs, TabItem } from '@astrojs/starlig
 
 ## What You'll Build
 
-A self-hosted bare-metal Kubernetes cluster on node `legion` with services accessible over Tailscale via Envoy Gateway:
+You build a self-hosted bare-metal Kubernetes cluster on node `legion`. Clients connect to its services over Tailscale through Envoy Gateway:
 
 | Service | Hostname | Port | Purpose |
 |---------|----------|------|---------|
 | ArgoCD | `argocd.sudhanva.me` | 443 | GitOps control plane UI |
-| Vault | `vault.sudhanva.me` | 443 | Centralized secret management |
+| Vault | `vault.sudhanva.me` | 443 | Central secret management |
 | Grafana | `grafana.sudhanva.me` | 443 | Metrics and dashboards |
 | Prometheus | `prometheus.sudhanva.me` | 443 | Metrics collection |
 | Alertmanager | `alertmanager.sudhanva.me` | 443 | Alert routing |
 | Headlamp | `headlamp.sudhanva.me` | 443 | Kubernetes cluster management UI |
-| Home | `home.sudhanva.me` | 443 | Dashboard with service links |
+| Home | `home.sudhanva.me` | 443 | Dashboard with links to the services |
 | Jellyfin | `jellyfin.sudhanva.me` | 443 | Media streaming with NVIDIA GTX 1050 Ti transcoding |
 | Filebrowser | `filebrowser.sudhanva.me` | 443 | File manager for persistent media volumes |
 | Technitium DNS | `dns.sudhanva.me` | 443 | Authoritative and recursive DNS server |
@@ -98,17 +98,17 @@ flowchart TB
     - Minimum 4 CPU cores, 16GB RAM
     - Dedicated SSD/NVMe mounted at `/home/k3s-storage`
     - NVIDIA GeForce GTX 1050 Ti GPU for hardware acceleration
-    - Stable LAN network connection and static IP
+    - A stable LAN connection and a static IP
   </TabItem>
   <TabItem label="Accounts">
-    - Tailscale account with Tailnet OAuth client configured for the Kubernetes operator
-    - Cloudflare account with managed domain (`sudhanva.me`) and API token for ExternalDNS & cert-manager
-    - GitHub personal repository with access token for ArgoCD Image Updater
+    - A Tailscale account with a Tailnet OAuth client for the Kubernetes operator
+    - A Cloudflare account with a managed domain (`sudhanva.me`) and an API token for ExternalDNS and cert-manager
+    - A personal GitHub repository with an access token for ArgoCD Image Updater
   </TabItem>
   <TabItem label="Workstation">
     - macOS or Linux workstation
     - Ansible, OpenSSH, and `kubectl` installed
-    - SSH key access to target node (`sudhanva@legion`) with passwordless sudo
+    - SSH key access to the target node (`sudhanva@legion`) with passwordless sudo
   </TabItem>
 </Tabs>
 
@@ -116,25 +116,25 @@ flowchart TB
 
 <CardGrid stagger>
   <Card title="GitOps with ArgoCD" icon="github">
-    Declarative cluster reconciliation via ApplicationSets. Changes pushed to Git deploy automatically.
+    ApplicationSets reconcile the cluster from declarative manifests. When you push a change to Git, it deploys automatically.
   </Card>
   <Card title="Ubuntu 26.04 & K3s v1.36+" icon="rocket">
-    Lightweight, production-grade Kubernetes with Flannel CNI and zero-touch Ansible provisioning.
+    Lightweight Kubernetes for production use, with Flannel CNI. Ansible provisions the node with no manual steps.
   </Card>
   <Card title="Envoy Gateway & Tailscale" icon="setting">
-    Kubernetes Gateway API with Tailscale operator integration, split-horizon DNS, and automated Let's Encrypt TLS.
+    Kubernetes Gateway API with the Tailscale operator, split-horizon DNS, and automatic Let's Encrypt TLS.
   </Card>
   <Card title="Vault & External Secrets" icon="approve-check">
-    Centralized HashiCorp Vault secrets injected as native Kubernetes secrets via External Secrets Operator.
+    HashiCorp Vault keeps the secrets in one location. External Secrets Operator writes them as native Kubernetes secrets.
   </Card>
   <Card title="Local-Path SSD Storage" icon="document">
-    Dynamic hostPath storage on dedicated SSD at `/home/k3s-storage` with zero distributed storage overhead.
+    Dynamic hostPath storage on a dedicated SSD at `/home/k3s-storage`, with no distributed storage overhead.
   </Card>
   <Card title="NVIDIA GPU Acceleration" icon="laptop">
-    Hardware acceleration with NVIDIA GPU Operator and Container Device Interface (CDI) for GTX 1050 Ti.
+    Hardware acceleration for the GTX 1050 Ti with the NVIDIA GPU Operator and the Container Device Interface (CDI).
   </Card>
   <Card title="Automated Upgrades" icon="seti:pipeline">
-    Zero-downtime, declarative K3s upgrades orchestrated by Rancher System Upgrade Controller.
+    Rancher System Upgrade Controller does declarative K3s upgrades with no downtime.
   </Card>
 </CardGrid>
 
@@ -151,13 +151,13 @@ flowchart TB
 | Hardware / GPU | NVIDIA GPU Operator `v26.7.0` (CDI enabled) | `infrastructure/gpu/` |
 | Lifecycle | System Upgrade Controller (Plan `k3s-server`) | `infrastructure/system-upgrade-controller/` |
 | Monitoring | kube-prometheus-stack, Grafana, Alertmanager | `infrastructure/prometheus/` |
-| Alerting | Telegram bot (@ManassuHomelabBot) via Alertmanager | `infrastructure/prometheus/` |
+| Alerting | Telegram bot (@ManassuHomelabBot) through Alertmanager | `infrastructure/prometheus/` |
 | Security | Kubescape Operator | `infrastructure/kubescape/` |
 
 ## Quick Links
 
 <CardGrid>
-  <LinkCard title="From Scratch" href="/how-to/from-scratch/" description="Complete bare-metal bring-up procedure" />
+  <LinkCard title="From Scratch" href="/how-to/from-scratch/" description="The full procedure to start a bare-metal cluster" />
   <LinkCard title="Gateway & Ingress" href="/explanation/gateway-networking/" description="Envoy Gateway and Tailscale integration" />
   <LinkCard title="Persistent Storage" href="/how-to/storage/" description="Local-Path storage architecture on /home/k3s-storage" />
   <LinkCard title="Version Matrix" href="/reference/versions/" description="Pinned versions for all cluster components" />

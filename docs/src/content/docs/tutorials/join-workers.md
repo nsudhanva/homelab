@@ -13,11 +13,11 @@ sidebar:
 
 # Add Workers
 
-Use this tutorial after the control plane is operational to scale out your cluster with additional worker nodes.
+When the control plane is operational, use this tutorial to add more worker nodes to your cluster.
 
 ## Step 1: Add the node to inventory
 
-Update `ansible/inventory/hosts.yaml` with the new worker node details under `k3s_agents`:
+Add the new worker node to `ansible/inventory/hosts.yaml` under `k3s_agents`.
 
 ```yaml
 k3s_agents:
@@ -28,27 +28,27 @@ k3s_agents:
       k3s_node_ip: "WORKER_TAILSCALE_IP"
 ```
 
-Replace `WORKER_TAILSCALE_IP` with the output of `tailscale ip -4` on the worker. Every node uses its Tailscale IP as the node IP, so nodes reach each other and the API server over the tailnet regardless of LAN addressing.
+Replace `WORKER_TAILSCALE_IP` with the output of `tailscale ip -4` on the worker. Each node uses its Tailscale IP as the node IP. Thus the nodes connect to each other and to the API server over the tailnet, independent of the LAN addresses.
 
 ## Step 2: Run the agent provisioning role
 
-Execute Ansible against the target worker:
+Run Ansible on the target worker.
 
 ```bash
 ansible-playbook -i ansible/inventory/hosts.yaml ansible/site.yaml --limit worker-01
 ```
 
-The playbook installs prerequisites, joins the K3s cluster using the cluster join token, and starts the `k3s-agent` service.
+The playbook installs the prerequisites and joins the K3s cluster with the cluster join token. Then it starts the `k3s-agent` service.
 
-## Step 3: Verify the new node
+## Step 3: Examine the new node
 
-Confirm that the new worker reports `Ready` and displays its role:
+Make sure that the new worker reports `Ready` and shows its role.
 
 ```bash
 kubectl get nodes -o wide
 ```
 
-Check that the Flannel CNI and workload pods are scheduling onto the worker:
+Make sure that the Flannel CNI pods and the workload pods are scheduled on the worker.
 
 ```bash
 kubectl get pods -A -o wide

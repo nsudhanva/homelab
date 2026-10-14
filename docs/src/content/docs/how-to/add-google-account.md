@@ -1,6 +1,6 @@
 ---
 title: How to Manage Multi-Account Google Workloads with Declarative IaC
-description: Configure, securely store, and deploy multiple isolated Google accounts for Gmail Classifier and Drive Organizer using a declarative account matrix, HashiCorp Vault, and GitOps.
+description: Configure, store, and deploy isolated Google accounts for Gmail Classifier and Drive Organizer with a declarative account matrix, HashiCorp Vault, and GitOps.
 keywords:
   - multi-account google
   - declarative account matrix
@@ -14,33 +14,33 @@ sidebar:
 
 # How to Manage Multi-Account Google Workloads with Declarative IaC
 
-This problem-oriented guide explains how to declaratively configure, store credentials for, and deploy multiple Google accounts across the homelab AI pipeline (`apps/gmail-classifier` and `apps/drive-organizer`).
+This guide shows how to add more than one Google account to the homelab AI pipeline (`apps/gmail-classifier` and `apps/drive-organizer`). You configure each account declaratively, keep its credentials in Vault, and deploy it through GitOps.
 
-All Google accounts are treated uniformly as identical peer entities. There are no hierarchy tiers. Every account is assigned a descriptive nickname (for example, `personal`, `work`, or `family`). Account configuration is managed purely through Infrastructure as Code (IaC) without manual or ad-hoc workload commands.
+All Google accounts are equal peers. There are no hierarchy tiers. Each account has a nickname that describes it (for example, `personal`, `work`, or `family`). You manage the account configuration only through Infrastructure as Code (IaC). Do not use manual or ad-hoc workload commands.
 
 ## Architecture and Design Principles
 
-The multi-account architecture is built around three core principles:
+The multi-account design follows these principles:
 
-- **Declarative Single Source of Truth**: The complete cluster account matrix is defined in `apps/accounts.yaml`. Symmetrical Kubernetes manifests (`CronJob` and `ExternalSecret`) are generated deterministically via `scripts/generate-account-manifests.py`.
-- **Fault-Domain & Secret Isolation**: Every account executes in an isolated non-root Pod and distinct CronJob instance. Each account mounts only its own Kubernetes secret synchronized from a dedicated Vault path (`kv/google/accounts/<nickname>`), preventing cross-account token access or cascaded failures.
-- **Resource Staggering**: Cron schedules are staggered across fifteen-minute intervals (for example, `01:00 UTC` for `personal` Gmail, `01:15 UTC` for `work` Gmail) to eliminate GPU slot contention on the local Gemma 4 model server (`llama-server`).
-- **Notification Routing**: Notifications include account-specific header badges (`[Personal]`, `[Work]`) and optionally target distinct Telegram forum topics via `TELEGRAM_TOPIC_ID`.
+- **Declarative Single Source of Truth**: The file `apps/accounts.yaml` holds the full account matrix for the cluster. The script `scripts/generate-account-manifests.py` makes the symmetrical Kubernetes manifests (`CronJob` and `ExternalSecret`) from this file. The output is the same each time.
+- **Fault-Domain & Secret Isolation**: Each account runs in its own non-root Pod and its own CronJob. Each account mounts only its own Kubernetes secret, which syncs from its own Vault path (`kv/google/accounts/<nickname>`). Thus, one account cannot read the tokens of a different account, and one failure cannot cause more failures.
+- **Resource Staggering**: The cron schedules start 15 minutes apart (for example, `01:00 UTC` for `personal` Gmail, `01:15 UTC` for `work` Gmail). Thus, the accounts do not compete for the GPU slot on the local Gemma 4 model server (`llama-server`).
+- **Notification Routing**: Each notification has a header badge for its account (`[Personal]`, `[Work]`). As an option, it can go to a different Telegram forum topic through `TELEGRAM_TOPIC_ID`.
 
-## Step 1: Obtain Google OAuth Credentials
+## Step 1: Get Google OAuth Credentials
 
-Create an OAuth 2.0 Client in the Google Cloud Console for the target Google account:
+In the Google Cloud Console, create an OAuth 2.0 Client for the target Google account:
 
-- Navigate to the Google Cloud Console APIs & Services Credentials page.
-- Create an OAuth Client ID with application type **Desktop app**.
-- Ensure the required scopes are enabled:
+- Go to the Google Cloud Console APIs & Services Credentials page.
+- Create an OAuth Client ID with the application type **Desktop app**.
+- Make sure that these necessary scopes are enabled:
   - Gmail Classifier: `https://www.googleapis.com/auth/gmail.modify`
   - Drive Organizer: `https://www.googleapis.com/auth/drive`
-- Run `scripts/get-google-oauth-token.py --account <nickname>` to generate the initial `refresh_token`.
+- Run `scripts/get-google-oauth-token.py --account <nickname>` to make the initial `refresh_token`.
 
 ## Step 2: Store Credentials in HashiCorp Vault
 
-Store the credentials in HashiCorp Vault under the standard account path. Never commit credentials to git:
+Never commit credentials to git. Put the credentials in HashiCorp Vault under the standard account path:
 
 ```bash
 # Store credentials for any account by its nickname
@@ -61,7 +61,7 @@ vault kv put kv/telegram/bot \
 
 ## Step 3: Declare Accounts in the Account Matrix
 
-Add the account entry to `apps/accounts.yaml` using its nickname:
+Add the account entry to `apps/accounts.yaml` with its nickname:
 
 ```yaml
 accounts:
@@ -79,30 +79,30 @@ accounts:
     vault_path: google/accounts/work
 ```
 
-## Step 4: Reconcile Manifests via Code
+## Step 4: Reconcile Manifests Through Code
 
-Run the manifest generator script to produce the symmetrical Kubernetes manifests:
+Run the manifest generator script to make the symmetrical Kubernetes manifests:
 
 ```bash
 uv run --with pyyaml scripts/generate-account-manifests.py
 ```
 
-To verify that all manifests in git are in sync with `apps/accounts.yaml` without writing changes:
+To make sure that all manifests in git agree with `apps/accounts.yaml`, run the check mode. This mode does not write changes:
 
 ```bash
 uv run --with pyyaml scripts/generate-account-manifests.py --check
 ```
 
-The generator produces:
+The generator makes these files:
 
-- Classifier and Drive CronJobs per account: `cronjob-<nickname>.yaml`
-- Weekly Gmail mark-as-read CronJobs per account: `apps/gmail-classifier/cronjob-<nickname>-mark-read.yaml` (`gmail-mark-read-<nickname>`), scheduled by `gmail_mark_read`
+- Classifier and Drive CronJobs for each account: `cronjob-<nickname>.yaml`
+- Weekly Gmail mark-as-read CronJobs for each account: `apps/gmail-classifier/cronjob-<nickname>-mark-read.yaml` (`gmail-mark-read-<nickname>`). The `gmail_mark_read` field sets their schedule
 - Symmetrical ExternalSecrets: `secret-primary.yaml`, `secret-secondary.yaml`
-- Updated `kustomization.yaml` resource lists
+- Updated resource lists in `kustomization.yaml`
 
 ## Step 5: Verify GitOps Synchronization
 
-Commit the updated matrix and generated manifests to git. ArgoCD automatically synchronizes the resources into the cluster:
+Commit the updated matrix and the generated manifests to git. ArgoCD then syncs the resources into the cluster automatically. Run these commands to examine the result:
 
 ```bash
 # Check ExternalSecret sync status
@@ -114,8 +114,8 @@ kubectl -n gmail-classifier get cronjobs
 kubectl -n drive-organizer get cronjobs
 ```
 
-Both apps report active schedules with zero manual intervention required.
+Both apps show active schedules. You do not have to do manual steps.
 
 ## Step 6: Autonomous Label Discovery for New Accounts
 
-When adding a fresh Google account with a sparse or empty custom label taxonomy, the classifier does not dump legitimate incoming messages into `ai-review`. With `ALLOW_LABEL_CREATION=true` (enabled by default across all accounts generated by `scripts/generate-account-manifests.py`), the local LLM autonomously discovers and creates high-level canonical labels (such as `Newsletters`, `Travel`, `Entertainment`, `Shopping`, `Finance`, `Social`) directly in Gmail on first match. Subsequent runs reuse the newly created labels seamlessly.
+A new Google account can have few or no custom labels. In this case, the classifier does not move valid incoming messages into `ai-review`. Instead, the local LLM finds and creates high-level canonical labels in Gmail on the first match. Examples are `Newsletters`, `Travel`, `Entertainment`, `Shopping`, `Finance`, and `Social`. This behavior needs `ALLOW_LABEL_CREATION=true`. This setting is on by default for all accounts that `scripts/generate-account-manifests.py` generates. Later runs use the new labels again.

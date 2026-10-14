@@ -1,6 +1,6 @@
 ---
 title: Node Networking and DNS
-description: How K3s nodes are addressed over Tailscale, how DNS resolution is layered between the node, the cluster, and the tailnet, and how node resources are reserved for the control plane.
+description: How K3s nodes get their addresses over Tailscale, how DNS works at the node, cluster, and tailnet layers, and how the node keeps resources for the control plane.
 keywords:
   - k3s tailscale node ip
   - kubernetes node dns
@@ -14,11 +14,11 @@ sidebar:
 
 # Node Networking and DNS
 
-This page explains how cluster nodes are addressed, how DNS works at each layer, and how node resources are split between workloads and the control plane.
+This page tells how cluster nodes get their addresses and how DNS works at each layer. It also tells how the node divides its resources between workloads and the control plane.
 
 ## Node addressing
 
-Each node joins the tailnet before K3s is provisioned. K3s uses the node's Tailscale IP for both `node-ip` and `node-external-ip`:
+Each node joins the tailnet before the K3s installation. K3s uses the Tailscale IP of the node for `node-ip` and for `node-external-ip`:
 
 | Setting | Value on `legion` | Source |
 | --- | --- | --- |
@@ -26,26 +26,26 @@ Each node joins the tailnet before K3s is provisioned. K3s uses the node's Tails
 | `node-external-ip` | `100.66.139.118` | `k3s_external_ip` in `ansible/inventory/hosts.yaml` |
 | API server endpoint | `https://100.66.139.118:6443` | `ansible_host` |
 
-The Tailscale IP is stable. It does not change when the node switches between Ethernet and Wi-Fi or when the LAN DHCP lease changes. Anything that dials the node's InternalIP depends on this stability, including:
+The Tailscale IP is stable. It does not change when the node changes between Ethernet and Wi-Fi. It also does not change when the LAN DHCP lease changes. All components that connect to the InternalIP of the node depend on this stable address. Some examples are:
 
-- metrics-server scraping the kubelet
+- metrics-server, which scrapes the kubelet
 - probes for host-network pods such as node-exporter
 - Prometheus node targets
 
-The LAN address is only the node's uplink, so it can come from DHCP.
+The LAN address is only the uplink of the node. Thus, DHCP can supply it.
 
 ### Startup ordering
 
-The `k3s_server` role installs a systemd drop-in at `/etc/systemd/system/k3s.service.d/10-tailscale.conf`. It does two things:
+The `k3s_server` role installs a systemd drop-in at `/etc/systemd/system/k3s.service.d/10-tailscale.conf`. The drop-in does two things:
 
-- It orders `k3s.service` after `tailscaled.service`.
-- It waits until the node's Tailscale IP is assigned to `tailscale0` before K3s starts.
+- It starts `k3s.service` after `tailscaled.service`.
+- It makes K3s wait until `tailscale0` has the Tailscale IP of the node.
 
-This ensures K3s never starts with a node IP that is not present on the host.
+Thus, K3s cannot start with a node IP that the host does not have.
 
 ## DNS layers
 
-DNS resolution happens at three independent layers.
+DNS resolution occurs at three independent layers.
 
 ```mermaid
 flowchart TB
@@ -73,17 +73,17 @@ flowchart TB
 
 ### Node layer
 
-Cluster nodes run with Tailscale DNS disabled (`tailscale set --accept-dns=false`). The `tailscale` Ansible role enforces this setting. The host resolves names through the resolvers on its network uplink via `systemd-resolved`.
+Cluster nodes run with Tailscale DNS disabled (`tailscale set --accept-dns=false`). The `tailscale` Ansible role applies this setting. The host uses `systemd-resolved` to resolve names through the resolvers on its network uplink.
 
-This keeps node DNS independent of any workload running on the node. The kubelet and containerd need DNS to pull images and to reach the API server, and they keep working even when cluster DNS services are restarting.
+Thus, node DNS does not depend on the workloads on the node. The kubelet and containerd use DNS to pull images and to connect to the API server. They continue to operate when the cluster DNS services restart.
 
 ### Cluster layer
 
-CoreDNS in `kube-system` is managed from `infrastructure/coredns/configmap.yaml`:
+The configuration of CoreDNS in `kube-system` is in `infrastructure/coredns/configmap.yaml`:
 
-- `cluster.local` names resolve through the Kubernetes plugin.
-- `*.sudhanva.me` is rewritten to `gateway-internal.envoy-gateway.svc.cluster.local`, so in-cluster clients reach the Envoy Gateway directly.
-- Everything else is forwarded to the node's `/etc/resolv.conf`, which is the node layer above.
+- The Kubernetes plugin resolves `cluster.local` names.
+- CoreDNS rewrites `*.sudhanva.me` to `gateway-internal.envoy-gateway.svc.cluster.local`. Thus, in-cluster clients connect directly to the Envoy Gateway.
+- CoreDNS forwards all other queries to the `/etc/resolv.conf` of the node, which is the node layer above.
 
 ### Tailnet layer
 
@@ -96,11 +96,11 @@ Tailnet clients get their DNS configuration from the Tailscale admin console:
 | Split DNS for `sudhanva.me` | `tailscale-dns` Tailscale IP (`infrastructure/tailscale-dns/`) |
 | MagicDNS | Enabled |
 
-Technitium and the `sudhanva.me` resolver both run inside the cluster. Tailnet clients get their general internet resolution from Technitium, and the secondary public nameserver keeps that resolution working during cluster maintenance.
+Technitium and the `sudhanva.me` resolver both run in the cluster. Tailnet clients use Technitium for general internet resolution. During cluster maintenance, the secondary public nameserver keeps this resolution available.
 
 ## Resource reservations
 
-K3s runs the API server, controller manager, scheduler, datastore, and kubelet in a single `k3s-server` process on the node. The kubelet reserves capacity for it and for the OS through `k3s_kubelet_args` in `ansible/group_vars/all.yaml`:
+K3s runs the API server, controller manager, scheduler, datastore, and kubelet in one `k3s-server` process on the node. The kubelet keeps capacity for this process and for the OS. The `k3s_kubelet_args` value in `ansible/group_vars/all.yaml` sets these reservations:
 
 | Flag | Value |
 | --- | --- |
@@ -108,9 +108,9 @@ K3s runs the API server, controller manager, scheduler, datastore, and kubelet i
 | `system-reserved` | `cpu=250m,memory=512Mi` |
 | `eviction-hard` | `memory.available<500Mi,nodefs.available<10%,imagefs.available<10%` |
 
-Node allocatable is capacity minus these reservations. Pods are confined to allocatable through the `kubepods` cgroup, so memory pressure from workloads leads to pod eviction or OOM kills inside that cgroup. It does not starve `k3s-server`.
+Node allocatable is the capacity minus these reservations. The `kubepods` cgroup keeps pods in the allocatable limit. Thus, memory pressure from workloads causes pod eviction or OOM kills in that cgroup. It does not take resources from `k3s-server`.
 
-Check the resulting allocatable values with:
+To see the allocatable values, run:
 
 ```bash
 kubectl get node legion -o jsonpath='{.status.allocatable}'
@@ -118,7 +118,7 @@ kubectl get node legion -o jsonpath='{.status.allocatable}'
 
 ## Applying changes
 
-Node-level settings are managed only through Ansible. Run a single role with its tag:
+Use only Ansible to change node-level settings. To run one role, use its tag:
 
 ```bash
 cd ansible
@@ -126,4 +126,4 @@ ansible-playbook site.yaml --tags tailscale,k3s --check --diff
 ansible-playbook site.yaml --tags tailscale,k3s
 ```
 
-Changes to `config.yaml` or the systemd drop-in restart K3s through handlers. Running containers keep running across a K3s restart.
+If you change `config.yaml` or the systemd drop-in, the handlers restart K3s. Containers continue to run when K3s restarts.
