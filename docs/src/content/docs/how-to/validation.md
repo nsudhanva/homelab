@@ -73,10 +73,9 @@ curl -I https://homelab.sudhanva.me
 
 ## Step 4: Validate External Secrets
 
-If `infra-external-secrets` is Degraded, examine the Vault token secret and the ClusterSecretStore:
+If `infra-external-secrets` is Degraded, examine the ClusterSecretStore and an ExternalSecret:
 
 ```bash
-kubectl -n external-secrets get secret vault-eso-token
 kubectl -n external-secrets get clustersecretstore vault -o yaml
 kubectl -n external-dns get externalsecret cloudflare-api-token -o yaml
 ```

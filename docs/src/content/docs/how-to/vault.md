@@ -125,28 +125,44 @@ kubectl -n vault exec -it vault-0 -- vault kv put kv/argocd/repo-creds \
   username="REPLACE_ME" token="REPLACE_ME"
 ```
 
-## Step 5: Create a token for External Secrets Operator
+## Step 5: Configure Kubernetes auth for External Secrets Operator
 
-Create a minimal policy and a token that can read from `kv/`:
+External Secrets Operator logs in to Vault with its own ServiceAccount. Vault issues a short-lived token for each login, so no static token expires.
+
+Write a read-only policy for `kv/`:
 
 ```bash
-kubectl -n vault exec -it vault-0 -- /bin/sh -c 'cat > /tmp/external-secrets.hcl <<EOF
+kubectl -n vault exec -it vault-0 -- /bin/sh -c 'cat > /tmp/eso-policy.hcl <<EOF
 path "kv/data/*" {
   capabilities = ["read"]
 }
 path "kv/metadata/*" {
-  capabilities = ["read"]
+  capabilities = ["read", "list"]
 }
 EOF'
-kubectl -n vault exec -it vault-0 -- vault policy write external-secrets /tmp/external-secrets.hcl
-kubectl -n vault exec -it vault-0 -- vault token create -policy=external-secrets
+kubectl -n vault exec -it vault-0 -- vault policy write eso-policy /tmp/eso-policy.hcl
 ```
 
-Store the token in Kubernetes:
+Enable the Kubernetes auth method. Vault runs in the cluster, so it uses its own ServiceAccount and CA to review tokens:
 
 ```bash
-kubectl -n external-secrets create secret generic vault-eso-token --from-literal=token="REPLACE_ME"
+kubectl -n vault exec -it vault-0 -- vault auth enable kubernetes
+kubectl -n vault exec -it vault-0 -- vault write auth/kubernetes/config \
+  kubernetes_host="https://kubernetes.default.svc:443"
 ```
+
+Bind the `external-secrets` ServiceAccount to the policy. The role accepts only tokens with the `vault` audience:
+
+```bash
+kubectl -n vault exec -it vault-0 -- vault write auth/kubernetes/role/external-secrets \
+  bound_service_account_names=external-secrets \
+  bound_service_account_namespaces=external-secrets \
+  policies=eso-policy \
+  audience=vault \
+  ttl=1h
+```
+
+The ClusterSecretStore in `infrastructure/external-secrets/clustersecretstore.yaml` refers to this role. ArgoCD syncs it.
 
 ## Step 6: Add new secrets and ExternalSecret resources
 
@@ -224,14 +240,15 @@ Commit the change. ArgoCD syncs `infrastructure/gateway/vault-httproute.yaml`.
 
 ### ClusterSecretStore not ready
 
-If `infra-external-secrets` is Degraded or ExternalSecrets show `SecretSyncedError`, examine the Vault token secret:
+If `infra-external-secrets` is Degraded or ExternalSecrets show `SecretSyncedError`, examine the ClusterSecretStore and the Kubernetes auth role:
 
 ```bash
-kubectl -n external-secrets get secret vault-eso-token
 kubectl -n external-secrets get clustersecretstore vault -o yaml
+kubectl -n vault exec -it vault-0 -- vault read auth/kubernetes/role/external-secrets
+kubectl -n external-secrets logs deploy/external-secrets | grep -i vault
 ```
 
-The ClusterSecretStore becomes Ready only when `vault-eso-token` exists and contains a valid token.
+The ClusterSecretStore becomes Ready only when Vault is unsealed and the `external-secrets` role exists.
 
 ### ExternalSecrets still failing after Vault recovery
 
