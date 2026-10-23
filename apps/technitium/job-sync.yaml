@@ -12,7 +12,7 @@ spec:
       restartPolicy: OnFailure
       containers:
         - name: sync
-          image: curlimages/curl:8.22.0
+          image: curlimages/curl:8.23.0
           envFrom:
             - configMapRef:
                 name: technitium-config

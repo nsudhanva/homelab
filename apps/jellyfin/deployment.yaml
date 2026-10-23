@@ -21,7 +21,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: jellyfin
-          image: docker.io/jellyfin/jellyfin:10.11.11
+          image: docker.io/jellyfin/jellyfin:12.3
           resources:
             requests:
               memory: 1024Mi
