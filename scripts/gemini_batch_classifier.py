@@ -16,7 +16,7 @@ import subprocess
 import sys
 import urllib.parse
 import urllib.request
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 INPUT_FILE = Path("/tmp/batch_to_classify.json")
@@ -510,7 +510,7 @@ def apply_classifications(token: str, decisions: dict | None = None) -> int:
     labels = get_labels(token)
     processed_label_id = ensure_label(token, "ai-processed", labels)
 
-    cutoff_ts = (datetime.now(timezone.utc) - timedelta(days=90)).timestamp()
+    cutoff_ts = (datetime.now(UTC) - timedelta(days=90)).timestamp()
 
     # Group messages by (label_id, should_archive)
     groups: dict[tuple[str, bool], list[str]] = {}
