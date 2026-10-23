@@ -20,7 +20,7 @@ spec:
           type: RuntimeDefault
       containers:
         - name: technitium
-          image: technitium/dns-server:latest
+          image: technitium/dns-server:15.6.2
           ports:
             - containerPort: 5380
               name: web

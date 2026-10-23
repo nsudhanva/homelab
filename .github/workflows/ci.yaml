@@ -82,7 +82,7 @@ jobs:
       working-directory: docs
     - name: Build docs
       if: steps.changes.outputs.docs == 'true'
-      run: bun run build
+      run: bun --bun run build
       working-directory: docs
 
   docs-push:

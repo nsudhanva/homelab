@@ -48,7 +48,7 @@ Check the latest stable release before changing any pinned version.
 - CoreDNS: `1.15.0` in `infrastructure/tailscale-dns/deployment.yaml`
 - Homer: `v26.08.3` in `apps/homer/deployment.yaml`
 - Headlamp: `v0.46.0` in `apps/headlamp/deployment.yaml`
-- Technitium DNS Server: `latest` in `apps/technitium/deployment.yaml`
+- Technitium DNS Server: `15.6.2` in `apps/technitium/deployment.yaml`
 - Home Assistant: `2026.10.3` in `apps/home-assistant/deployment.yaml`
 - llama.cpp (Gemma 4): `server-cuda` in `apps/llama/deployment.yaml`
 - Jellyfin: `12.3` in `apps/jellyfin/deployment.yaml`
