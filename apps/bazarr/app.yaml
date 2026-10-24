@@ -1,0 +1,3 @@
+name: bazarr
+path: apps/bazarr
+namespace: media
