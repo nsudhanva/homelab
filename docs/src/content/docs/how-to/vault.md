@@ -40,14 +40,14 @@ flowchart TB
 
 Push the repository changes. ArgoCD syncs `infrastructure/vault/` and `infrastructure/external-secrets/`.
 
-Make sure that the pods are ready:
+Verify that the pods are ready:
 
 ```bash
 kubectl -n vault get pods
 kubectl -n external-secrets get pods
 ```
 
-If Vault is Pending, make sure that the PVC is bound to local-path storage:
+If Vault is Pending, verify that the PVC binds to local-path storage:
 
 ```bash
 kubectl -n vault get pvc
@@ -95,7 +95,7 @@ kubectl -n vault exec -it vault-0 -- vault kv put kv/tailscale/operator-oauth cl
 
 ### Step 4a: Filebrowser credentials
 
-Make a bcrypt hash of the password:
+Generate a bcrypt hash of the password:
 
 ```bash
 htpasswd -bnBC 12 filebrowser "REPLACE_ME" | cut -d ':' -f2
@@ -110,7 +110,7 @@ kubectl -n vault exec -it vault-0 -- vault kv put kv/filebrowser/auth \
   password_hash="REPLACE_ME"
 ```
 
-## ArgoCD Image Updater credentials
+### Step 4b: ArgoCD Image Updater credentials
 
 Store registry and Git credentials for ArgoCD Image Updater:
 
@@ -174,7 +174,7 @@ Example Vault write:
 kubectl -n vault exec -it vault-0 -- vault kv put kv/my-app/api token="REPLACE_ME"
 ```
 
-Example ExternalSecret. Save it as a separate YAML file, for example `apps/my-app/externalsecret.yaml` or `infrastructure/<component>/external-secret.yaml`:
+Example ExternalSecret manifest. Save it as a separate YAML file, such as `apps/my-app/externalsecret.yaml` or `infrastructure/<component>/external-secret.yaml`:
 
 ```yaml
 apiVersion: external-secrets.io/v1
@@ -201,7 +201,7 @@ Commit the new manifest. ArgoCD syncs it.
 
 ## Step 7: Validate ExternalSecret sync
 
-Make sure that External Secrets Operator created or updated the target secrets:
+Verify that External Secrets Operator created or updated the target secrets:
 
 ```bash
 kubectl -n external-dns get secret cloudflare-api-token
@@ -227,9 +227,9 @@ Add custom field `tag: homelab` to every entry.
 
 ### Required Bitwarden Backup Items
 
-- **`Homelab - HashiCorp Vault Master Keys`**: Stores the 5 unseal keys, unseal threshold (3), and root token.
+- **`Homelab - HashiCorp Vault Master Keys`**: Stores the five unseal keys, unseal threshold (3), and root token.
 - **`Homelab - HashiCorp Vault Keys Raw JSON Backup`**: Stores the raw JSON initialization response.
-- **`Homelab - ArgoCD Admin`**: Stores the ArgoCD admin password (`X19uVqkNvNq-OL7s`).
+- **`Homelab - ArgoCD Admin`**: Stores the ArgoCD admin password.
 - **`Homelab - ArgoCD GitHub & GHCR Token`**: Stores the GitHub personal access token for git repository and container registry access.
 - **`Homelab - Cloudflare API Token`**: Stores the DNS-01 API token for cert-manager and external-dns.
 - **`Homelab - Tailscale Operator OAuth`**: Stores the Tailscale operator OAuth client ID and secret.

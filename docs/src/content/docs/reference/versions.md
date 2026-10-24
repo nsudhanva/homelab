@@ -63,5 +63,8 @@ Check the latest stable release before changing any pinned version.
 - Alertmanager: `0.34.0` (from kube-prometheus-stack)
 - Actual Budget: `26.10.0-alpine` in `apps/actual-budget/deployment.yaml`
 - Gmail Classifier: `0.1.0` in `apps/gmail-classifier/pyproject.toml`
+- Drive Organizer: `0.1.0` in `apps/drive-organizer/pyproject.toml`
+- Actual Classifier: `0.1.0` in `apps/actual-classifier/pyproject.toml`
+- homelab-ai library: `0.1.0` in `packages/homelab-ai/pyproject.toml`
 - Astro: `7.4.2` in `docs/package.json`
 - Starlight: `0.42.7` in `docs/package.json`

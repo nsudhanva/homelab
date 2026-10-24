@@ -23,7 +23,7 @@ flowchart TB
       Eth0["eth0 (10.42.0.194) - Cluster Pod Network"]
       Tun0["tun0 (172.16.0.2) - WireGuard Tunnel"]
     end
-    
+
     Gluetun["Gluetun Container\n- Holds NET_ADMIN capability\n- Manages WireGuard crypto\n- Configures iptables killswitch"]
     Qbit["qBittorrent Container\n- Web UI listens on 127.0.0.1:8080\n- Bound strictly to tun0\n- Zero-seeding policy"]
   end
@@ -41,7 +41,7 @@ flowchart TB
 
 ---
 
-## 1. Pod Network Namespace Sharing
+## Pod Network Namespace Sharing
 
 In Kubernetes, all containers in a single Pod share one Linux network namespace (`netns`).
 
@@ -50,13 +50,14 @@ They share identical IP addresses, network interfaces, and kernel routing tables
 Containers communicate with each other over `127.0.0.1` (`localhost`) without network overhead.
 
 In `apps/qbittorrent/deployment.yaml`, `gluetun` and `qbittorrent` run in the same Pod:
+
 - `gluetun` creates and manages network interface `tun0`.
 - `qbittorrent` sees interface `tun0` immediately in its local network stack.
 - `qbittorrent` binds its listening sockets directly to `172.16.0.2` on `tun0`.
 
 ---
 
-## 2. Multi-Layer VPN Killswitch Protection
+## Multi-Layer VPN Killswitch Protection
 
 The stack uses three distinct layers to prevent network leaks.
 
@@ -80,6 +81,7 @@ The application refuses to open peer sockets on interface `eth0`.
 ### Layer 2: Linux Kernel Policy Routing
 
 Gluetun creates advanced policy routing rules in the kernel:
+
 - Mark `0xca6c` identifies encrypted WireGuard traffic.
 - Table `51820` directs all standard outbound traffic to device `tun0`.
 - Table `199` directs internal cluster subnets (`10.42.0.0/16` and `10.43.0.0/16`) to `eth0`.
@@ -94,11 +96,13 @@ Gluetun creates advanced policy routing rules in the kernel:
 ### Layer 3: Kernel Firewall Killswitch (`iptables`)
 
 The pod firewall sets default `DROP` policies on all chains:
+
 - `-P INPUT DROP`
 - `-P FORWARD DROP`
 - `-P OUTPUT DROP`
 
 The kernel allows outbound traffic on `eth0` for only two destinations:
+
 - The WireGuard UDP endpoint address (`162.159.192.9:2408`).
 - Internal Kubernetes cluster subnets (`10.42.0.0/16` and `10.43.0.0/16`).
 
@@ -106,7 +110,7 @@ The kernel drops all unencrypted outbound internet packets instantly.
 
 ---
 
-## 3. DNS Leak Prevention
+## DNS Leak Prevention
 
 DNS queries can expose activity if resolved outside the VPN.
 
@@ -118,7 +122,7 @@ All tracker and peer domain lookups route inside the encrypted `tun0` tunnel.
 
 ---
 
-## 4. Shared Storage and Hardlink Mechanics
+## Shared Storage and Hardlink Mechanics
 
 Downloading and storing media requires efficient storage management.
 
@@ -158,7 +162,7 @@ flowchart LR
 
 ---
 
-## 5. Automated Notification Lifecycle
+## Automated Notification Lifecycle
 
 Real-time file monitoring (`inotify`) can miss events across container mount boundaries.
 

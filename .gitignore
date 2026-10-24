@@ -31,6 +31,15 @@ terraform/**/terraform.tfvars
 terraform/**/terraform.tfvars.json
 vault-keys.json
 
+# Secrets, certificates, and tokens
+*.key
+*.pem
+*.pfx
+*.p12
+*.ovpn
+*vault-keys*.json
+bw_*.json
+
 # Python & uv
 .venv/
 **/__pycache__/

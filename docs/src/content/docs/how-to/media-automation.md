@@ -105,7 +105,7 @@ kubectl -n media exec deploy/qbittorrent -c qbittorrent -- mkdir -p \
   /media/tv
 ```
 
-This layout permits atomic hardlinks between `/media/torrents` and `/media/movies`. Hardlinks prevent duplicate disk usage.
+This layout enables atomic hardlinks between `/media/torrents` and `/media/movies`. Hardlinks prevent duplicate disk usage.
 
 ---
 
@@ -182,15 +182,15 @@ Step 3: Go to **Settings -> Apps** and click the add button.
 
 Step 4: Select **Radarr**:
 
-- Radarr Server: `http://radarr.media.svc:80`
-- API Key: Copy the key from `kv/radarr/auth` or Radarr settings.
-- Sync Level: Full Sync
+- **Radarr Server**: `http://radarr.media.svc:80`
+- **API Key**: Enter the key from Vault path `kv/radarr/auth` or Radarr settings.
+- **Sync Level**: Full Sync
 
 Step 5: Select **Sonarr**:
 
-- Sonarr Server: `http://sonarr.media.svc:80`
-- API Key: Copy the key from `kv/sonarr/auth` or Sonarr settings.
-- Sync Level: Full Sync
+- **Sonarr Server**: `http://sonarr.media.svc:80`
+- **API Key**: Enter the key from Vault path `kv/sonarr/auth` or Sonarr settings.
+- **Sync Level**: Full Sync
 
 Prowlarr pushes all configured indexers to Radarr and Sonarr automatically.
 
@@ -204,10 +204,10 @@ Step 1: Open Radarr at `https://radarr.sudhanva.me`.
 
 Step 2: Go to **Settings -> Download Clients** and add **qBittorrent**:
 
-- Host: `qbittorrent.media.svc`
-- Port: `80`
-- Category: `movies`
-- Post-Import Category: Leave blank
+- **Host**: `qbittorrent.media.svc`
+- **Port**: `80`
+- **Category**: `movies`
+- **Post-Import Category**: Leave blank
 
 Step 3: In **Settings -> Media Management**, set Root Folder to `/media/movies`.
 
@@ -215,10 +215,10 @@ Step 4: Open Sonarr at `https://sonarr.sudhanva.me`.
 
 Step 5: Go to **Settings -> Download Clients** and add **qBittorrent**:
 
-- Host: `qbittorrent.media.svc`
-- Port: `80`
-- Category: `tv`
-- Post-Import Category: Leave blank
+- **Host**: `qbittorrent.media.svc`
+- **Port**: `80`
+- **Category**: `tv`
+- **Post-Import Category**: Leave blank
 
 Step 6: In **Settings -> Media Management**, set Root Folder to `/media/tv`.
 
@@ -232,21 +232,21 @@ Step 1: Create an API key in Jellyfin under **Administration -> Dashboard -> API
 
 Step 2: In Radarr, go to **Settings -> Connect** and add **Emby / Jellyfin**:
 
-- Host: `jellyfin.media.svc`
-- Port: `80`
-- Use SSL: Disabled
-- API Key: Paste the Jellyfin API token
-- Update Library: Enabled
+- **Host**: `jellyfin.media.svc`
+- **Port**: `80`
+- **Use SSL**: Disabled
+- **API Key**: Enter the Jellyfin API token
+- **Update Library**: Enabled
 
 Step 3: Click **Test** and click **Save**.
 
 Step 4: In Sonarr, go to **Settings -> Connect** and add **Emby / Jellyfin**:
 
-- Host: `jellyfin.media.svc`
-- Port: `80`
-- Use SSL: Disabled
-- API Key: Paste the Jellyfin API token
-- Update Library: Enabled
+- **Host**: `jellyfin.media.svc`
+- **Port**: `80`
+- **Use SSL**: Disabled
+- **API Key**: Enter the Jellyfin API token
+- **Update Library**: Enabled
 
 Step 5: Click **Test** and click **Save**.
 
@@ -260,13 +260,13 @@ Step 1: Open Bazarr at `https://bazarr.sudhanva.me`.
 
 Step 2: Go to **Settings -> Sonarr**:
 
-- Address: `http://sonarr.media.svc:80`
-- API Key: Paste the Sonarr API token
+- **Address**: `http://sonarr.media.svc:80`
+- **API Key**: Enter the Sonarr API token
 
 Step 3: Go to **Settings -> Radarr**:
 
-- Address: `http://radarr.media.svc:80`
-- API Key: Paste the Radarr API token
+- **Address**: `http://radarr.media.svc:80`
+- **API Key**: Enter the Radarr API token
 
 Step 4: Go to **Settings -> Providers** and add your subtitle accounts.
 
@@ -282,19 +282,19 @@ Step 2: Sign in with your Jellyfin server address `http://jellyfin.media.svc:80`
 
 Step 3: Go to **Settings -> Services** and connect Radarr:
 
-- Server Name: `Radarr`
-- Hostname: `radarr.media.svc`
-- Port: `80`
-- API Key: Paste the Radarr API token
-- Root Folder: `/media/movies`
+- **Server Name**: `Radarr`
+- **Hostname**: `radarr.media.svc`
+- **Port**: `80`
+- **API Key**: Enter the Radarr API token
+- **Root Folder**: `/media/movies`
 
 Step 4: Connect Sonarr:
 
-- Server Name: `Sonarr`
-- Hostname: `sonarr.media.svc`
-- Port: `80`
-- API Key: Paste the Sonarr API token
-- Root Folder: `/media/tv`
+- **Server Name**: `Sonarr`
+- **Hostname**: `sonarr.media.svc`
+- **Port**: `80`
+- **API Key**: Enter the Sonarr API token
+- **Root Folder**: `/media/tv`
 
 Users can now request movies and television shows through the Seerr user interface.
 

@@ -139,7 +139,7 @@ All media automation workloads share the `media` namespace and mount the `jellyf
 | --- | --- | --- |
 | Namespace | `headlamp` | Dedicated namespace |
 | ArgoCD App | `apps/headlamp/app.yaml` | Application manifest |
-| Container Image | `ghcr.io/headlamp-k8s/headlamp:v0.45.0` | Kubernetes cluster dashboard |
+| Container Image | `ghcr.io/headlamp-k8s/headlamp:v0.46.0` | Kubernetes cluster dashboard |
 | External URL | `https://headlamp.sudhanva.me` | Tailscale Gateway HTTPS route |
 | Vault Path | `kv/headlamp/oidc` | OIDC provider configuration |
 | Bitwarden Item | `Homelab - Headlamp GUI Login` | Cluster-admin ServiceAccount token |
@@ -160,7 +160,7 @@ All media automation workloads share the `media` namespace and mount the `jellyf
 | --- | --- | --- |
 | Namespace | `technitium` | Dedicated namespace |
 | ArgoCD App | `apps/technitium/app.yaml` | Application manifest |
-| Container Image | `technitium/dns-server:latest` | Recursive ad-blocking DNS server |
+| Container Image | `technitium/dns-server:15.6.2` | Recursive ad-blocking DNS server |
 | External URL | `https://dns.sudhanva.me` | Tailscale Gateway HTTPS route |
 | DNS Ingress | `100.109.195.34:53` | Tailscale LoadBalancer for UDP and TCP |
 | Storage | `technitium-config` (5Gi) | Local-path NVMe partition |
@@ -173,7 +173,7 @@ All media automation workloads share the `media` namespace and mount the `jellyf
 | --- | --- | --- |
 | Namespace | `home-assistant` | Dedicated namespace |
 | ArgoCD App | `apps/home-assistant/app.yaml` | Application manifest |
-| Container Image | `ghcr.io/home-assistant/home-assistant:2026.9.2` | Smart home automation controller |
+| Container Image | `ghcr.io/home-assistant/home-assistant:2026.10.3` | Smart home automation controller |
 | External URL | `https://homeassistant.sudhanva.me` | Tailscale Gateway HTTPS route |
 | Storage | `home-assistant-config` (5Gi) | Local-path NVMe partition |
 | Vault Path | `kv/home-assistant/admin` | Administrator password |
@@ -185,7 +185,7 @@ All media automation workloads share the `media` namespace and mount the `jellyf
 | --- | --- | --- |
 | Namespace | `actual-budget` | Dedicated namespace |
 | ArgoCD App | `apps/actual-budget/app.yaml` | Application manifest |
-| Container Image | `docker.io/actualbudget/actual-server:26.9.0-alpine` | Personal finance tracking app |
+| Container Image | `docker.io/actualbudget/actual-server:26.10.0-alpine` | Personal finance tracking app |
 | External URL | `https://actual.sudhanva.me` | Tailscale Gateway HTTPS route |
 | Storage | `actual-budget-data` (5Gi) | SQLite database and user files |
 | Vault Path | `kv/actual`, `kv/actual-budget/auth`, `kv/actual-budget/simplefin` | Web admin and bank sync tokens |
