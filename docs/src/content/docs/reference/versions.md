@@ -52,6 +52,13 @@ Check the latest stable release before changing any pinned version.
 - Home Assistant: `2026.10.3` in `apps/home-assistant/deployment.yaml`
 - llama.cpp (Gemma 4): `server-cuda` in `apps/llama/deployment.yaml`
 - Jellyfin: `12.3` in `apps/jellyfin/deployment.yaml`
+- Gluetun: `v3.41.3` in `apps/qbittorrent/deployment.yaml`
+- qBittorrent: `5.3.0` in `apps/qbittorrent/deployment.yaml`
+- Prowlarr: `2.6.5.5623-ls165` in `apps/prowlarr/deployment.yaml`
+- Sonarr: `4.0.20.3014-ls1` in `apps/sonarr/deployment.yaml`
+- Radarr: `6.4.4.10685-ls323` in `apps/radarr/deployment.yaml`
+- Bazarr: `v1.6.2-ls369` in `apps/bazarr/deployment.yaml`
+- Seerr: `v3.5.1` in `apps/seerr/deployment.yaml`
 - Filebrowser: `v2.63.23` in `apps/filebrowser/deployment.yaml`
 - Alertmanager: `0.34.0` (from kube-prometheus-stack)
 - Actual Budget: `26.10.0-alpine` in `apps/actual-budget/deployment.yaml`

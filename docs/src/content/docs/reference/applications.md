@@ -20,7 +20,7 @@ This page lists the applications in `apps/`.
 
 ## Media namespace
 
-Jellyfin and Filebrowser use the same `media` namespace. Thus, they can use the same PVCs.
+Jellyfin, Seerr, Radarr, Sonarr, Bazarr, Prowlarr, qBittorrent, and Filebrowser use the same `media` namespace. Thus, they can share the `jellyfin-media` PVC for zero-copy hardlinks and immediate library updates.
 
 - Namespace definition: `apps/media/namespace.yaml`
 - ArgoCD app: `apps/media/app.yaml`
@@ -35,6 +35,67 @@ Jellyfin and Filebrowser use the same `media` namespace. Thus, they can use the 
 | Service | `apps/jellyfin/service.yaml` | ClusterIP on port 80 |
 | HTTPRoute | `apps/jellyfin/httproute.yaml` | `jellyfin.sudhanva.me` |
 | PVCs | `apps/jellyfin/pvc-config.yaml` and `apps/jellyfin/pvc-media.yaml` | Local-path SSD storage |
+
+## qBittorrent + Gluetun VPN
+
+| Item | Path | Notes |
+| --- | --- | --- |
+| App config | `apps/qbittorrent/app.yaml` | ArgoCD app definition |
+| ExternalSecret | `apps/qbittorrent/external-secret-vpn.yaml` | Syncs WireGuard credentials from Vault `kv/qbittorrent/vpn` |
+| Deployment | `apps/qbittorrent/deployment.yaml` | `ghcr.io/qdm12/gluetun:v3.41.3` + `lscr.io/linuxserver/qbittorrent:5.3.0`, mounts `jellyfin-media` |
+| Service | `apps/qbittorrent/service.yaml` | ClusterIP on port 80 (targetPort 8080) |
+| HTTPRoute | `apps/qbittorrent/httproute.yaml` | `qbittorrent.sudhanva.me` |
+| PVC | `apps/qbittorrent/pvc-config.yaml` | 1Gi local-path storage for `/config` |
+
+## Prowlarr
+
+| Item | Path | Notes |
+| --- | --- | --- |
+| App config | `apps/prowlarr/app.yaml` | ArgoCD app definition |
+| Deployment | `apps/prowlarr/deployment.yaml` | `lscr.io/linuxserver/prowlarr:2.6.5.5623-ls165` |
+| Service | `apps/prowlarr/service.yaml` | ClusterIP on port 80 (targetPort 9696) |
+| HTTPRoute | `apps/prowlarr/httproute.yaml` | `prowlarr.sudhanva.me` |
+| PVC | `apps/prowlarr/pvc-config.yaml` | 1Gi local-path storage for `/config` |
+
+## Sonarr
+
+| Item | Path | Notes |
+| --- | --- | --- |
+| App config | `apps/sonarr/app.yaml` | ArgoCD app definition |
+| Deployment | `apps/sonarr/deployment.yaml` | `lscr.io/linuxserver/sonarr:4.0.20.3014-ls1`, mounts `jellyfin-media` |
+| Service | `apps/sonarr/service.yaml` | ClusterIP on port 80 (targetPort 8989) |
+| HTTPRoute | `apps/sonarr/httproute.yaml` | `sonarr.sudhanva.me` |
+| PVC | `apps/sonarr/pvc-config.yaml` | 1Gi local-path storage for `/config` |
+
+## Radarr
+
+| Item | Path | Notes |
+| --- | --- | --- |
+| App config | `apps/radarr/app.yaml` | ArgoCD app definition |
+| Deployment | `apps/radarr/deployment.yaml` | `lscr.io/linuxserver/radarr:6.4.4.10685-ls323`, mounts `jellyfin-media` |
+| Service | `apps/radarr/service.yaml` | ClusterIP on port 80 (targetPort 7878) |
+| HTTPRoute | `apps/radarr/httproute.yaml` | `radarr.sudhanva.me` |
+| PVC | `apps/radarr/pvc-config.yaml` | 1Gi local-path storage for `/config` |
+
+## Bazarr
+
+| Item | Path | Notes |
+| --- | --- | --- |
+| App config | `apps/bazarr/app.yaml` | ArgoCD app definition |
+| Deployment | `apps/bazarr/deployment.yaml` | `lscr.io/linuxserver/bazarr:v1.6.2-ls369`, mounts `jellyfin-media` |
+| Service | `apps/bazarr/service.yaml` | ClusterIP on port 80 (targetPort 6767) |
+| HTTPRoute | `apps/bazarr/httproute.yaml` | `bazarr.sudhanva.me` |
+| PVC | `apps/bazarr/pvc-config.yaml` | 1Gi local-path storage for `/config` |
+
+## Seerr
+
+| Item | Path | Notes |
+| --- | --- | --- |
+| App config | `apps/seerr/app.yaml` | ArgoCD app definition |
+| Deployment | `apps/seerr/deployment.yaml` | `ghcr.io/seerr-team/seerr:v3.5.1` |
+| Service | `apps/seerr/service.yaml` | ClusterIP on port 80 (targetPort 5055) |
+| HTTPRoute | `apps/seerr/httproute.yaml` | `seerr.sudhanva.me` |
+| PVC | `apps/seerr/pvc-config.yaml` | 1Gi local-path storage for `/app/config` |
 
 ## Filebrowser
 
