@@ -33,12 +33,12 @@ spec:
               value: custom
             - name: VPN_TYPE
               value: wireguard
-            - name: VPN_ENDPOINT_IP
+            - name: WIREGUARD_ENDPOINT_IP
               valueFrom:
                 secretKeyRef:
                   name: qbittorrent-vpn
                   key: endpoint_ip
-            - name: VPN_ENDPOINT_PORT
+            - name: WIREGUARD_ENDPOINT_PORT
               valueFrom:
                 secretKeyRef:
                   name: qbittorrent-vpn
