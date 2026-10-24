@@ -1,223 +1,244 @@
 ---
 title: Applications Catalog Reference
-description: Catalog of the user applications that ArgoCD deploys, with their manifest paths. It includes Jellyfin, Filebrowser, Headlamp, Home Assistant, Homer, and the docs site.
+description: Complete catalog of all user applications deployed by ArgoCD, including ports, manifest paths, Vault secrets, and Bitwarden items.
 keywords:
-  - kubernetes applications
+  - kubernetes applications catalog
   - jellyfin kubernetes
-  - headlamp deployment
-  - homer dashboard
-  - filebrowser kubernetes
-  - home assistant kubernetes
-  - kubernetes app manifests
-  - argocd apps
+  - qbittorrent gluetun
+  - prowlarr sonarr radarr bazarr seerr
+  - headlamp homer filebrowser
+  - home assistant actual budget
+  - bitwarden homelab vault
 sidebar:
   order: 2
 ---
 
-# Applications Catalog
+# Applications Catalog Reference
 
-This page lists the applications in `apps/`.
+This reference lists all workloads running in the homelab cluster.
 
-## Media namespace
+ArgoCD synchronizes every application automatically through ApplicationSets.
 
-Jellyfin, Seerr, Radarr, Sonarr, Bazarr, Prowlarr, qBittorrent, and Filebrowser use the same `media` namespace. Thus, they can share the `jellyfin-media` PVC for zero-copy hardlinks and immediate library updates.
+---
 
-- Namespace definition: `apps/media/namespace.yaml`
-- ArgoCD app: `apps/media/app.yaml`
+## Media Automation Suite (`media` namespace)
 
-## Jellyfin
+All media automation workloads share the `media` namespace and mount the `jellyfin-media` volume at `/media`.
 
-| Item | Path | Notes |
+### Jellyfin
+
+| Property | Value | Notes |
 | --- | --- | --- |
-| Namespace | `apps/media/namespace.yaml` | Shared `media` namespace |
-| App config | `apps/jellyfin/app.yaml` | ArgoCD app definition |
-| Deployment | `apps/jellyfin/deployment.yaml` | Requests NVIDIA GPUs by default (`nvidia.com/gpu`) |
-| Service | `apps/jellyfin/service.yaml` | ClusterIP on port 80 |
-| HTTPRoute | `apps/jellyfin/httproute.yaml` | `jellyfin.sudhanva.me` |
-| PVCs | `apps/jellyfin/pvc-config.yaml` and `apps/jellyfin/pvc-media.yaml` | Local-path SSD storage |
+| Namespace | `media` | Shared media namespace |
+| ArgoCD App | `apps/jellyfin/app.yaml` | Application manifest |
+| Container Image | `docker.io/jellyfin/jellyfin:12.3` | Video and audio streaming server |
+| Internal URL | `http://jellyfin.media.svc:80` | Port 80 targets containerPort 8096 |
+| External URL | `https://jellyfin.sudhanva.me` | Tailscale Gateway HTTPS route |
+| Storage | `jellyfin-config` (5Gi), `jellyfin-media` (100Gi) | Local-path NVMe partitions |
+| Vault Path | `kv/jellyfin/auth` | API keys and administrator credentials |
+| Bitwarden Item | `Homelab - Jellyfin Admin` | Synchronized administrator login |
 
-## qBittorrent + Gluetun VPN
+### qBittorrent + Gluetun VPN
 
-| Item | Path | Notes |
+| Property | Value | Notes |
 | --- | --- | --- |
-| App config | `apps/qbittorrent/app.yaml` | ArgoCD app definition |
-| ExternalSecret | `apps/qbittorrent/external-secret-vpn.yaml` | Syncs WireGuard credentials from Vault `kv/qbittorrent/vpn` |
-| Deployment | `apps/qbittorrent/deployment.yaml` | `ghcr.io/qdm12/gluetun:v3.41.3` + `lscr.io/linuxserver/qbittorrent:5.3.0`, mounts `jellyfin-media` |
-| Service | `apps/qbittorrent/service.yaml` | ClusterIP on port 80 (targetPort 8080) |
-| HTTPRoute | `apps/qbittorrent/httproute.yaml` | `qbittorrent.sudhanva.me` |
-| PVC | `apps/qbittorrent/pvc-config.yaml` | 1Gi local-path storage for `/config` |
+| Namespace | `media` | Shared media namespace |
+| ArgoCD App | `apps/qbittorrent/app.yaml` | Application manifest |
+| Container Images | `ghcr.io/qdm12/gluetun:v3.41.3`, `lscr.io/linuxserver/qbittorrent:5.3.0` | Sidecar VPN and torrent client |
+| Internal URL | `http://qbittorrent.media.svc:80` | Port 80 targets containerPort 8080 |
+| External URL | `https://qbittorrent.sudhanva.me` | Tailscale Gateway HTTPS route |
+| Storage | `qbittorrent-config` (1Gi), `jellyfin-media` (100Gi) | Local-path NVMe partitions |
+| Vault Path | `kv/qbittorrent/auth`, `kv/qbittorrent/vpn` | Web UI auth and WireGuard keys |
+| Bitwarden Items | `Homelab - qBittorrent Admin`, `Homelab - qBittorrent WireGuard VPN` | Synchronized credentials |
 
-## Prowlarr
+### Prowlarr
 
-| Item | Path | Notes |
+| Property | Value | Notes |
 | --- | --- | --- |
-| App config | `apps/prowlarr/app.yaml` | ArgoCD app definition |
-| Deployment | `apps/prowlarr/deployment.yaml` | `lscr.io/linuxserver/prowlarr:2.6.5.5623-ls165` |
-| Service | `apps/prowlarr/service.yaml` | ClusterIP on port 80 (targetPort 9696) |
-| HTTPRoute | `apps/prowlarr/httproute.yaml` | `prowlarr.sudhanva.me` |
-| PVC | `apps/prowlarr/pvc-config.yaml` | 1Gi local-path storage for `/config` |
+| Namespace | `media` | Shared media namespace |
+| ArgoCD App | `apps/prowlarr/app.yaml` | Application manifest |
+| Container Image | `lscr.io/linuxserver/prowlarr:2.6.5.5623-ls165` | Torrent indexer manager |
+| Internal URL | `http://prowlarr.media.svc:80` | Port 80 targets containerPort 9696 |
+| External URL | `https://prowlarr.sudhanva.me` | Tailscale Gateway HTTPS route |
+| Storage | `prowlarr-config` (1Gi) | Local-path NVMe partition |
+| Vault Path | `kv/prowlarr/auth` | API key and administrator login |
+| Bitwarden Item | `Homelab - Prowlarr Admin` | Synchronized administrator login |
 
-## Sonarr
+### Sonarr
 
-| Item | Path | Notes |
+| Property | Value | Notes |
 | --- | --- | --- |
-| App config | `apps/sonarr/app.yaml` | ArgoCD app definition |
-| Deployment | `apps/sonarr/deployment.yaml` | `lscr.io/linuxserver/sonarr:4.0.20.3014-ls1`, mounts `jellyfin-media` |
-| Service | `apps/sonarr/service.yaml` | ClusterIP on port 80 (targetPort 8989) |
-| HTTPRoute | `apps/sonarr/httproute.yaml` | `sonarr.sudhanva.me` |
-| PVC | `apps/sonarr/pvc-config.yaml` | 1Gi local-path storage for `/config` |
+| Namespace | `media` | Shared media namespace |
+| ArgoCD App | `apps/sonarr/app.yaml` | Application manifest |
+| Container Image | `lscr.io/linuxserver/sonarr:4.0.20.3014-ls1` | Television series collection manager |
+| Internal URL | `http://sonarr.media.svc:80` | Port 80 targets containerPort 8989 |
+| External URL | `https://sonarr.sudhanva.me` | Tailscale Gateway HTTPS route |
+| Storage | `sonarr-config` (1Gi), `jellyfin-media` (100Gi) | Local-path NVMe partitions |
+| Vault Path | `kv/sonarr/auth` | API key and administrator login |
+| Bitwarden Item | `Homelab - Sonarr Admin` | Synchronized administrator login |
 
-## Radarr
+### Radarr
 
-| Item | Path | Notes |
+| Property | Value | Notes |
 | --- | --- | --- |
-| App config | `apps/radarr/app.yaml` | ArgoCD app definition |
-| Deployment | `apps/radarr/deployment.yaml` | `lscr.io/linuxserver/radarr:6.4.4.10685-ls323`, mounts `jellyfin-media` |
-| Service | `apps/radarr/service.yaml` | ClusterIP on port 80 (targetPort 7878) |
-| HTTPRoute | `apps/radarr/httproute.yaml` | `radarr.sudhanva.me` |
-| PVC | `apps/radarr/pvc-config.yaml` | 1Gi local-path storage for `/config` |
+| Namespace | `media` | Shared media namespace |
+| ArgoCD App | `apps/radarr/app.yaml` | Application manifest |
+| Container Image | `lscr.io/linuxserver/radarr:6.4.4.10685-ls323` | Movie collection manager |
+| Internal URL | `http://radarr.media.svc:80` | Port 80 targets containerPort 7878 |
+| External URL | `https://radarr.sudhanva.me` | Tailscale Gateway HTTPS route |
+| Storage | `radarr-config` (1Gi), `jellyfin-media` (100Gi) | Local-path NVMe partitions |
+| Vault Path | `kv/radarr/auth` | API key and administrator login |
+| Bitwarden Item | `Homelab - Radarr Admin` | Synchronized administrator login |
 
-## Bazarr
+### Bazarr
 
-| Item | Path | Notes |
+| Property | Value | Notes |
 | --- | --- | --- |
-| App config | `apps/bazarr/app.yaml` | ArgoCD app definition |
-| Deployment | `apps/bazarr/deployment.yaml` | `lscr.io/linuxserver/bazarr:v1.6.2-ls369`, mounts `jellyfin-media` |
-| Service | `apps/bazarr/service.yaml` | ClusterIP on port 80 (targetPort 6767) |
-| HTTPRoute | `apps/bazarr/httproute.yaml` | `bazarr.sudhanva.me` |
-| PVC | `apps/bazarr/pvc-config.yaml` | 1Gi local-path storage for `/config` |
+| Namespace | `media` | Shared media namespace |
+| ArgoCD App | `apps/bazarr/app.yaml` | Application manifest |
+| Container Image | `lscr.io/linuxserver/bazarr:v1.6.2-ls369` | Automated subtitle downloader |
+| Internal URL | `http://bazarr.media.svc:80` | Port 80 targets containerPort 6767 |
+| External URL | `https://bazarr.sudhanva.me` | Tailscale Gateway HTTPS route |
+| Storage | `bazarr-config` (1Gi), `jellyfin-media` (100Gi) | Local-path NVMe partitions |
+| Vault Path | `kv/bazarr/auth` | API key and administrator login |
+| Bitwarden Item | `Homelab - Bazarr Admin` | Synchronized administrator login |
 
-## Seerr
+### Seerr
 
-| Item | Path | Notes |
+| Property | Value | Notes |
 | --- | --- | --- |
-| App config | `apps/seerr/app.yaml` | ArgoCD app definition |
-| Deployment | `apps/seerr/deployment.yaml` | `ghcr.io/seerr-team/seerr:v3.5.1` |
-| Service | `apps/seerr/service.yaml` | ClusterIP on port 80 (targetPort 5055) |
-| HTTPRoute | `apps/seerr/httproute.yaml` | `seerr.sudhanva.me` |
-| PVC | `apps/seerr/pvc-config.yaml` | 1Gi local-path storage for `/app/config` |
+| Namespace | `media` | Shared media namespace |
+| ArgoCD App | `apps/seerr/app.yaml` | Application manifest |
+| Container Image | `ghcr.io/seerr-team/seerr:v3.5.1` | Media request discovery interface |
+| Internal URL | `http://seerr.media.svc:80` | Port 80 targets containerPort 5055 |
+| External URL | `https://seerr.sudhanva.me` | Tailscale Gateway HTTPS route |
+| Storage | `seerr-config` (1Gi) | Local-path NVMe partition |
+| Vault Path | `kv/seerr/auth` | API key and administrator login |
+| Bitwarden Item | `Homelab - Seerr Admin` | Synchronized administrator login |
 
-## Filebrowser
+### Filebrowser
 
-| Item | Path | Notes |
+| Property | Value | Notes |
 | --- | --- | --- |
-| App config | `apps/filebrowser/app.yaml` | ArgoCD app definition |
-| Deployment | `apps/filebrowser/deployment.yaml` | Auth through a Vault-backed secret, mounts Jellyfin media |
-| Service | `apps/filebrowser/service.yaml` | ClusterIP on port 80 |
-| HTTPRoute | `apps/filebrowser/httproute.yaml` | `filebrowser.sudhanva.me` |
+| Namespace | `media` | Shared media namespace |
+| ArgoCD App | `apps/filebrowser/app.yaml` | Application manifest |
+| Container Image | `docker.io/filebrowser/filebrowser:v2.63.23` | Web file management interface |
+| Internal URL | `http://filebrowser.media.svc:80` | Port 80 targets containerPort 8080 |
+| External URL | `https://filebrowser.sudhanva.me` | Tailscale Gateway HTTPS route |
+| Storage | `filebrowser-config` (1Gi), `jellyfin-media` (100Gi) | Local-path NVMe partitions |
+| Vault Path | `kv/filebrowser/auth` | Bcrypt password hash and username |
+| Bitwarden Item | `Homelab - Filebrowser Admin` | Synchronized administrator login |
 
-## Docs site
+---
 
-| Item | Path | Notes |
+## Core Homelab Services
+
+### Headlamp
+
+| Property | Value | Notes |
 | --- | --- | --- |
-| Namespace | `apps/docs/namespace.yaml` | Dedicated `docs` namespace |
-| App config | `apps/docs/app.yaml` | ArgoCD app definition |
-| Deployment | `apps/docs/deployment.yaml` | Uses `ghcr.io/nsudhanva/homelab-docs:latest` |
-| Service | `apps/docs/service.yaml` | ClusterIP on port 80 |
-| HTTPRoute | `apps/docs/httproute.yaml` | `homelab.sudhanva.me` split-horizon (public Cloudflare + tailnet Gateway) |
+| Namespace | `headlamp` | Dedicated namespace |
+| ArgoCD App | `apps/headlamp/app.yaml` | Application manifest |
+| Container Image | `ghcr.io/headlamp-k8s/headlamp:v0.45.0` | Kubernetes cluster dashboard |
+| External URL | `https://headlamp.sudhanva.me` | Tailscale Gateway HTTPS route |
+| Vault Path | `kv/headlamp/oidc` | OIDC provider configuration |
+| Bitwarden Item | `Homelab - Headlamp GUI Login` | Cluster-admin ServiceAccount token |
 
-## Headlamp
+### Homer Dashboard
 
-| Item | Path | Notes |
+| Property | Value | Notes |
 | --- | --- | --- |
-| Namespace | `apps/headlamp/namespace.yaml` | Dedicated `headlamp` namespace |
-| App config | `apps/headlamp/app.yaml` | ArgoCD app definition |
-| ServiceAccount | `apps/headlamp/serviceaccount.yaml` | Headlamp dashboard service account |
-| ClusterRoleBinding | `apps/headlamp/clusterrolebinding.yaml` | Gives `cluster-admin` privileges to the service account |
-| Secret | `apps/headlamp/secret-token.yaml` | Permanent token secret for in-cluster login |
-| Deployment | `apps/headlamp/deployment.yaml` | `ghcr.io/headlamp-k8s/headlamp:v0.45.0` with `-unsafe-use-service-account-token` |
-| Service | `apps/headlamp/service.yaml` | ClusterIP on port 80 |
-| HTTPRoute | `apps/headlamp/httproute.yaml` | `headlamp.sudhanva.me` |
-| ServiceMonitor | `apps/headlamp/servicemonitor.yaml` | Prometheus scrape config |
+| Namespace | `homer` | Dedicated namespace |
+| ArgoCD App | `apps/homer/app.yaml` | Application manifest |
+| Container Image | `b4bz/homer:v26.08.3` | Personal service launch dashboard |
+| External URL | `https://home.sudhanva.me` | Tailscale Gateway HTTPS route |
+| ConfigMap | `apps/homer/configmap.yaml` | Declarative dashboard links |
 
-## Home dashboard (Homer)
+### Technitium DNS Server
 
-| Item | Path | Notes |
+| Property | Value | Notes |
 | --- | --- | --- |
-| Namespace | `apps/homer/namespace.yaml` | Dedicated `homer` namespace |
-| App config | `apps/homer/app.yaml` | ArgoCD app definition |
-| ConfigMap | `apps/homer/configmap.yaml` | Homer `config.yml` |
-| Deployment | `apps/homer/deployment.yaml` | Uses `b4bz/homer:v26.08.3` |
-| Service | `apps/homer/service.yaml` | ClusterIP on port 80 |
-| HTTPRoute | `apps/homer/httproute.yaml` | `home.sudhanva.me` |
+| Namespace | `technitium` | Dedicated namespace |
+| ArgoCD App | `apps/technitium/app.yaml` | Application manifest |
+| Container Image | `technitium/dns-server:latest` | Recursive ad-blocking DNS server |
+| External URL | `https://dns.sudhanva.me` | Tailscale Gateway HTTPS route |
+| DNS Ingress | `100.109.195.34:53` | Tailscale LoadBalancer for UDP and TCP |
+| Storage | `technitium-config` (5Gi) | Local-path NVMe partition |
+| Vault Path | `kv/technitium/admin` | Web console admin password |
+| Bitwarden Item | `Homelab - Technitium DNS Server Admin` | Synchronized administrator login |
 
-## Technitium DNS Server
+### Home Assistant
 
-| Item | Path | Notes |
+| Property | Value | Notes |
 | --- | --- | --- |
-| Namespace | `apps/technitium/namespace.yaml` | Dedicated `technitium` namespace |
-| App config | `apps/technitium/app.yaml` | ArgoCD app definition |
-| Deployment | `apps/technitium/deployment.yaml` | `technitium/dns-server:latest` |
-| Service | `apps/technitium/service.yaml` | ClusterIP on port 5380 (HTTP) and 53 (DNS) |
-| Tailscale LB | `apps/technitium/service-tailscale.yaml` | Tailscale LoadBalancer on port 53 |
-| HTTPRoute | `apps/technitium/httproute.yaml` | `dns.sudhanva.me` |
-| PVC | `apps/technitium/pvc.yaml` | 5Gi local-path storage for `/etc/dns` |
-| ExternalSecret | `apps/technitium/external-secret.yaml` | Vault integration for admin API credentials |
-| ConfigMap | `apps/technitium/configmap-settings.yaml` | Declarative settings for blocklists, forwarders, DNSSEC |
-| PostSync Job | `apps/technitium/job-sync.yaml` | GitOps configuration sync through the Technitium REST API |
+| Namespace | `home-assistant` | Dedicated namespace |
+| ArgoCD App | `apps/home-assistant/app.yaml` | Application manifest |
+| Container Image | `ghcr.io/home-assistant/home-assistant:2026.9.2` | Smart home automation controller |
+| External URL | `https://homeassistant.sudhanva.me` | Tailscale Gateway HTTPS route |
+| Storage | `home-assistant-config` (5Gi) | Local-path NVMe partition |
+| Vault Path | `kv/home-assistant/admin` | Administrator password |
+| Bitwarden Item | `Homelab - Home Assistant Admin` | Admin credentials and Muse agent token |
 
-## Home Assistant
+### Actual Budget
 
-| Item | Path | Notes |
+| Property | Value | Notes |
 | --- | --- | --- |
-| Namespace | `apps/home-assistant/namespace.yaml` | Dedicated `home-assistant` namespace |
-| App config | `apps/home-assistant/app.yaml` | ArgoCD app definition |
-| ConfigMap (Core) | `apps/home-assistant/configmap-core.yaml` | Declarative `configuration.yaml` with reverse proxy trusted proxies |
-| ConfigMap (Packages) | `apps/home-assistant/configmap-packages.yaml` | Declarative packages for Google Cast, Sony TV, PS5, Xfinity |
-| Deployment | `apps/home-assistant/deployment.yaml` | `ghcr.io/home-assistant/home-assistant:2026.9.2` |
-| Service | `apps/home-assistant/service.yaml` | ClusterIP on port 8123 |
-| HTTPRoute | `apps/home-assistant/httproute.yaml` | `homeassistant.sudhanva.me` through the tailnet gateway |
-| PVC | `apps/home-assistant/pvc.yaml` | 5Gi local-path storage for `/config` |
+| Namespace | `actual-budget` | Dedicated namespace |
+| ArgoCD App | `apps/actual-budget/app.yaml` | Application manifest |
+| Container Image | `docker.io/actualbudget/actual-server:26.9.0-alpine` | Personal finance tracking app |
+| External URL | `https://actual.sudhanva.me` | Tailscale Gateway HTTPS route |
+| Storage | `actual-budget-data` (5Gi) | SQLite database and user files |
+| Vault Path | `kv/actual`, `kv/actual-budget/auth`, `kv/actual-budget/simplefin` | Web admin and bank sync tokens |
+| Bitwarden Item | `Homelab - Actual Budget Admin` | Synchronized login and sync passwords |
 
-## Llama Server (Gemma 4)
+### Documentation Site
 
-| Item | Path | Notes |
+| Property | Value | Notes |
 | --- | --- | --- |
-| Namespace | `apps/llama/namespace.yaml` | Dedicated `llama` namespace |
-| App config | `apps/llama/app.yaml` | ArgoCD app definition |
-| Deployment | `apps/llama/deployment.yaml` | `ghcr.io/ggml-org/llama.cpp:server-cuda` with Gemma 4 E2B |
-| Service | `apps/llama/service.yaml` | ClusterIP on port 8080 |
-| HTTPRoute | `apps/llama/httproute.yaml` | `ai.sudhanva.me` through the tailnet gateway |
-| PVC | `apps/llama/pvc.yaml` | 15Gi local-path storage for `/models` |
+| Namespace | `docs` | Dedicated namespace |
+| ArgoCD App | `apps/docs/app.yaml` | Application manifest |
+| Container Image | `ghcr.io/nsudhanva/homelab-docs:latest` | Astro Starlight static documentation |
+| External URL | `https://homelab.sudhanva.me` | Dual-route (Cloudflare public and Tailscale private) |
 
-## Gmail Classifier
+---
 
-| Item | Path | Notes |
+## AI & Monorepo Microservices
+
+### Llama Server (Gemma 4)
+
+| Property | Value | Notes |
 | --- | --- | --- |
-| Namespace | `apps/gmail-classifier/namespace.yaml` | Dedicated `gmail-classifier` namespace |
-| App config | `apps/gmail-classifier/app.yaml` | ArgoCD app definition |
-| CronJob | `apps/gmail-classifier/cronjob-<nickname>.yaml` | Daily classification per account, generated from `apps/accounts.yaml` |
-| CronJob | `apps/gmail-classifier/cronjob-<nickname>-mark-read.yaml` | Weekly `--mark-all-read` per account (Sundays) |
-| ExternalSecret | `apps/gmail-classifier/secret.yaml` | Vault integration for Google OAuth client credentials and refresh token |
-| Python App | `apps/gmail-classifier/src/gmail_classifier/` | Gmail triage engine that uses local Gemma 4 and sends Telegram alerts |
+| Namespace | `llama` | Dedicated namespace |
+| ArgoCD App | `apps/llama/app.yaml` | Application manifest |
+| Container Image | `ghcr.io/ggml-org/llama.cpp:server-cuda` | Hardware-accelerated local LLM inference |
+| External URL | `https://ai.sudhanva.me` | Tailscale Gateway HTTPS route |
+| Hardware Resource | `nvidia.com/gpu: 1` | NVIDIA GPU passthrough |
+| Storage | `llama-models` (15Gi) | GGUF model files |
 
-## Drive Organizer
+### Gmail Classifier
 
-| Item | Path | Notes |
+| Property | Value | Notes |
 | --- | --- | --- |
-| Namespace | `apps/drive-organizer/namespace.yaml` | Dedicated `drive-organizer` namespace |
-| App config | `apps/drive-organizer/app.yaml` | ArgoCD app definition |
-| CronJob | `apps/drive-organizer/cronjob.yaml` | Daily schedule at `0 2 * * *` that runs `uv run drive-organizer` |
-| ExternalSecret | `apps/drive-organizer/secret.yaml` | Vault integration for Google OAuth credentials and Telegram bot token |
-| Python App | `apps/drive-organizer/src/drive_organizer/` | Symmetrical Google Drive organizer for personal and family accounts, uses local Gemma 4 |
+| Namespace | `gmail-classifier` | Dedicated namespace |
+| ArgoCD App | `apps/gmail-classifier/app.yaml` | Application manifest |
+| Workload Type | Kubernetes CronJobs | Daily scheduled email triage |
+| Vault Path | `kv/gmail/credentials`, `kv/google/accounts/family`, `kv/telegram/bot`, `kv/openrouter` | OAuth and API tokens |
+| Bitwarden Items | `Homelab - Google OAuth Personal`, `Homelab - Google OAuth Family` | Synchronized client secrets and refresh tokens |
 
-## Actual Budget
+### Drive Organizer
 
-| Item | Path | Notes |
+| Property | Value | Notes |
 | --- | --- | --- |
-| Namespace | `apps/actual-budget/namespace.yaml` | Dedicated `actual-budget` namespace |
-| App config | `apps/actual-budget/app.yaml` | ArgoCD app definition |
-| Deployment | `apps/actual-budget/deployment.yaml` | `docker.io/actualbudget/actual-server:26.9.0-alpine` |
-| Service | `apps/actual-budget/service.yaml` | ClusterIP on port 5006 |
-| HTTPRoute | `apps/actual-budget/httproute.yaml` | `actual.sudhanva.me` through the tailnet gateway |
-| PVC | `apps/actual-budget/pvc.yaml` | 5Gi local-path storage for `/data` (SQLite database and user files) |
+| Namespace | `drive-organizer` | Dedicated namespace |
+| ArgoCD App | `apps/drive-organizer/app.yaml` | Application manifest |
+| Workload Type | Kubernetes CronJobs | Daily scheduled Google Drive organization |
+| Vault Path | `kv/gmail/credentials`, `kv/google/accounts/family`, `kv/telegram/bot`, `kv/openrouter` | OAuth and API tokens |
 
-## Actual Classifier
+### Actual Classifier
 
-| Item | Path | Notes |
+| Property | Value | Notes |
 | --- | --- | --- |
-| Namespace | `apps/actual-classifier/namespace.yaml` | Dedicated `actual-classifier` namespace |
-| App config | `apps/actual-classifier/app.yaml` | ArgoCD app definition |
-| CronJob | `apps/actual-classifier/cronjob.yaml` | Scheduled daily at 03:00 (`0 3 * * *`), after Gmail and Drive jobs |
-| ExternalSecret | `apps/actual-classifier/secret.yaml` | Vault integration for Actual Budget and OpenRouter credentials |
-| Python App | `apps/actual-classifier/src/actual_classifier/` | Puts transactions into categories and adds tags with local Gemma 4 |
+| Namespace | `actual-classifier` | Dedicated namespace |
+| ArgoCD App | `apps/actual-classifier/app.yaml` | Application manifest |
+| Workload Type | Kubernetes CronJobs | Daily scheduled bank transaction classification |
+| Vault Path | `kv/actual`, `kv/openrouter` | Actual sync password and OpenRouter key |

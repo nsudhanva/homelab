@@ -192,6 +192,7 @@ export default defineConfig({
             { label: 'Gateway & Networking', slug: 'explanation/gateway-networking' },
             { label: 'Node Networking & DNS', slug: 'explanation/node-networking' },
             { label: 'Storage Architecture', slug: 'explanation/storage-architecture' },
+            { label: 'Media VPN & Storage', slug: 'explanation/media-vpn-architecture' },
             { label: 'AI Email Classifier', slug: 'explanation/gmail-classifier' },
           ],
         },

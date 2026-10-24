@@ -215,6 +215,32 @@ When the secrets agree with Vault, remove all secrets that you created manually.
 
 Vault is available at `https://vault.sudhanva.me` through the Tailscale Gateway.
 
+## Step 9: Back Up Secrets to Bitwarden
+
+Back up all cluster secrets and Vault keys to Bitwarden for disaster recovery.
+
+Store all entries in the dedicated Bitwarden `Homelab` folder (`b4bcc38c-4296-41a4-b9b3-b4c50047ce37`).
+
+Use the consistent naming format `Homelab - <Component> <Role>`.
+
+Add custom field `tag: homelab` to every entry.
+
+### Required Bitwarden Backup Items
+
+- **`Homelab - HashiCorp Vault Master Keys`**: Stores the 5 unseal keys, unseal threshold (3), and root token.
+- **`Homelab - HashiCorp Vault Keys Raw JSON Backup`**: Stores the raw JSON initialization response.
+- **`Homelab - ArgoCD Admin`**: Stores the ArgoCD admin password (`X19uVqkNvNq-OL7s`).
+- **`Homelab - ArgoCD GitHub & GHCR Token`**: Stores the GitHub personal access token for git repository and container registry access.
+- **`Homelab - Cloudflare API Token`**: Stores the DNS-01 API token for cert-manager and external-dns.
+- **`Homelab - Tailscale Operator OAuth`**: Stores the Tailscale operator OAuth client ID and secret.
+- **`Homelab - qBittorrent WireGuard VPN`**: Stores the WireGuard private key, public key, and endpoint parameters.
+
+Run this command with the Bitwarden CLI to verify the synchronized items:
+
+```bash
+bw list items --folderid b4bcc38c-4296-41a4-b9b3-b4c50047ce37
+```
+
 ## Troubleshooting
 
 ### Vault UI blank page
