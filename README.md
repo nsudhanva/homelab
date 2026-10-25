@@ -1,6 +1,6 @@
 # Homelab
 
-A self-hosted bare-metal Kubernetes cluster on Ubuntu 26.04 LTS (node `legion`). It runs K3s `v1.36+` (`v1.36.4+k3s1`). ArgoCD manages 100% of the cluster through GitOps.
+A self-hosted bare-metal Kubernetes cluster on Ubuntu 26.04 LTS (node `legion`). It runs K3s `v1.37+` (`v1.37.1+k3s1`). ArgoCD manages 100% of the cluster through GitOps.
 
 - Ansible playbooks install the bare-metal host from scratch with no manual steps
 - Tailscale gives secure ingress and Envoy Gateway routes the traffic. Vault and External Secrets keep the credentials
@@ -29,16 +29,19 @@ A self-hosted bare-metal Kubernetes cluster on Ubuntu 26.04 LTS (node `legion`).
 
 ## Features
 
-- Single-node / multi-node bare-metal K3s Kubernetes `v1.36.4+k3s1` on node `legion` with Flannel CNI
+- Single-node / multi-node bare-metal K3s Kubernetes `v1.37.1+k3s1` on node `legion` with Flannel CNI
 - Ansible playbooks for host preparation, runtime configuration, and cluster bootstrap
-- NVIDIA GPU Operator `v26.7.0` with Container Device Interface (CDI) for GTX 1050 Ti transcoding
+- NVIDIA GPU Operator `v26.7.2` with Container Device Interface (CDI) for GTX 1050 Ti transcoding
 - Rancher System Upgrade Controller for declarative K3s upgrades with zero downtime
 - ArgoCD ApplicationSets that manage the infrastructure and apps through GitOps
 - Tailscale Gateway API ingress with split-horizon DNS
 - Vault and External Secrets Operator for central secret management
 - Local SSD storage on `/home/k3s-storage` through the Local-Path Provisioner
 - Prometheus monitoring stack with Alertmanager and Grafana
-- Telegram alerts through @ManassuHomelabBot from Alertmanager and Grafana
+- Telegram alerts through @ManassuHomelabBot from Alertmanager, Grafana, and AI assistants
+- Media automation stack (Prowlarr, Sonarr, Radarr, Bazarr, Seerr) sharing `jellyfin-media` storage for instant atomic hardlinks
+- qBittorrent isolated inside a Gluetun WireGuard VPN sidecar with an iptables firewall killswitch and zero-seeding limits
+- Personal finance tracking with Actual Budget and local AI transaction classification
 - Local AI inference with Google Gemma 4 (E2B) on the NVIDIA GTX 1050 Ti through llama.cpp
 - A Gmail classifier that sorts mail each day with local Gemma 4 and sends Telegram summaries
 - A symmetrical Google Drive organizer that classifies documents with local Gemma 4 and syncs with a partner
@@ -63,7 +66,7 @@ flowchart LR
     OS["Ubuntu 26.04 LTS (Kernel 7.0)"]
     GPU["NVIDIA Driver 580 + CDI"]
     Storage["SSD Storage (/home/k3s-storage)"]
-    K3s["K3s Server (v1.36.4+k3s1)"]
+    K3s["K3s Server (v1.37.1+k3s1)"]
   end
 
   subgraph Cluster["Kubernetes Cluster"]
@@ -105,10 +108,11 @@ flowchart TB
     Headlamp["Headlamp"]
     Docs["Docs"]
     Homer["Homer"]
-    Media["Jellyfin + Filebrowser"]
+    Media["Media Suite (Jellyfin + *arr + qBittorrent VPN)"]
     HA["Home Assistant"]
     AI["Gemma 4 AI"]
     DNSApp["Technitium DNS"]
+    Budget["Actual Budget"]
   end
 
   Tailscale --> Envoy
@@ -234,9 +238,12 @@ bun dev
 Main guides:
 
 - From scratch installation: [Build K3s Cluster from Scratch](docs/src/content/docs/how-to/from-scratch.md)
+- Media automation & VPN: [Media Automation and WireGuard VPN Stack](docs/src/content/docs/how-to/media-automation.md)
+- Media VPN architecture: [Media VPN and Storage Architecture](docs/src/content/docs/explanation/media-vpn-architecture.md)
 - Secrets management: [HashiCorp Vault Secrets Management](docs/src/content/docs/how-to/vault.md)
 - Persistent storage: [Local-Path Storage Architecture](docs/src/content/docs/explanation/storage-architecture.md)
 - Version matrix: [Component Version Matrix](docs/src/content/docs/reference/versions.md)
+- Applications catalog: [Applications Catalog Reference](docs/src/content/docs/reference/applications.md)
 
 ## Repository layout
 
@@ -245,6 +252,7 @@ ansible/          Ansible playbooks, roles, and inventory for bare-metal setup
 bootstrap/        ArgoCD bootstrap and ApplicationSet definitions
 infrastructure/   Platform components managed by ArgoCD
 apps/             User workloads managed by ArgoCD
+packages/         Shared monorepo libraries (e.g. homelab-ai)
 scripts/          Automation and verification scripts
 docs/             Astro Starlight documentation
 ```
@@ -258,11 +266,20 @@ docs/             Astro Starlight documentation
 | Homer | Home dashboard with service shortcuts | `home.sudhanva.me` |
 | Jellyfin | Media streaming with NVIDIA GPU acceleration | `jellyfin.sudhanva.me` |
 | Filebrowser | File manager for persistent media volumes | `filebrowser.sudhanva.me` |
+| qBittorrent | BitTorrent client isolated behind Gluetun WireGuard VPN | `qbittorrent.sudhanva.me` |
+| Prowlarr | Torrent indexer manager and proxy | `prowlarr.sudhanva.me` |
+| Sonarr | Television series collection automation | `sonarr.sudhanva.me` |
+| Radarr | Movie collection automation | `radarr.sudhanva.me` |
+| Bazarr | Automated subtitle download manager | `bazarr.sudhanva.me` |
+| Seerr | Media discovery and request interface | `seerr.sudhanva.me` |
+| Actual Budget | Privacy-focused personal finance tracking | `actual.sudhanva.me` |
 | Technitium DNS | Authoritative and recursive DNS server | `dns.sudhanva.me` |
 | Home Assistant | Smart home automation platform | `homeassistant.sudhanva.me` |
 | Gemma 4 AI | Local LLM inference on NVIDIA GPU | `ai.sudhanva.me` |
 | Gmail Classifier | Symmetrical email sorting and daily summary with a local LLM | Background CronJob |
 | Drive Organizer | Symmetrical family document organizer with local Gemma 4 | Background CronJob |
+| Actual Classifier | Daily bank transaction categorization with local Gemma 4 | Background CronJob |
+| Alert Summarizer | Telegram digest and triage of cluster Prometheus alerts with Gemma 4 | Background CronJob |
 | ArgoCD | GitOps control plane UI | `argocd.sudhanva.me` |
 | Vault | Central secrets management | `vault.sudhanva.me` |
 | Grafana | Metrics dashboards | `grafana.sudhanva.me` |
