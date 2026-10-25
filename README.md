@@ -16,10 +16,8 @@ A self-hosted bare-metal Kubernetes cluster on Ubuntu 26.04 LTS (node `legion`).
   - [Core systems map](#core-systems-map)
   - [Platform services map](#platform-services-map)
   - [Network topology](#network-topology)
-  - [Cluster network ports](#cluster-network-ports)
 - [Quick start](#quick-start)
   - [Automated bare metal bring-up](#automated-bare-metal-bring-up)
-  - [From scratch flow](#from-scratch-flow)
 - [Documentation](#documentation)
 - [Repository layout](#repository-layout)
 - [Applications](#applications)
@@ -150,19 +148,6 @@ flowchart LR
   CoreDNS --> Services
 ```
 
-### Cluster network ports
-
-| Port | Protocol | Component | Description |
-|---|---|---|---|
-| `443` | TCP | Envoy Gateway / Tailscale | Public and Tailnet HTTPS ingress (terminates `*.sudhanva.me`) |
-| `10443` | TCP | Envoy Proxy (Data Plane) | Envoy container internal HTTPS targetPort |
-| `6443` | TCP | K3s API Server | Kubernetes API server endpoint on node `legion` |
-| `41641` | UDP | Tailscale WireGuard | Direct WireGuard transport communication |
-| `53` | UDP/TCP | CoreDNS | Split-horizon cluster DNS and Tailscale rewrites |
-| `10250` | TCP | Kubelet | Kubelet node metrics and exec API |
-| `22` | TCP | OpenSSH | Host SSH access on node `legion` |
-| `8472` | UDP | Flannel CNI | VXLAN overlay communication |
-
 ## Quick start
 
 ### Automated bare metal bring-up
@@ -180,47 +165,6 @@ export KUBECONFIG=$PWD/k3s.kubeconfig
 kubectl get nodes -o wide
 kubectl get pods -A
 kubectl get apps -n argocd
-```
-
-### From scratch flow
-
-```mermaid
-flowchart TB
-  subgraph Workstation["Workstation"]
-    Inventory["ansible/inventory/hosts.yaml"]
-    Vars["ansible/group_vars/all.yaml"]
-    Playbook["ansible/site.yaml"]
-  end
-
-  subgraph Target["Bare-Metal Host: legion"]
-    Prep["Host Prep & Modules"]
-    NvidiaSetup["NVIDIA Driver & CDI"]
-    SSD["SSD Storage (/home/k3s-storage)"]
-    K3sInstall["K3s Server Install"]
-  end
-
-  subgraph Bootstrap["GitOps Bootstrap"]
-    Kubeconfig["Fetch Kubeconfig"]
-    ArgoApply["ArgoCD Server-Side Apply"]
-    RootApp["Apply bootstrap/root.yaml"]
-  end
-
-  subgraph Sync["ArgoCD Reconcile"]
-    Infra["infra-* ApplicationSet"]
-    Apps["app-* ApplicationSet"]
-  end
-
-  Inventory --> Playbook
-  Vars --> Playbook
-  Playbook --> Prep
-  Prep --> NvidiaSetup
-  NvidiaSetup --> SSD
-  SSD --> K3sInstall
-  K3sInstall --> Kubeconfig
-  Kubeconfig --> ArgoApply
-  ArgoApply --> RootApp
-  RootApp --> Infra
-  RootApp --> Apps
 ```
 
 ## Documentation
