@@ -23,6 +23,7 @@ docs/.astro/
 
 # Tool caches
 scripts/.cache/
+.cloudflare/cache/
 
 # Terraform
 terraform/**/.terraform/
