@@ -5,6 +5,11 @@ metadata:
   namespace: tailscale-dns
 data:
   Corefile: |
+    google.sudhanva.me:53 {
+        errors
+        forward . 1.1.1.1 1.0.0.1
+        cache 30
+    }
     sudhanva.me:53 {
     errors
     health

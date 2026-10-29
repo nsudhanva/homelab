@@ -187,6 +187,20 @@ kubectl get gateway -n tailscale tailscale-gateway -o jsonpath='{.status.address
 
 Compare the `IPAddress` value with the output of `dig +short <name> @100.100.100.100`.
 
+### Public hosts outside the homelab
+
+The `tailscale-dns` resolver answers every `*.sudhanva.me` name with the Gateway IP. A host that runs outside the homelab, such as `google.sudhanva.me` on a cloud VM, needs its own zone that forwards to public DNS. CoreDNS uses the most specific zone, so this block wins over `sudhanva.me`:
+
+```
+google.sudhanva.me:53 {
+    errors
+    forward . 1.1.1.1 1.0.0.1
+    cache 30
+}
+```
+
+Add the block to both `infrastructure/tailscale-dns/configmap.yaml` and the Corefile in `infrastructure/tailscale-dns/cronjob-updater.yaml`. The CronJob rewrites the ConfigMap every 10 minutes, so a block in only one file is lost.
+
 ## Split-horizon DNS for homelab.sudhanva.me
 
 The docs hostname has two backends:
