@@ -187,19 +187,25 @@ kubectl get gateway -n tailscale tailscale-gateway -o jsonpath='{.status.address
 
 Compare the `IPAddress` value with the output of `dig +short <name> @100.100.100.100`.
 
-### Public hosts outside the homelab
+### Hosts outside the homelab
 
-The `tailscale-dns` resolver answers every `*.sudhanva.me` name with the Gateway IP. A host that runs outside the homelab, such as `google.sudhanva.me` on a cloud VM, needs its own zone that forwards to public DNS. CoreDNS uses the most specific zone, so this block wins over `sudhanva.me`:
+The `tailscale-dns` resolver answers with the Gateway IP only for hostnames that an HTTPRoute serves. Every other `sudhanva.me` name, such as the apex, `www`, `google` or `lakshmi.k8s`, goes to public DNS, so sites hosted elsewhere stay reachable from the tailnet.
+
+The `tailscale-dns-updater` CronJob builds that list every 10 minutes. It reads the HTTPRoute hostnames and writes them into the `match` regex of the `template` block:
 
 ```
-google.sudhanva.me:53 {
-    errors
-    forward . 1.1.1.1 1.0.0.1
-    cache 30
+template IN A {
+    match "^(grafana|argocd|...)[.]sudhanva[.]me[.]$"
+    answer "{{ .Name }} 60 IN A <gateway IP>"
+    fallthrough
 }
 ```
 
-Add the block to both `infrastructure/tailscale-dns/configmap.yaml` and the Corefile in `infrastructure/tailscale-dns/cronjob-updater.yaml`. The CronJob rewrites the ConfigMap every 10 minutes, so a block in only one file is lost.
+A new HTTPRoute resolves on the tailnet within 10 minutes. To apply it at once, start a Job from the CronJob:
+
+```bash
+kubectl -n tailscale-dns create job --from=cronjob/tailscale-dns-updater tailscale-dns-updater-now
+```
 
 ## Split-horizon DNS for homelab.sudhanva.me
 
