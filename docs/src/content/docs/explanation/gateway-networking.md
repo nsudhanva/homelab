@@ -162,9 +162,9 @@ Some hostnames need one target on the tailnet and a different target off the tai
 To get this result, do these steps:
 
 - Keep the public Cloudflare DNS record that points to Pages.
-- Send tailnet DNS through the `tailscale-dns` resolver. This resolver answers `*.sudhanva.me` with the Tailscale Gateway IP.
+- Send tailnet DNS through the `tailscale-dns` resolver. This resolver answers HTTPRoute hostnames with the Tailscale Gateway IP. It sends all other `sudhanva.me` names to public DNS.
 - Do not add the `external-dns.alpha.kubernetes.io/expose: "true"` annotation to the HTTPRoute. Without it, ExternalDNS does not overwrite the public record.
-- Let the `tailscale-dns-updater` CronJob update the Gateway IP in the resolver configuration.
+- Let the `tailscale-dns-updater` CronJob update the Gateway IP and the list of HTTPRoute hostnames in the resolver configuration.
 
 ## In-cluster access to Gateway services
 

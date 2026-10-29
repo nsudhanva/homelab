@@ -169,7 +169,7 @@ In `infrastructure/gateway/gateway.yaml`, change the `external-dns.alpha.kuberne
 
 ### Split DNS resolver IP
 
-The split DNS resolver for `sudhanva.me` must point to the `tailscale-dns` service IP. Do not point it to the Gateway IP. The `tailscale-dns` resolver answers `*.sudhanva.me` queries with the Gateway IP. If split DNS points directly to the Gateway IP, queries time out.
+The split DNS resolver for `sudhanva.me` must point to the `tailscale-dns` service IP. Do not point it to the Gateway IP. The `tailscale-dns` resolver answers HTTPRoute hostnames with the Gateway IP. If split DNS points directly to the Gateway IP, queries time out.
 
 The resolver runs in the `tailscale-dns` namespace. It does not run in the `tailscale` namespace.
 
@@ -218,7 +218,7 @@ Keep the public Cloudflare record on the designated host. Add a Tailscale DNS ov
 
 ### Deploy the split-DNS resolver
 
-This repo has a CoreDNS deployment that answers all `*.sudhanva.me` hostnames with the Tailscale Gateway IP. A CronJob keeps this IP the same as the Gateway status.
+This repo has a CoreDNS deployment that answers HTTPRoute hostnames with the Tailscale Gateway IP. It forwards all other `sudhanva.me` names to public DNS. A CronJob keeps the IP and the hostname list the same as the cluster. Refer to [Hosts outside the homelab](#hosts-outside-the-homelab).
 
 Sync the `infrastructure/tailscale-dns/` component. Then get the Tailscale IP of the resolver:
 

@@ -82,7 +82,7 @@ ApplicationSets watch `apps/` and `infrastructure/` and automatically create Arg
 | ClusterIssuer | `infrastructure/cert-manager-issuer/cluster-issuer.yaml` | ACME issuer for wildcard certs | Cloudflare API token solver |
 | ExternalDNS | `infrastructure/external-dns/external-dns.yaml` | Creates DNS records for HTTPRoutes | Watches `external-dns.alpha.kubernetes.io/expose=true` |
 | CoreDNS override | `infrastructure/coredns/configmap.yaml` | Rewrites `*.sudhanva.me` to `gateway-internal` | Split-horizon DNS for in-cluster access |
-| Tailscale DNS | `infrastructure/tailscale-dns/` | Split-horizon DNS for tailnet clients | CoreDNS exposed through a Tailscale LoadBalancer |
+| Tailscale DNS | `infrastructure/tailscale-dns/` | Split-horizon DNS for tailnet clients: HTTPRoute hosts go to the Gateway, other names to public DNS | CoreDNS exposed through a Tailscale LoadBalancer |
 | External Secrets CRDs | `infrastructure/external-secrets-crds/` | Installs External Secrets CRDs | Kustomize pulls upstream CRD bundle |
 | External Secrets Operator | `infrastructure/external-secrets/external-secrets.yaml` | Syncs secrets from Vault | ClusterSecretStore and ExternalSecret manifests |
 | Gateway | `infrastructure/gateway/` | GatewayClass, Gateway, EnvoyProxy, cert, internal-service | Uses Tailscale `gatewayClassName` |
