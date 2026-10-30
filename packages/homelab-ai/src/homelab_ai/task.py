@@ -8,7 +8,7 @@ import time
 from collections.abc import Sequence
 from typing import Any
 
-from pydantic_ai import Agent
+from pydantic_ai import Agent, CachePoint
 from pydantic_ai.exceptions import (
     AgentRunError,
     FallbackExceptionGroup,
@@ -98,6 +98,7 @@ class AITask[OutputT]:
         values: dict[str, Any] = {
             "temperature": self.settings.temperature,
             "max_tokens": self.settings.max_tokens,
+            "thinking": self.settings.effort,
         }
         settings = {k: v for k, v in values.items() if v is not None}
         return ModelSettings(**settings) if settings else None
@@ -115,18 +116,26 @@ class AITask[OutputT]:
         error = LLMConnectionError if transient else LLMOutputError
         raise error(f"[{self.name}] {describe_failure(exc)}") from exc
 
-    def run_sync(self, prompt: str) -> OutputT:
+    @staticmethod
+    def _user_prompt(prompt: str, stable_prefix: str | None) -> str | list[str | CachePoint]:
+        """Put ``stable_prefix`` before a cache breakpoint so providers that cache reuse it."""
+        return [stable_prefix, CachePoint(), prompt] if stable_prefix else prompt
+
+    def run_sync(self, prompt: str, *, stable_prefix: str | None = None) -> OutputT:
+        """Run the task. ``stable_prefix`` is text shared by many calls, such as a label list."""
+        user_prompt = self._user_prompt(prompt, stable_prefix)
         for attempt in range(1, self.settings.attempts + 1):
             try:
-                return self.agent.run_sync(prompt).output
+                return self.agent.run_sync(user_prompt).output
             except (AgentRunError, FallbackExceptionGroup, TimeoutError, ConnectionError) as exc:
                 time.sleep(self._handle_failure(exc, attempt))
         raise AssertionError("unreachable")
 
-    async def run(self, prompt: str) -> OutputT:
+    async def run(self, prompt: str, *, stable_prefix: str | None = None) -> OutputT:
+        user_prompt = self._user_prompt(prompt, stable_prefix)
         for attempt in range(1, self.settings.attempts + 1):
             try:
-                return (await self.agent.run(prompt)).output
+                return (await self.agent.run(user_prompt)).output
             except (AgentRunError, FallbackExceptionGroup, TimeoutError, ConnectionError) as exc:
                 await asyncio.sleep(self._handle_failure(exc, attempt))
         raise AssertionError("unreachable")

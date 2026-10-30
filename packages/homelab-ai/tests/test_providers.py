@@ -50,6 +50,16 @@ def test_anthropic_sends_workspace_header() -> None:
     assert client._custom_headers["anthropic-workspace-id"] == "wrkspc_1"
 
 
+def test_anthropic_caches_instructions_and_tools() -> None:
+    model = build_model(
+        ModelSpec.parse("anthropic:claude-haiku-5-5"), settings(ANTHROPIC_API_KEY=SecretStr("k"))
+    )
+    assert model.settings == {
+        "anthropic_cache_instructions": True,
+        "anthropic_cache_tool_definitions": True,
+    }
+
+
 def test_openrouter_and_openai_build_when_keys_present() -> None:
     s = settings(OPENROUTER_API_KEY=SecretStr("k"), OPENAI_API_KEY=SecretStr("k"))
     assert isinstance(build_model(ModelSpec.parse("openrouter:google/gemma"), s), OpenRouterModel)

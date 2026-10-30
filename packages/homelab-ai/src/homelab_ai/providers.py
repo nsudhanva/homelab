@@ -8,7 +8,7 @@ from anthropic import AsyncAnthropic
 from openai import AsyncOpenAI
 from pydantic_ai.exceptions import ModelAPIError, UnexpectedModelBehavior
 from pydantic_ai.models import Model
-from pydantic_ai.models.anthropic import AnthropicModel
+from pydantic_ai.models.anthropic import AnthropicModel, AnthropicModelSettings
 from pydantic_ai.models.fallback import FallbackModel
 from pydantic_ai.models.openai import OpenAIChatModel
 from pydantic_ai.models.openrouter import OpenRouterModel
@@ -77,7 +77,13 @@ def _anthropic(ctx: ProviderContext) -> Model:
         max_retries=ctx.max_retries,
         default_headers={"anthropic-workspace-id": workspace} if workspace else None,
     )
-    return AnthropicModel(ctx.spec.name, provider=AnthropicProvider(anthropic_client=client))
+    return AnthropicModel(
+        ctx.spec.name,
+        provider=AnthropicProvider(anthropic_client=client),
+        settings=AnthropicModelSettings(
+            anthropic_cache_instructions=True, anthropic_cache_tool_definitions=True
+        ),
+    )
 
 
 def _openai(ctx: ProviderContext) -> Model:

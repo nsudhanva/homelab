@@ -1,15 +1,15 @@
 """Environment-driven configuration shared by every homelab AI workload."""
 
 from dataclasses import dataclass
-from typing import Annotated, Any
+from typing import Annotated, Any, Literal
 
 from pydantic import Field, SecretStr, field_validator
 from pydantic_settings import BaseSettings, NoDecode, SettingsConfigDict
 
 from .exceptions import LLMConfigurationError
 
-DEFAULT_MODEL = "local:gemma-4-e2b-it"
-DEFAULT_FALLBACK_MODELS = ("openrouter:google/gemma-4-31b-it", "anthropic:claude-haiku-5-5")
+DEFAULT_MODEL = "anthropic:claude-haiku-5-5"
+DEFAULT_FALLBACK_MODELS = ("openrouter:google/gemma-4-31b-it", "local:gemma-4-e2b-it")
 DEFAULT_LOCAL_BASE_URL = "http://llama-server.llama.svc.cluster.local:8080/v1"
 
 
@@ -65,6 +65,9 @@ class AISettings(BaseSettings):
     )
     temperature: float | None = Field(default=None, validation_alias="AI_TEMPERATURE")
     max_tokens: int | None = Field(default=None, validation_alias="AI_MAX_TOKENS")
+    effort: Literal["low", "medium", "high", "xhigh", "max"] | None = Field(
+        default=None, validation_alias="AI_EFFORT"
+    )
 
     local_base_url: str = Field(
         default=DEFAULT_LOCAL_BASE_URL, validation_alias="LOCAL_LLM_BASE_URL"

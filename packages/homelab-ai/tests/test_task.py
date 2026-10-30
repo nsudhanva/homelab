@@ -3,8 +3,15 @@ from typing import Any
 
 import pytest
 from pydantic import BaseModel
+from pydantic_ai import CachePoint
 from pydantic_ai.exceptions import FallbackExceptionGroup, ModelAPIError, ModelHTTPError
-from pydantic_ai.messages import ModelMessage, ModelResponse, TextPart
+from pydantic_ai.messages import (
+    ModelMessage,
+    ModelRequest,
+    ModelResponse,
+    TextPart,
+    UserPromptPart,
+)
 from pydantic_ai.models.function import AgentInfo, FunctionModel
 from pydantic_ai.models.test import TestModel
 
@@ -126,3 +133,24 @@ def test_describe_lists_chain() -> None:
 def test_model_settings_only_include_overrides() -> None:
     assert task(ok()).agent.model_settings is None
     assert task(ok(), AI_TEMPERATURE=0.1).agent.model_settings == {"temperature": 0.1}
+
+
+def test_effort_maps_to_unified_thinking() -> None:
+    assert task(ok(), AI_EFFORT="low").agent.model_settings == {"thinking": "low"}
+
+
+def test_stable_prefix_goes_before_cache_point() -> None:
+    seen: list[Any] = []
+
+    def capture(messages: list[ModelMessage], info: AgentInfo) -> ModelResponse:
+        request = messages[-1]
+        assert isinstance(request, ModelRequest)
+        part = request.parts[-1]
+        assert isinstance(part, UserPromptPart)
+        seen.append(part.content)
+        return ModelResponse(parts=[TextPart('{"label": "Finance", "confidence": 0.9}')])
+
+    task(FunctionModel(capture)).run_sync("email", stable_prefix="labels")
+    assert seen[0][0] == "labels"
+    assert isinstance(seen[0][1], CachePoint)
+    assert seen[0][2] == "email"

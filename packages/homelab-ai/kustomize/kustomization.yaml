@@ -5,6 +5,6 @@ resources:
 configMapGenerator:
   - name: homelab-ai
     literals:
-      - AI_MODEL=local:gemma-4-e2b-it
-      - AI_FALLBACK_MODELS=openrouter:google/gemma-4-31b-it,anthropic:claude-haiku-5-5
+      - AI_MODEL=anthropic:claude-haiku-5-5
+      - AI_FALLBACK_MODELS=openrouter:google/gemma-4-31b-it,local:gemma-4-e2b-it
       - LOCAL_LLM_BASE_URL=http://llama-server.llama.svc.cluster.local:8080/v1
