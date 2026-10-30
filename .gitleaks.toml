@@ -1,0 +1,8 @@
+[extend]
+useDefault = true
+
+[[rules]]
+id = "tailscale-key"
+description = "Tailscale API key, auth key, OAuth client secret, or webhook secret"
+regex = '''tskey-(?:api|auth|client|scim|webhook)-[A-Za-z0-9]+-[A-Za-z0-9]{16,}'''
+keywords = ["tskey-"]

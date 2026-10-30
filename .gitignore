@@ -24,6 +24,21 @@ docs/.astro/
 scripts/.cache/
 .cloudflare/cache/
 
+# Terraform (state lives in R2; never commit state, plans, or variables)
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+tfplan
+*.tfvars
+*.tfvars.json
+*_override.tf
+*_override.tf.json
+.terraformrc
+terraform.rc
+crash.log
+crash.*.log
+
 # Secrets, certificates, and tokens
 *.key
 *.pem
