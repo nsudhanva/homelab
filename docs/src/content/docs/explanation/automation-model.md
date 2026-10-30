@@ -67,7 +67,7 @@ flowchart TB
 
 The Ansible roles can make the same host configuration again at any time:
 
-- `ansible/roles/common/`: Installs OS packages, loads kernel modules (`overlay`, `br_netfilter`), sets the sysctl network and inotify values, and prepares `/home/k3s-storage`.
+- `ansible/roles/common/`: Installs OS packages, loads kernel modules (`overlay`, `br_netfilter`), sets the sysctl network and inotify values, prepares `/home/k3s-storage`, and sets the CPU power profile (`power_profile` in `ansible/group_vars/all.yaml`).
 - `ansible/roles/tailscale/`: Requires Tailscale on the node, turns off Tailscale DNS (`--accept-dns=false`), and waits for the Tailscale node IP.
 - `ansible/roles/nvidia/`: Configures the NVIDIA Container Toolkit and makes the CDI specifications (`/etc/cdi/nvidia.yaml`).
 - `ansible/roles/k3s_server/`: Writes the K3s server config (`default-runtime: "nvidia"`, `default-local-storage-path: "/home/k3s-storage"`, the Tailscale `node-ip`, node labels, and kubelet reservations), adds a systemd drop-in that starts K3s after `tailscaled`, installs K3s if the binary is missing, and fetches the kubeconfig.

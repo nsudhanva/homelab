@@ -70,11 +70,11 @@ Cluster nodes do not use Tailscale DNS. The `tailscale` Ansible role runs `tails
 
 `terraform/tailscale/dns.tf` sets the tailnet DNS. It looks up the Tailscale IPs of the operator proxies by hostname:
 
-- Global nameserver: the Tailscale IP of `technitium-dns`
+- Global nameservers: the Tailscale IP of `technitium-dns`, and AdGuard DNS (`94.140.14.14`, `94.140.15.15`) as the fallback
 - Split DNS: `sudhanva.me` to the Tailscale IP of `tailscale-dns` (refer to [Split DNS resolver IP](#split-dns-resolver-ip))
 - MagicDNS on, and local DNS settings overridden
 
-There is no fallback nameserver, so tailnet DNS stops when the cluster is down. To add one, refer to [Add a fallback nameserver](/how-to/tailscale-terraform/#add-a-fallback-nameserver).
+AdGuard DNS keeps tailnet DNS working when the cluster is down. It blocks ads like Technitium does, because Tailscale queries all global nameservers at the same time. Refer to [Change the fallback nameservers](/how-to/tailscale-terraform/#change-the-fallback-nameservers).
 
 ## Step 2: Enable custom domains with Gateway API
 

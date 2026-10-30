@@ -95,15 +95,18 @@ resource "tailscale_device_tags" "workstation" {
 
 Do not manage devices that the Tailscale Kubernetes operator creates (`tag:k8s`). The operator owns their tags.
 
-### Add a fallback nameserver
+### Change the fallback nameservers
 
-Tailnet DNS uses only Technitium in the cluster. If the cluster is down, tailnet clients cannot resolve names. To add a public fallback, add a second `nameservers` block to `dns.tf`:
+`dns.tf` lists Technitium and two AdGuard DNS servers (`94.140.14.14`, `94.140.15.15`) as global nameservers. Tailscale queries all global nameservers in parallel and uses the fastest answer. So every fallback must block ads the way Technitium does. If you add a resolver that does not block ads, such as `1.1.1.1`, ads come through whenever that resolver answers first.
 
-```hcl
-  nameservers {
-    address = "1.1.1.1"
-  }
+To test a candidate, compare a normal domain and an ad domain:
+
+```bash
+dig +short example.com @94.140.14.14
+dig +short doubleclick.net @94.140.14.14
 ```
+
+A blocking resolver returns an address for `example.com` and `0.0.0.0` (or no answer) for `doubleclick.net`.
 
 ### Fix drift
 

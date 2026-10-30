@@ -31,7 +31,7 @@ ansible-playbook -i ansible/inventory/hosts.yaml ansible/site.yaml
 
 The playbook runs these roles in order:
 
-- **OS & Kernel Tuning (`common`)**: It installs base packages, loads `overlay` and `br_netfilter`, and sets the bridge, IP forwarding, and inotify sysctls. It also makes sure that `/home/k3s-storage` exists.
+- **OS & Kernel Tuning (`common`)**: It installs base packages, loads `overlay` and `br_netfilter`, and sets the bridge, IP forwarding, and inotify sysctls. It also makes sure that `/home/k3s-storage` exists with mode `0700`, and sets the CPU power profile to `power_profile` (`balanced`) with `power-profiles-daemon`, so idle cores clock down instead of staying in turbo.
 - **Tailscale (`tailscale`)**: It fails if Tailscale is not installed. It turns off Tailscale DNS on the node (`tailscale set --accept-dns=false`) and waits until `tailscale0` has the node IP.
 - **NVIDIA GPU Integration (`nvidia`)**: It fails if `nvidia-smi` does not run. It adds the NVIDIA repository, installs `nvidia-container-toolkit` and `runc`, and generates the CDI specification at `/etc/cdi/nvidia.yaml`.
 - **K3s Server Installation (`k3s_server`)**: It writes `/etc/rancher/k3s/config.yaml` and a systemd drop-in that starts K3s after `tailscaled`. If `/usr/local/bin/k3s` does not exist, it installs K3s `v1.37.1+k3s1`. If K3s is already installed, the playbook does not upgrade it. The System Upgrade Controller handles upgrades. The config disables Traefik, ServiceLB, and the bundled metrics-server, keeps Flannel as the CNI, and sets the local-path storage root.
