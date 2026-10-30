@@ -45,7 +45,7 @@ ArgoCD installs ArgoCD Image Updater (chart `1.3.2`) from `infrastructure/argocd
 - `argocd-image-updater-registries`, from `infrastructure/external-secrets/external-secret-argocd-image-updater-registries.yaml`. It reads `kv/argocd-image-updater/ghcr` and `kv/argocd-image-updater/dockerhub` (properties `username` and `token`). It writes the keys `ghcr` and `dockerhub`, each as `<username>:<token>`.
 - `repo-homelab`, the ArgoCD repository Secret from `kv/argocd/repo-creds`. Image Updater uses it to push write-back commits.
 
-`infrastructure/argocd-image-updater/values.image-updater` points each registry at its key:
+`infrastructure/argocd-image-updater/values.image-updater` points GHCR at its key. Docker Hub has no `credentials` entry, so Image Updater reads Docker Hub anonymously. The `dockerhub` key is synced but not used, because the token in `kv/argocd-image-updater/dockerhub` fails Docker Hub authentication. To use it, store a valid Docker Hub access token and add `credentials: secret:argocd/argocd-image-updater-registries#dockerhub` to the Docker Hub entry:
 
 ```yaml
 config:
@@ -55,7 +55,6 @@ config:
       credentials: secret:argocd/argocd-image-updater-registries#ghcr
     - name: Docker Hub
       prefix: docker.io
-      credentials: secret:argocd/argocd-image-updater-registries#dockerhub
 ```
 
 ## Step 4: Examine the image updates

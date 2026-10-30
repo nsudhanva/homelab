@@ -91,4 +91,4 @@ syncPolicy:
 ## Layer 3: Automated Lifecycle & Image Updates
 
 - **System Upgrade Controller**: Removes the need for manual K3s upgrades. When you set a new K3s version in `k3s-upgrade-plan.yaml`, the controller runs a `rancher/k3s-upgrade` Job on the control-plane node. The Plan sets `cordon: false` and has no `drain` block, so the Job replaces the binary and restarts the `k3s` service without cordoning or draining the node.
-- **Image Updater**: Monitors semver tags or `latest` digests. It reads GHCR and Docker Hub with the credentials in the `argocd-image-updater-registries` Secret and pushes Git commits back to `master`.
+- **Image Updater**: Monitors semver tags or `latest` digests. It reads GHCR with the credentials in the `argocd-image-updater-registries` Secret and Docker Hub anonymously, and pushes Git commits back to `master`.

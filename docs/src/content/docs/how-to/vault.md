@@ -218,7 +218,7 @@ This table lists every ExternalSecret in the repo. All paths are under the KV v2
 | Vault path | Properties read | ExternalSecret (namespace/name) | Manifest |
 | --- | --- | --- | --- |
 | `kv/argocd-image-updater/ghcr` | `username`, `token` | `argocd/argocd-image-updater-registries` | `infrastructure/external-secrets/external-secret-argocd-image-updater-registries.yaml` |
-| `kv/argocd-image-updater/dockerhub` | `username`, `token` | `argocd/argocd-image-updater-registries` | `infrastructure/external-secrets/external-secret-argocd-image-updater-registries.yaml` |
+| `kv/argocd-image-updater/dockerhub` | `username`, `token` | `argocd/argocd-image-updater-registries` (synced, not used by Image Updater) | `infrastructure/external-secrets/external-secret-argocd-image-updater-registries.yaml` |
 | `kv/argocd/repo-creds` | `username`, `token` | `argocd/repo-homelab` | `infrastructure/external-secrets/external-secret-argocd-repo-creds.yaml` |
 | `kv/cert-manager/cloudflare` | `api-token` | `cert-manager/cloudflare-api-token` | `infrastructure/external-secrets/external-secret-cloudflare-cert-manager.yaml` |
 | `kv/cert-manager/cloudflare` | `api-token` | `tailscale/cloudflare-api-token` | `infrastructure/external-secrets/external-secret-cloudflare-cert-manager-tailscale.yaml` |

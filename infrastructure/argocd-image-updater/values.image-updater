@@ -12,4 +12,3 @@ config:
       prefix: docker.io
       ping: true
       defaultns: library
-      credentials: secret:argocd/argocd-image-updater-registries#dockerhub
