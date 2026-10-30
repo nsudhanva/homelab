@@ -22,6 +22,7 @@ A multi-node bare-metal Kubernetes cluster on Ubuntu 26.04 LTS. It uses K3s. Arg
 - Commit small, logical changes with messages that describe them. Use short commit messages.
 - If you add a new httproute, update the homer configmap to add it to the dashboard
 - Add all necessary documentation under `docs/`
+- Write docs and READMEs in ASD-STE100 Simplified Technical English, with the rules in `docs/src/content/docs/reference/docs-structure.md` (Writing Standard). Describe the current state only: no history of changes, no rejected options, and no marketing language or AI filler
 - Use the [Divio documentation system](https://docs.divio.com/documentation-system/) to structure docs:
   - **Tutorials**: Learning-oriented (e.g., "Setting up the cluster").
   - **How-To Guides**: Problem-oriented (e.g., "How to add a worker node").

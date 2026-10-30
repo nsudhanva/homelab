@@ -75,9 +75,38 @@ flowchart LR
   ArgoCD --> K8s[Kubernetes API]
 ```
 
-## Writing Guidelines
+## Writing Standard
 
-- Follow the [AGENTS.md](https://github.com/nsudhanva/homelab/blob/master/AGENTS.md) conventions
-- Do not use numbered lists. Write steps as headings or bullets that start with "Step 1", "Step 2", and so on
-- Do not use inline YAML comments
-- Write professional prose with no marketing language
+Write all documentation in ASD-STE100 Simplified Technical English. The rules in this section apply to every page and README.
+
+### Sentences and words
+
+- Write procedural sentences with a maximum of 20 words. Write descriptive sentences with a maximum of 25 words.
+- Write one instruction in each sentence. Use the imperative: "Run the plan." "Store the token in Vault."
+- Use the active voice. Write the subject that does the action: "ArgoCD applies the manifest," not "The manifest is applied."
+- Use the present tense for the current state. Use the future tense only for a result of a step.
+- Use one word for one meaning. Use the same technical name each time, for example `homelab-ai`, ArgoCD, and Vault.
+- Write a maximum of six sentences in a paragraph. Write one topic in each paragraph.
+- Use articles ("the", "a"). Do not use "etc." Give the full list.
+
+### Content
+
+- Describe the system as it is now. Do not write history, such as what changed, what was removed, what an older version did, or what did not work. Git history and commit messages keep that record.
+- State a requirement as a rule, and give the reason after it if the reader needs the reason: "Use a nameserver that blocks ads. Tailscale queries all global nameservers at the same time." Do not describe options that the system does not use, and do not write "not recommended, do this instead."
+- Write facts that the repository or the cluster confirms. Give the file path, the command, or the value.
+- For a feature that the repository does not have, write one sentence about the current scope, for example "The cluster has one server node." Do not write a procedure for it.
+
+### Words and patterns to remove
+
+- Do not use marketing words, for example robust, seamless, powerful, leverage, utilize, streamline, or cutting-edge.
+- Do not use filler, for example "it is important to note," "simply," "just," "basically," or "in order to."
+- Do not tell the reader what to think, for example "this is the key point" or "as you can see."
+- Do not use emoji, decorative bold in sentences, or em dashes.
+- Do not end a section with a summary of the same section.
+
+### Format
+
+- Do not use numbered lists. Write steps as headings or bullets that start with "Step 1", "Step 2", and so on.
+- Use tables for lookup data. Use bullets for items that are parallel. Use prose for explanation.
+- Put commands, paths, and values in code format.
+- Do not use inline YAML comments.
