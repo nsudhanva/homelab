@@ -45,6 +45,16 @@ spec:
               mountPath: /media
           ports:
             - containerPort: 6767
+          livenessProbe:
+            exec:
+              command:
+                - sh
+                - -c
+                - "! ps -eo ppid=,args= | awk '$1 == 1 && /bazarr\\/main\\.py/' | grep -q ."
+            initialDelaySeconds: 120
+            periodSeconds: 60
+            timeoutSeconds: 10
+            failureThreshold: 3
       volumes:
         - name: config
           persistentVolumeClaim:
