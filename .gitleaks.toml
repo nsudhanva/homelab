@@ -1,3 +1,5 @@
+# Extends the default gitleaks rules with key formats that the defaults miss.
+# Add a rule here only after a test key in the real format passes the defaults.
 [extend]
 useDefault = true
 
@@ -6,3 +8,9 @@ id = "tailscale-key"
 description = "Tailscale API key, auth key, OAuth client secret, or webhook secret"
 regex = '''tskey-(?:api|auth|client|scim|webhook)-[A-Za-z0-9]+-[A-Za-z0-9]{16,}'''
 keywords = ["tskey-"]
+
+[[rules]]
+id = "anthropic-key"
+description = "Anthropic key of any type, including user keys (sk-ant-usr-) that the default rule misses"
+regex = '''sk-ant-[a-z]+[0-9]*-[A-Za-z0-9_-]{40,}'''
+keywords = ["sk-ant-"]
