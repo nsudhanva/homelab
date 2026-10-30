@@ -210,7 +210,7 @@ The `jellyfin-media` volume is shared:
 | Container Image | `ghcr.io/nsudhanva/homelab-docs:latest` | Astro Starlight static documentation. Argo CD Image Updater pins the digest |
 | Internal URL | `http://docs.docs.svc:80` | The container listens on port 80 |
 | External URLs | `https://homelab.sudhanva.me`, `https://docs.sudhanva.me` | One HTTPRoute on the Tailscale gateway |
-| Cloudflare Pages | `docs/wrangler.toml` | Pages config with `pages_build_output_dir = "dist"`. No workflow in this repository deploys it |
+| Cloudflare Pages | `docs/wrangler.toml` | The Cloudflare Pages project `homelab` is connected to this repository. On every push to `master` it runs `npm run build` in `docs/` and publishes `dist` at `homelab-68o.pages.dev`. No GitHub workflow is involved |
 
 ---
 

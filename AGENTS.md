@@ -81,9 +81,10 @@ kubectl get applications -n argocd
 ### Adding Infrastructure
 
 - Step 1: Create the `infrastructure/{component}/` directory
-- Step 2: For Helm charts, add `Chart.yaml` and `values.yaml`
-- Step 3: For raw manifests, add the YAML files directly
-- Step 4: Push to Git. ArgoCD deploys the component automatically through the ApplicationSet
+- Step 2: For Helm charts, add an ArgoCD `Application` (for example `{component}.yaml`) with a Helm `source`. Put the values inline, or in a values file that the Application reads through a `$values` source
+- Step 3: For upstream release manifests, add a `kustomization.yaml` that references the pinned release URLs, with `patches` for local changes. Do not vendor large upstream files
+- Step 4: For raw manifests, add the YAML files directly, one resource per file
+- Step 5: Push to Git. ArgoCD deploys the component automatically through the ApplicationSet
 
 ### Adding a Python Application
 

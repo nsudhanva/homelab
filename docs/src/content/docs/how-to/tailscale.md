@@ -170,12 +170,9 @@ kubectl -n tailscale-dns create job --from=cronjob/tailscale-dns-updater tailsca
 
 ## Split-horizon DNS for homelab.sudhanva.me
 
-The docs hostname has two backends:
+The docs hostnames `homelab.sudhanva.me` and `docs.sudhanva.me` have manual public A records that point to the Tailscale Gateway IP. ExternalDNS does not manage them, because their HTTPRoute has no `external-dns.alpha.kubernetes.io/expose` annotation. Tailnet clients reach the cluster through the Tailscale Gateway. Clients off the tailnet cannot reach these hostnames. They can use the Cloudflare Pages copy at `homelab-68o.pages.dev`.
 
-- Tailnet clients go to the cluster through the Tailscale Gateway.
-- Public clients go to Cloudflare.
-
-Keep the public Cloudflare record on the designated host. Add a Tailscale DNS override for the same hostname.
+Keep the manual public records. The split-DNS resolver below answers the same hostnames for tailnet clients.
 
 ### Deploy the split-DNS resolver
 

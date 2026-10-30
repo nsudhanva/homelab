@@ -165,7 +165,7 @@ All of these resources must agree. If one is incorrect, HTTPS routing through Ta
 
 ## Split-horizon DNS for public hostnames
 
-Some hostnames need one target on the tailnet and a different target off the tailnet. For example, `homelab.sudhanva.me` must resolve to the cluster for tailnet clients and to Cloudflare for public clients.
+Some hostnames have a public DNS record that ExternalDNS does not manage. `homelab.sudhanva.me` and `docs.sudhanva.me` have manual public A records that point to the Tailscale Gateway IP, so they work only on the tailnet. The public copy of the docs is the Cloudflare Pages site `homelab-68o.pages.dev`, which Cloudflare builds from `docs/` on every push to `master`.
 
 To get this result, do these steps:
 
