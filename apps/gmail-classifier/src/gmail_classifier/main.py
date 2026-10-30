@@ -252,7 +252,7 @@ def run_pipeline(
         try:
             with gmail_lock:
                 raw_msg = gmail.get_message_content(msg_id)
-            email = sanitize_message(raw_msg)
+            email = sanitize_message(raw_msg, settings.max_body_chars)
             result = classifier.classify_sync(email, candidate_labels)
 
             with state_lock:

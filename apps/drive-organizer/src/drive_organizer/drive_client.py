@@ -94,7 +94,7 @@ class DriveClient:
         return files[:limit] if limit else files
 
     def download_file_header_bytes(
-        self, file_id: str, mime_type: str = "", max_bytes: int = 5_000_000
+        self, file_id: str, max_bytes: int, mime_type: str = ""
     ) -> bytes:
         """Downloads or exports the file stream, capped at max_bytes for fast inspection."""
         try:
@@ -273,7 +273,7 @@ class DriveClient:
         return folders
 
     def get_folder_manifest(
-        self, folder_id: str, folder_name: str, max_files: int = 50
+        self, folder_id: str, folder_name: str, max_files: int
     ) -> tuple[list[str], str]:
         """Gathers sample file paths and a formatted directory tree summary for LLM triage."""
         sample_paths: list[str] = []
@@ -307,7 +307,7 @@ class DriveClient:
                     sample_paths.append(rel_path)
 
         _traverse(folder_id, "", 1)
-        return sample_paths, "\n".join(lines[:100])
+        return sample_paths, "\n".join(lines)
 
     def walk_folder_files_and_dirs(
         self, root_folder_id: str, root_folder_name: str

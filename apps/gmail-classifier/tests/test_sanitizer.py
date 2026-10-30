@@ -53,7 +53,7 @@ def test_sanitize_message_plain_text():
         },
     }
 
-    email = sanitize_message(raw_msg)
+    email = sanitize_message(raw_msg, max_body_chars=1500)
     assert email.id == "msg-101"
     assert email.thread_id == "th-202"
     assert email.subject == "Server Alert: Disk Full"
@@ -85,7 +85,7 @@ def test_sanitize_message_multipart_with_html():
         },
     }
 
-    email = sanitize_message(raw_msg)
+    email = sanitize_message(raw_msg, max_body_chars=1500)
     assert email.id == "msg-102"
     assert email.subject == "Monthly Statement"
     assert email.sender == "billing@bank.example.com"

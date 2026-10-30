@@ -4,15 +4,15 @@ An Alertmanager webhook relay that sends AI alert summaries to Telegram.
 
 ## Overview
 
-The AI Alert Summarizer receives Prometheus Alertmanager webhook payloads. It sends the alert context to the local LLM in the cluster (Google Gemma 4 on an NVIDIA GPU). It then sends short, human-readable summaries directly to Telegram.
+The AI Alert Summarizer receives Prometheus Alertmanager webhook payloads. It sends the alert context to the shared `homelab-ai` model chain (Claude Haiku 5.5, then OpenRouter, then the local Gemma 4 model). It then sends short, human-readable summaries directly to Telegram.
 
 ## Features
 
 - Pydantic AI agent with strongly typed, schema-validated outputs (`AlertSummary`)
 - Automatic LLM retries for self-correction if the output does not match the schema constraints
-- Dynamic system prompts that include cluster context dependencies (`SummarizerDeps`)
+- Instructions that include the cluster name and environment
 - Non-blocking async processing with FastAPI and HTTPX
-- No external cloud dependencies (runs 100% locally on node `legion` with Gemma 4 in the cluster)
+- Falls back to the local Gemma 4 model in the cluster when the cloud providers are unavailable
 - Automatic fallback: if the LLM is unreachable or times out, the service sends a standard template, so no alert is lost
 - Native HTML formatting for Telegram messages
 

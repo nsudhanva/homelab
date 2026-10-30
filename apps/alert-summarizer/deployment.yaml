@@ -43,10 +43,6 @@ spec:
             - secretRef:
                 name: homelab-ai-credentials
           env:
-            - name: AI_MAX_TOKENS
-              value: "1024"
-            - name: AI_TEMPERATURE
-              value: "0.2"
             - name: ALERT_TELEGRAM_CHAT_ID
               value: "7341944813"
             - name: ALERT_TELEGRAM_BOT_TOKEN_FILE

@@ -48,14 +48,21 @@ class AlertSummarizerService:
             f"Summary: {alert.summary}",
             f"Description: {alert.description}",
         ]
+        if alert.startsAt:
+            lines.append(f"Started: {alert.startsAt}")
+        if alert.is_resolved and alert.endsAt:
+            lines.append(f"Ended: {alert.endsAt}")
         relevant_labels = {
             k: v
             for k, v in alert.labels.items()
             if k not in {"alertname", "namespace", "severity", "prometheus", "endpoint"}
         }
         if relevant_labels:
-            labels_str = ", ".join(f"{k}={v}" for k, v in list(relevant_labels.items())[:5])
-            lines.append(f"Labels: {labels_str}")
+            lines.append("Labels: " + ", ".join(f"{k}={v}" for k, v in relevant_labels.items()))
+        extra_annotations = {
+            k: v for k, v in alert.annotations.items() if k not in {"summary", "description"}
+        }
+        lines.extend(f"Annotation {k}: {v}" for k, v in extra_annotations.items())
         return "\n".join(lines)
 
     def format_fallback_message(self, alert: Alert) -> str:

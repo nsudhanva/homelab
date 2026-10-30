@@ -54,8 +54,14 @@ class Settings(BaseSettings):
         validation_alias=AliasChoices("PROCESSED_LABEL", "processed_label"),
         description="Gmail label indicating the email was processed by the classifier",
     )
+    max_body_chars: int = Field(
+        default=12_000,
+        gt=0,
+        validation_alias=AliasChoices("MAX_BODY_CHARS", "max_body_chars"),
+        description="Characters of cleaned email body sent to the model",
+    )
     concurrency: int = Field(
-        default=2,
+        default=4,
         validation_alias=AliasChoices("CONCURRENCY", "concurrency"),
         description="Number of concurrent message classification workers",
     )

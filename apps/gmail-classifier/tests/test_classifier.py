@@ -61,12 +61,13 @@ def test_filter_candidate_labels() -> None:
 
 
 def test_prompt_renders_hints_only_for_labels_the_account_has() -> None:
-    prompt = classifier_with(answer("x")).build_prompt(
+    labels, prompt = classifier_with(answer("x")).build_prompt(
         EMAIL, ["Personal/Doordash", "Personal/Rent"]
     )
-    assert "- Personal/Rent: The current apartment building" in prompt
-    assert "- Personal/Doordash\n" in prompt
-    assert "Companies/Apply" not in prompt
+    assert "- Personal/Rent: The current apartment building" in labels
+    assert "- Personal/Doordash\n" in labels
+    assert "Companies/Apply" not in labels
+    assert "noreply@realpage.com" not in labels
     assert "From: Ironworks <noreply@realpage.com>" in prompt
     assert "Body:\nHere is your community status report" in prompt
 

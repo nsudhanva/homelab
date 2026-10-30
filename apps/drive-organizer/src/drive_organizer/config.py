@@ -72,6 +72,32 @@ class Settings(BaseSettings):
         validation_alias="DRIVE_APP_PROPERTY_KEY",
     )
 
+    # Model input limits
+    max_download_bytes: int = Field(
+        default=20_000_000,
+        gt=0,
+        validation_alias="MAX_DOWNLOAD_BYTES",
+        description="Bytes downloaded per file for inspection",
+    )
+    max_document_chars: int = Field(
+        default=24_000,
+        gt=0,
+        validation_alias="MAX_DOCUMENT_CHARS",
+        description="Characters of extracted document text sent to the model",
+    )
+    pdf_max_pages: int = Field(
+        default=10,
+        gt=0,
+        validation_alias="PDF_MAX_PAGES",
+        description="PDF pages whose text is extracted",
+    )
+    triage_max_files: int = Field(
+        default=200,
+        gt=0,
+        validation_alias="TRIAGE_MAX_FILES",
+        description="Files listed in a folder manifest for folder triage",
+    )
+
     @property
     def client_id(self) -> str:
         return self.drive_client_id or self.gmail_client_id

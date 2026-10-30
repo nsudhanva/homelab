@@ -65,22 +65,15 @@ spec:
                   cpu: 500m
                   memory: 384Mi
               envFrom:
+                - configMapRef:
+                    name: homelab-ai
+                - secretRef:
+                    name: homelab-ai-credentials
                 - secretRef:
                     name: gmail-credentials-{account_id}
-                - secretRef:
-                    name: openrouter-credentials
-                    optional: true
               env:
                 - name: ACCOUNT_NAME
                   value: "{account_id}"
-                - name: PRIMARY_LLM_PROVIDER
-                  value: "local"
-                - name: FALLBACK_LLM_PROVIDER
-                  value: "openrouter"
-                - name: OPENROUTER_MODEL_NAME
-                  value: "google/gemma-4-31b-it"
-                - name: LLM_BASE_URL
-                  value: "http://llama-server.llama.svc.cluster.local:8080/v1"
                 - name: TELEGRAM_CHAT_ID
                   value: "7341944813"
                 - name: CONFIDENCE_THRESHOLD
@@ -90,7 +83,7 @@ spec:
                 - name: PROCESSED_LABEL
                   value: "ai-processed"
                 - name: CONCURRENCY
-                  value: "1"
+                  value: "4"
                 - name: ARCHIVE_OLDER_THAN_DAYS
                   value: "90"
                 - name: AUTO_ARCHIVE_ENABLED
@@ -257,24 +250,15 @@ spec:
             args:
             - "--scope=root"
             envFrom:
+            - configMapRef:
+                name: homelab-ai
+            - secretRef:
+                name: homelab-ai-credentials
             - secretRef:
                 name: drive-credentials-{account_id}
-            - secretRef:
-                name: openrouter-credentials
-                optional: true
             env:
             - name: ACCOUNT_NAME
               value: "{account_id}"
-            - name: PRIMARY_LLM_PROVIDER
-              value: "local"
-            - name: FALLBACK_LLM_PROVIDER
-              value: "openrouter"
-            - name: OPENROUTER_MODEL_NAME
-              value: "google/gemma-4-31b-it"
-            - name: LLM_BASE_URL
-              value: "http://llama-server.llama.svc.cluster.local:8080/v1"
-            - name: LLM_MODEL_NAME
-              value: "gemma-4-e2b-it"
             - name: TELEGRAM_CHAT_ID
               value: "7341944813"
             resources:
@@ -333,7 +317,7 @@ spec:
 def generate_kustomization(
     namespace: str, account_ids: list[str], extra_cronjobs: bool = False
 ) -> str:
-    resources = ["namespace.yaml", "openrouter-secret.yaml"]
+    resources = ["namespace.yaml"]
     for aid in account_ids:
         resources.append(f"secret-{aid}.yaml")
         resources.append(f"cronjob-{aid}.yaml")
@@ -346,6 +330,8 @@ kind: Kustomization
 namespace: {namespace}
 resources:
 {res_lines}
+components:
+- ../../packages/homelab-ai/kustomize
 """
 
 

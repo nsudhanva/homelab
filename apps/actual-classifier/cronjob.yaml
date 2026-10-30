@@ -61,7 +61,7 @@ spec:
                 - name: CONFIDENCE_THRESHOLD
                   value: "0.6"
                 - name: BATCH_SIZE
-                  value: "50"
+                  value: "200"
               volumeMounts:
                 - name: tmp
                   mountPath: /tmp

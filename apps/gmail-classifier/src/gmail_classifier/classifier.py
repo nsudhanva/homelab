@@ -94,14 +94,14 @@ class EmailClassifier:
             candidates.append(name)
         return sorted(candidates)
 
-    def build_prompt(self, email: SanitizedEmail, curated_labels: list[str]) -> str:
+    def build_prompt(self, email: SanitizedEmail, curated_labels: list[str]) -> tuple[str, str]:
+        """Return the label guide, shared by every email in a run, and the email itself."""
         labels_section = (
             render_label_guide(curated_labels)
             if curated_labels
             else "None. Propose a broad canonical label."
         )
-        return (
-            f"Allowed labels:\n{labels_section}\n\n"
+        return f"Allowed labels:\n{labels_section}", (
             "Email:\n"
             f"From: {email.sender}\n"
             f"Subject: {email.subject}\n"
@@ -141,7 +141,7 @@ class EmailClassifier:
 
     def _prepare(
         self, email: SanitizedEmail, candidate_labels: list[str]
-    ) -> tuple[str | None, list[str]]:
+    ) -> tuple[tuple[str, str] | None, list[str]]:
         curated = self.filter_candidate_labels(candidate_labels)
         if not curated and not self.allow_label_creation:
             logger.warning("No active curated user labels found. Falling back to quarantine.")
@@ -156,7 +156,8 @@ class EmailClassifier:
         if prompt is None:
             return self._quarantine(0.0, "No active curated user labels available")
         try:
-            raw = await self.task.run(prompt)
+            labels, message = prompt
+            raw = await self.task.run(message, stable_prefix=labels)
         except LLMOutputError as exc:
             return self._quarantine(0.0, f"Model output error: {exc}")
         return self._evaluate_result(raw, set(curated))
@@ -169,7 +170,8 @@ class EmailClassifier:
         if prompt is None:
             return self._quarantine(0.0, "No active curated user labels available")
         try:
-            raw = self.task.run_sync(prompt)
+            labels, message = prompt
+            raw = self.task.run_sync(message, stable_prefix=labels)
         except LLMOutputError as exc:
             return self._quarantine(0.0, f"Model output error: {exc}")
         return self._evaluate_result(raw, set(curated))

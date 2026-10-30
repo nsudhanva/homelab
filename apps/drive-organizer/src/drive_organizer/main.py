@@ -42,12 +42,14 @@ def process_single_file(
     try:
         # 1. Download initial bytes for inspection
         file_bytes = drive_client.download_file_header_bytes(
-            file_id, mime_type=mime_type, max_bytes=2_000_000
+            file_id, mime_type=mime_type, max_bytes=settings.max_download_bytes
         )
         inspection = FileInspector.inspect_bytes(
             filename=filename,
             mime_type=mime_type,
             file_bytes=file_bytes,
+            max_chars=settings.max_document_chars,
+            pdf_max_pages=settings.pdf_max_pages,
             created_time_str=created_time,
             folder_breadcrumbs=breadcrumbs,
         )
@@ -213,7 +215,7 @@ def run_pipeline(
 
             # Gather manifest and tree summary for LLM triage
             sample_files, tree_summary = drive_client.get_folder_manifest(
-                folder_id_val, folder_name
+                folder_id_val, folder_name, max_files=settings.triage_max_files
             )
             triage = classifier.triage_folder_sync(folder_name, sample_files, tree_summary)
             logger.info(

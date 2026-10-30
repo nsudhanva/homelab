@@ -29,6 +29,9 @@ class FileInspector:
         filename: str,
         mime_type: str,
         file_bytes: bytes,
+        *,
+        max_chars: int,
+        pdf_max_pages: int,
         created_time_str: str | None = None,
         folder_breadcrumbs: list[str] | None = None,
     ) -> DocumentInspection:
@@ -74,7 +77,7 @@ class FileInspector:
 
         # 2. PDF inspection (Firecrawl single-page pattern)
         if lower_mime == "application/pdf" or lower_name.endswith(".pdf"):
-            inspection = FileInspector._inspect_pdf(file_bytes)
+            inspection = FileInspector._inspect_pdf(file_bytes, max_chars, pdf_max_pages)
             inspection.folder_breadcrumbs = breadcrumbs
             return inspection
 
@@ -85,12 +88,12 @@ class FileInspector:
             or lower_name.endswith((".txt", ".csv", ".json", ".md"))
         ):
             try:
-                text = file_bytes[:8000].decode("utf-8", errors="replace")
+                text = file_bytes.decode("utf-8", errors="replace")
                 return DocumentInspection(
                     is_media=False,
                     page_count=1,
                     has_extractable_text=bool(text.strip()),
-                    extracted_text=text[:3500].strip(),
+                    extracted_text=text.strip()[:max_chars],
                     folder_breadcrumbs=breadcrumbs,
                 )
             except Exception as e:
@@ -105,8 +108,8 @@ class FileInspector:
         )
 
     @staticmethod
-    def _inspect_pdf(file_bytes: bytes) -> DocumentInspection:
-        """Inspects PDF, extracting up to the first 3 pages of text for LLM content analysis."""
+    def _inspect_pdf(file_bytes: bytes, max_chars: int, max_pages: int) -> DocumentInspection:
+        """Inspects PDF, extracting text from the first ``max_pages`` pages for the model."""
         try:
             stream = io.BytesIO(file_bytes)
             reader = PdfReader(stream)
@@ -115,7 +118,7 @@ class FileInspector:
                 return DocumentInspection(is_media=False, page_count=0, has_extractable_text=False)
 
             extracted_chunks: list[str] = []
-            for p_idx in range(min(num_pages, 3)):
+            for p_idx in range(min(num_pages, max_pages)):
                 page_text = reader.pages[p_idx].extract_text() or ""
                 stripped = page_text.strip()
                 if stripped:
@@ -123,7 +126,7 @@ class FileInspector:
 
             full_text = "\n\n".join(extracted_chunks)
             has_text = len(full_text.strip()) > 30
-            truncated = full_text.strip()[:3500]
+            truncated = full_text.strip()[:max_chars]
 
             return DocumentInspection(
                 is_media=False,

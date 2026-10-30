@@ -202,7 +202,7 @@ class DriveClassifier:
             f"Please evaluate the following Google Drive folder to decide if it is code/project (keep intact) "
             f"or an unstructured document batch (dismantle):\n\n"
             f"Folder Name: {folder_name}\n"
-            f"Sample Files: {', '.join(sample_files[:20]) if sample_files else 'None'}\n\n"
+            f"Sample Files: {', '.join(sample_files) if sample_files else 'None'}\n\n"
             f"Folder Manifest:\n{tree_summary}\n\n"
             "Decision Rules:\n"
             "- If it represents a software repo, code project, script collection, or dev environment, "
@@ -259,7 +259,7 @@ class DriveClassifier:
         mime_type: str = "application/pdf",
         folder_breadcrumbs: list[str] | None = None,
     ) -> DocumentClassification:
-        """Classifies a document by reading its content with the local LLM."""
+        """Classifies a document by reading its content with the model chain."""
         # 1. Preliminary heuristic scan for contextual hints (non-binding)
         pre_route: PreRouteSuggestion = PreRouter.analyze(
             filename, extracted_text, folder_breadcrumbs=folder_breadcrumbs
@@ -267,7 +267,7 @@ class DriveClassifier:
 
         # 2. Construct LLM prompt with actual extracted document text
         text_section = (
-            f"--- EXTRACTED DOCUMENT TEXT ---\n{extracted_text[:2000]}\n--- END DOCUMENT TEXT ---"
+            f"--- EXTRACTED DOCUMENT TEXT ---\n{extracted_text}\n--- END DOCUMENT TEXT ---"
             if extracted_text.strip()
             else "[No extractable text found in document stream/header - rely on filename and metadata]"
         )

@@ -82,7 +82,7 @@ def extract_payload_text(payload: dict[str, Any]) -> tuple[str, str]:
     return "\n".join(plain_parts).strip(), "\n".join(html_parts).strip()
 
 
-def sanitize_message(msg: dict[str, Any], max_body_chars: int = 1500) -> SanitizedEmail:
+def sanitize_message(msg: dict[str, Any], max_body_chars: int) -> SanitizedEmail:
     """Parse raw Gmail API message dictionary and produce a clean SanitizedEmail model."""
     msg_id = str(msg.get("id", ""))
     thread_id = str(msg.get("threadId", ""))
