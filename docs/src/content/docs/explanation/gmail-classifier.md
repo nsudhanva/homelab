@@ -1,11 +1,11 @@
 ---
 title: AI Email Triage & Gmail Classifier Architecture
-description: Architecture of the daily Gmail classifier that uses Pydantic AI, local Gemma 4 inference on an NVIDIA GPU, and Vault secrets.
+description: Architecture of the daily Gmail classifier that uses Pydantic AI, the homelab-ai model chain, and Vault secrets.
 keywords:
   - pydantic ai
   - gmail classifier
-  - local llm
-  - gemma 4
+  - claude haiku
+  - prompt caching
   - kubernetes cronjob
   - homelab ai
   - email triage
@@ -15,7 +15,7 @@ sidebar:
 
 ## Overview
 
-The Gmail Classifier is an email triage job that runs as a Kubernetes CronJob. GitOps manages its deployment. The job runs every day at 01:00 UTC and examines the messages from the previous day. It cleans the email bodies and sends them through Pydantic AI to a local large language model (LLM) in the cluster. The model is Google Gemma 4 E2B on an NVIDIA GeForce GTX 1050 Ti.
+The Gmail Classifier is an email triage job that runs as a Kubernetes CronJob. GitOps manages its deployment. The job runs every day at 01:00 UTC and examines the messages from the previous day. It cleans the email bodies and sends them through Pydantic AI to the shared `homelab-ai` model chain. The primary model is Claude Haiku 5.5. OpenRouter and the local Gemma 4 model in the cluster are the fallbacks. The label guide is the same for every email in a run, so the classifier sends it as a cached prompt prefix.
 
 The classifier puts incoming mail only into the existing labels that the user curates. If the result is uncertain or ambiguous, the classifier applies the `ai-review` label and does not change the root labels. When the run is complete, the classifier sends a summary report to Telegram.
 
@@ -82,7 +82,7 @@ sequenceDiagram
     participant Gmail as Gmail API v1
     participant San as Sanitizer
     participant AI as Pydantic AI Agent
-    participant LLM as llama-server (Gemma 4)
+    participant LLM as Model chain (Claude Haiku 5.5)
     participant TG as Telegram Bot
 
     Cron->>Pod: Trigger scheduled job (target: yesterday UTC)
@@ -95,7 +95,7 @@ sequenceDiagram
         Pod->>Gmail: Get message payload and headers
         Gmail-->>Pod: Raw MIME / payload dictionary
         Pod->>San: Parse headers, decode base64, strip HTML
-        San-->>Pod: SanitizedEmail model (subject, sender, snippet, 1500 char body)
+        San-->>Pod: SanitizedEmail model (subject, sender, snippet, MAX_BODY_CHARS body)
         Pod->>AI: agent.run_sync(email, candidate_labels)
         AI->>LLM: Chat completion request with schema enforcement
         LLM-->>AI: JSON payload with reasoning & confidence
@@ -130,8 +130,8 @@ flowchart LR
 
     subgraph PydanticAI ["Pydantic AI Framework"]
         Prompt["Dynamic System & User Prompt"]
-        Provider["OpenAIProvider (AsyncOpenAI Client)"]
-        ChatModel["OpenAIChatModel (gemma-4-e2b-it)"]
+        Provider["homelab-ai AITask"]
+        ChatModel["FallbackModel (Haiku, OpenRouter, local)"]
         AgentCore["Agent[None, ClassificationResult]"]
 
         EmailModel --> Prompt
@@ -216,8 +216,8 @@ stateDiagram-v2
     Sanitizing --> Inferring: Submit to Pydantic AI Agent
 
     state Inferring {
-        [*] --> GemmaThinking: Model Reasoning Phase
-        GemmaThinking --> JSONValidation: Structured Output Parse
+        [*] --> ModelThinking: Model Reasoning Phase
+        ModelThinking --> JSONValidation: Structured Output Parse
         JSONValidation --> [*]
     }
 

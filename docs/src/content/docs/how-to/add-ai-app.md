@@ -68,6 +68,14 @@ class ReceiptReader:
 
 Use `await task.run(text)` in async code such as FastAPI handlers.
 
+If many calls share the same text, such as a list of categories, pass it as `stable_prefix`. Anthropic models then read it from the prompt cache at 0.1 times the input price:
+
+```python
+self.task.run_sync(receipt_text, stable_prefix=category_guide)
+```
+
+Do not hardcode input limits such as the number of characters you send. Add them to the `Settings` class of the app as pydantic-settings fields with an environment variable, and pass the values to the code that uses them. Size the defaults for the primary model. The local fallback model has an 8K token context.
+
 ## Step 3: Test with injected models
 
 Pass `models` to inject Pydantic AI test models. Tests then run offline:
@@ -126,7 +134,7 @@ To use a different model for this workload only, add an `env` entry. Values in `
 ```yaml
 env:
   - name: AI_MODEL
-    value: "anthropic:claude-haiku-5-5"
+    value: "local:gemma-4-e2b-it"
 ```
 
 ## Step 5: Add the Dockerfile and CI entry

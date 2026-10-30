@@ -54,7 +54,7 @@ kubectl -n monitoring get servicemonitors
 
 ## Step 5: Telegram Alerting
 
-Alertmanager sends alerts to the `alert-summarizer` service (`apps/alert-summarizer/`). This service uses the local LLM to summarize each alert and posts the summary to Telegram. Grafana posts to Telegram directly.
+Alertmanager sends alerts to the `alert-summarizer` service (`apps/alert-summarizer/`). This service uses the shared `homelab-ai` model chain to summarize each alert and posts the summary to Telegram. Grafana posts to Telegram directly.
 
 - Bot: `@ManassuHomelabBot`
 - Target Chat ID: `7341944813`
@@ -67,7 +67,7 @@ Alertmanager sends alerts to the `alert-summarizer` service (`apps/alert-summari
 ### Alert summarizer behavior
 
 - The webhook acknowledges Alertmanager immediately. Then it processes the alerts in the background, one at a time.
-- The shared `homelab-ai` model chain writes a summary of each alert with a symptom, a probable cause, and a recommended action. The Deployment limits the output with `AI_MAX_TOKENS` and `AI_TEMPERATURE`. If no model answers, the service sends a plain template message.
+- The shared `homelab-ai` model chain writes a summary of each alert with a symptom, a probable cause, and a recommended action. The prompt includes all labels, all annotations, and the start and end times of the alert. If no model answers, the service sends a plain template message.
 - The service ignores a repeated delivery of the same alert state (same fingerprint and status) in the `ALERT_DEDUP_WINDOW_SECONDS` window (default 3000 seconds). This window is shorter than `repeat_interval`. Thus the service still sends hourly reminders for alerts that continue to fire.
 - Argo CD Image Updater deploys new images automatically (digest strategy).
 

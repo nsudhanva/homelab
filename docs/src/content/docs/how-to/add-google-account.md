@@ -118,4 +118,4 @@ Both apps show active schedules. You do not have to do manual steps.
 
 ## Step 6: Autonomous Label Discovery for New Accounts
 
-A new Google account can have few or no custom labels. In this case, the classifier does not move valid incoming messages into `ai-review`. Instead, the local LLM finds and creates high-level canonical labels in Gmail on the first match. Examples are `Newsletters`, `Travel`, `Entertainment`, `Shopping`, `Finance`, and `Social`. This behavior needs `ALLOW_LABEL_CREATION=true`. This setting is on by default for all accounts that `scripts/generate-account-manifests.py` generates. Later runs use the new labels again.
+A new Google account can have few or no custom labels. In this case, the classifier does not move valid incoming messages into `ai-review`. Instead, the model finds and creates high-level canonical labels in Gmail on the first match. Examples are `Newsletters`, `Travel`, `Entertainment`, `Shopping`, `Finance`, and `Social`. This behavior needs `ALLOW_LABEL_CREATION=true`. This setting is on by default for all accounts that `scripts/generate-account-manifests.py` generates. Later runs use the new labels again.

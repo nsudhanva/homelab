@@ -31,14 +31,15 @@ Use `openai` with `OPENAI_BASE_URL` for any other OpenAI-compatible API. To add 
 
 | Variable | Default | Purpose |
 |---|---|---|
-| `AI_MODEL` | `local:gemma-4-e2b-it` | Primary model |
-| `AI_FALLBACK_MODELS` | `openrouter:google/gemma-4-31b-it,anthropic:claude-haiku-5-5` | Comma-separated fallback chain. Set `none` to disable |
+| `AI_MODEL` | `anthropic:claude-haiku-5-5` | Primary model |
+| `AI_FALLBACK_MODELS` | `openrouter:google/gemma-4-31b-it,local:gemma-4-e2b-it` | Comma-separated fallback chain. Set `none` to disable |
 | `AI_ATTEMPTS` | `2` | Attempts per call when every model fails with a network, timeout, 429, or 5xx error |
 | `AI_RETRY_BACKOFF_SECONDS` | `5` | Wait before the next attempt, multiplied by the attempt number |
 | `AI_TIMEOUT_SECONDS` | Provider default | Request timeout for every provider |
 | `AI_MAX_RETRIES` | Provider default | HTTP retries inside the provider client |
-| `AI_TEMPERATURE` | Model default | Sampling temperature |
-| `AI_MAX_TOKENS` | Model default | Output token limit |
+| `AI_EFFORT` | Model default (`medium` on Haiku 5.5) | Thinking effort: `low`, `medium`, `high`, `xhigh`, or `max`. Providers without effort ignore it |
+| `AI_TEMPERATURE` | Model default | Sampling temperature. Haiku 5.5 does not accept it, so only the fallback models use it |
+| `AI_MAX_TOKENS` | Model maximum | Output token limit. Thinking counts toward this limit |
 | `LOCAL_LLM_BASE_URL` | `http://llama-server.llama.svc.cluster.local:8080/v1` | OpenAI-compatible URL of the local model server |
 | `OPENROUTER_API_KEY` | None | OpenRouter key |
 | `OPENROUTER_BASE_URL` | `https://openrouter.ai/api/v1` | OpenRouter URL |
@@ -66,7 +67,7 @@ The `homelab-ai-credentials` ExternalSecret in `packages/homelab-ai/kustomize/ex
 |---|---|
 | Every AI workload | `literals` in `packages/homelab-ai/kustomize/kustomization.yaml` |
 | One workload | An `env` entry in that CronJob or Deployment |
-| One local run | Environment variables, for example `AI_MODEL=anthropic:claude-haiku-5-5 uv run python -m gmail_classifier.main --dry-run` |
+| One local run | Environment variables, for example `AI_MODEL=local:gemma-4-e2b-it uv run python -m gmail_classifier.main --dry-run` |
 
 ## CLI
 
@@ -87,4 +88,18 @@ In a container image, run `python -m homelab_ai.cli` instead of `homelab-ai`. Th
 | `gmail-classifier` | `gmail-classifier` |
 | `drive-organizer` | `drive-organizer`, `drive-organizer-triage` |
 | `actual-classifier` | `actual-classifier` |
-| `alert-summarizer` | `alert-summarizer` (overrides `AI_MAX_TOKENS` and `AI_TEMPERATURE`) |
+| `alert-summarizer` | `alert-summarizer` |
+
+## App input limits
+
+Each app keeps its limits in its pydantic-settings `Settings` class. To change a limit for one workload, add an `env` entry to its CronJob. For the Gmail and Drive CronJobs, change `scripts/generate-account-manifests.py` and run it again.
+
+| Workload | Variable | Default | Purpose |
+|---|---|---|---|
+| `gmail-classifier` | `MAX_BODY_CHARS` | `12000` | Characters of the cleaned email body sent to the model |
+| `gmail-classifier` | `CONCURRENCY` | `4` | Emails classified at the same time |
+| `drive-organizer` | `MAX_DOWNLOAD_BYTES` | `20000000` | Bytes downloaded from each file for inspection |
+| `drive-organizer` | `MAX_DOCUMENT_CHARS` | `24000` | Characters of document text sent to the model |
+| `drive-organizer` | `PDF_MAX_PAGES` | `10` | PDF pages whose text is extracted |
+| `drive-organizer` | `TRIAGE_MAX_FILES` | `200` | Files listed in a folder manifest for folder triage |
+| `actual-classifier` | `BATCH_SIZE` | `25` (CronJob: `200`) | Transactions classified in one run |

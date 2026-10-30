@@ -1,12 +1,12 @@
 ---
 title: How to Auto-Classify Actual Budget Transactions
-description: Configure, benchmark, and deploy the AI transaction classifier for Actual Budget with the local Gemma 4 SLM and homelab-ai routing.
+description: Configure, benchmark, and deploy the AI transaction classifier for Actual Budget with Claude Haiku and homelab-ai routing.
 keywords:
   - actual budget classifier
   - pydantic ai actual budget
-  - local llm finance classifier
+  - llm finance classifier
   - transaction categorization
-  - gemma 4 slm
+  - claude haiku
 sidebar:
   order: 21
 ---
@@ -19,8 +19,7 @@ Use this guide to operate, configure, benchmark, and monitor the Actual Budget t
 
 The classifier gives each imported bank transaction a category and a single-word tag:
 
-- **Local inference first**: The local LLaMA server (`llama-server.llama.svc.cluster.local:8080/v1`) classifies the transactions with Google Gemma 4 (`gemma-4-e2b-it`).
-- **Fallback**: If the local model has a high load or is temporarily unavailable, requests go to OpenRouter (`google/gemma-4-31b-it`). The shared `homelab-ai` router controls this fallback.
+- **Model chain**: Claude Haiku 5.5 classifies the transactions. If it is unavailable, requests go to OpenRouter (`google/gemma-4-31b-it`) and then to the local model (`gemma-4-e2b-it`). The shared `homelab-ai` chain controls this fallback.
 - **Taxonomy**: Pydantic schema validation limits the model to single-word categories (`Food`, `Transit`, `Shopping`, `Bills`, `Rent`, `Travel`, `Medical`, `Income`, `Savings`, `Transfer`) and single-word tags (`#Subscription`, `#Transit`, `#Medical`, `#Travel`, `#Income`, `#Bills`, `#Rent`, `#Transfer`, `#Unknown`).
 - **Payee names**: The classifier changes raw POS strings (such as `TST*IDLY EXPRESS - MOUNT` or `ACH Withdrawal COMCAST-XFINITY`) into readable payee names (`Idly Express`, `Comcast`).
 - **Confidence threshold**: If a prediction is below the configured confidence threshold (default `0.60`), the classifier tags it `#Unknown`. This prevents incorrect classification of ambiguous charges. If no tag applies (for example, groceries and general shopping), the note stays clean.
@@ -36,7 +35,7 @@ The classifier gets connection parameters from environment variables. It gets cr
 ACTUAL_SERVER_URL: "http://actual-budget.actual-budget.svc.cluster.local:5006"
 ACTUAL_BUDGET_NAME: "My Finances"
 CONFIDENCE_THRESHOLD: "0.6"
-BATCH_SIZE: "50"
+BATCH_SIZE: "200"
 ```
 
 The `actual-classifier-secrets` ExternalSecret reads `ACTUAL_PASSWORD` from Vault `kv/actual` (`password`).

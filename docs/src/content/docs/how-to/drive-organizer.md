@@ -23,9 +23,9 @@ The organizer has these operational characteristics:
 
 - **Entity Symmetrical Hierarchy**: Each family member (`Sudhanva`, `Maanasa`, `Narayana`, `Narmada`, `Rashmi`) has the same subfolder depth (`USA/`, `India/`, `Career/`, `Education/`).
 - **Media Pre-Routing**: The organizer sorts photos and videos by date (`Media/YYYY/YYYY-MM/`) from EXIF and Drive metadata. The LLM does not process these files.
-- **Firecrawl Single-Page Inspection**: The organizer streams only the first page of a PDF (or up to 2,000 characters). It uses this text to find the document type and reading order, and does not download the full file.
-- **Pydantic AI & Local Inference**: The organizer uses `pydantic-ai` with structured output models. These models point to `llama-server.llama.svc.cluster.local:8080/v1`, which runs Google Gemma 4 (E2B).
-- **LLM Folder Triage**: If you put a non-taxonomy folder in the root, Gemma reads the folder manifest. It classifies the folder as a code repository or as an unstructured document batch.
+- **Document Inspection**: The organizer downloads up to `MAX_DOWNLOAD_BYTES` of each file and extracts the text of the first `PDF_MAX_PAGES` pages. It sends up to `MAX_DOCUMENT_CHARS` characters of this text to the model to find the document type.
+- **Pydantic AI**: The organizer uses `pydantic-ai` with structured output models through the shared `homelab-ai` chain.
+- **LLM Folder Triage**: If you put a non-taxonomy folder in the root, the model reads the folder manifest (up to `TRIAGE_MAX_FILES` files). It classifies the folder as a code repository or as an unstructured document batch.
 - **Code & Project Preservation**: The organizer keeps software projects, git repositories, and Jupyter notebook folders intact. It moves them directly to `Code/<Folder_Name>` or `Colab Notebooks/<Folder_Name>`.
 - **Recursive Document Dismantling**: The organizer reads loose document folders recursively. It files each document into the symmetrical taxonomy and uses the folder path as context. Then it removes the empty folders from the bottom up.
 - **Joint Drive Shortcuts**: Each joint record (Marriage Certificate, apartment leases, joint tax returns) is in one location only. The organizer automatically makes a native Google Drive Shortcut (`application/vnd.google-apps.shortcut`) in the related folder of the partner.
@@ -47,7 +47,7 @@ You can put items directly in the root of Google Drive (`My Drive`).
 
 - **Loose Files**: The organizer classifies and files single PDFs, images, and documents directly.
 - **Unorganized Document Folders**: The organizer automatically reads folders such as `Scans/`, `2024 Taxes/`, and nested folders. The files use the parent folder names as context, which gives high-confidence classification. When all files are moved out, the organizer removes the empty parent folders automatically.
-- **Code Repositories**: The local LLM finds folders that contain scripts, software projects, or Jupyter notebooks. The organizer moves these folders intact and does not split them into separate files.
+- **Code Repositories**: The model finds folders that contain scripts, software projects, or Jupyter notebooks. The organizer moves these folders intact and does not split them into separate files.
 - **Protected Taxonomy**: The root taxonomy directories (`Sudhanva/`, `Maanasa/`, `Code/`, `Media/`, `Review/`) are protected. The organizer never dismantles them.
 
 ## Step 3: Trigger an Ad-Hoc Run
@@ -80,7 +80,7 @@ kubectl -n drive-organizer run drive-dry-run \
 
 The organizer uses the Pydantic AI `FallbackModel` to keep inference available across local and cloud providers.
 
-- **Model chain**: The organizer uses the shared `homelab-ai` chain. The default is the local `gemma-4-e2b-it` model, then OpenRouter `google/gemma-4-31b-it`, then Anthropic `claude-haiku-5-5`.
+- **Model chain**: The organizer uses the shared `homelab-ai` chain. The default is Anthropic `claude-haiku-5-5`, then OpenRouter `google/gemma-4-31b-it`, then the local `gemma-4-e2b-it` model.
 - **Secrets**: The `homelab-ai-credentials` ExternalSecret reads the OpenRouter and Anthropic keys from Vault (`kv/openrouter`, `kv/anthropic`).
 
 ### Change the model
@@ -90,7 +90,7 @@ Change models in Git, not with `kubectl`. To change the model for every AI workl
 ```yaml
             env:
             - name: AI_MODEL
-              value: "anthropic:claude-haiku-5-5"
+              value: "local:gemma-4-e2b-it"
 ```
 
 For all settings, see [AI Configuration Reference](/reference/ai-configuration/).
