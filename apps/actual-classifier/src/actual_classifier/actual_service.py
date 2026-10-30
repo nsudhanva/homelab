@@ -20,9 +20,7 @@ class ActualBudgetService:
         self.settings = settings
         self.classifier = classifier
 
-    def run_classification_cycle(
-        self, limit: int = 50, dry_run: bool = False
-    ) -> list[dict[str, Any]]:
+    def run_classification_cycle(self, limit: int, dry_run: bool = False) -> list[dict[str, Any]]:
         """Find pending transactions, classify them with the LLM, and apply updates."""
         logger.info(f"Connecting to Actual Budget at {self.settings.actual_server_url}...")
 
@@ -80,7 +78,6 @@ class ActualBudgetService:
                     imported_payee=payee_name,
                     account_name=acc_name,
                     current_notes=tx.notes or "",
-                    current_category=tx.category.name if tx.category else None,
                 )
 
                 classification: ClassificationResult = self.classifier.classify(tx_input)

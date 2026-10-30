@@ -210,8 +210,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--limit",
         type=int,
-        default=25,
-        help="Maximum transactions to process",
+        default=None,
+        help="Maximum transactions to process (defaults to BATCH_SIZE)",
     )
     parser.add_argument(
         "--benchmark",
@@ -233,7 +233,9 @@ def main() -> None:
         sys.exit(0 if score >= 80.0 else 1)
 
     service = ActualBudgetService(settings, classifier)
-    results = service.run_classification_cycle(limit=args.limit, dry_run=args.dry_run)
+    results = service.run_classification_cycle(
+        limit=args.limit or settings.batch_size, dry_run=args.dry_run
+    )
 
     print(f"\nProcessed {len(results)} transactions:")
     for r in results:
