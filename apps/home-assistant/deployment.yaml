@@ -29,6 +29,12 @@ spec:
           ports:
             - containerPort: 8123
               name: http
+          env:
+            - name: SARVAM_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: sarvam-api
+                  key: api_key
           resources:
             requests:
               cpu: 100m
@@ -44,6 +50,9 @@ spec:
               subPath: configuration.yaml
             - name: packages
               mountPath: /config/packages
+            - name: sarvam-tts
+              mountPath: /config/custom_components/sarvam_tts
+              readOnly: true
       volumes:
         - name: config
           persistentVolumeClaim:
@@ -54,3 +63,6 @@ spec:
         - name: packages
           configMap:
             name: home-assistant-packages
+        - name: sarvam-tts
+          configMap:
+            name: home-assistant-sarvam-tts

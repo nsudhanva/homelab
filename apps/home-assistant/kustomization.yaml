@@ -8,3 +8,11 @@ resources:
   - httproute.yaml
   - configmap-packages.yaml
   - configmap-core.yaml
+  - external-secret-sarvam.yaml
+configMapGenerator:
+  - name: home-assistant-sarvam-tts
+    namespace: home-assistant
+    files:
+      - custom_components/sarvam_tts/manifest.json
+      - custom_components/sarvam_tts/__init__.py
+      - custom_components/sarvam_tts/tts.py
