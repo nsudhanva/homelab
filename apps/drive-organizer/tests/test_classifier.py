@@ -1,3 +1,12 @@
+from pydantic_ai.messages import (
+    ModelMessage,
+    ModelRequest,
+    ModelResponse,
+    ToolCallPart,
+    UserPromptPart,
+)
+from pydantic_ai.models.function import AgentInfo, FunctionModel
+
 from drive_organizer.classifier import (
     DocumentClassification,
     DriveClassifier,
@@ -129,7 +138,7 @@ def test_low_confidence_routes_to_review():
     assert DriveClassifier.resolve_target_folder(cls_unknown) == "Review/Needs Review"
 
 
-def test_classify_sync_feeds_extracted_text_to_llm():
+def test_classify_sync_feeds_extracted_text_to_llm(make_task):
     mock_output = DocumentClassification(
         person="Sudhanva",
         jurisdiction="USA",
@@ -143,21 +152,19 @@ def test_classify_sync_feeds_extracted_text_to_llm():
         reasoning="Document contains dynamic programming solutions",
     )
 
-    class MockAgent:
-        def __init__(self, output: DocumentClassification):
-            self._output = output
-            self.last_prompt = ""
+    prompts: list[str] = []
 
-        def run_sync(self, prompt: str):
-            self.last_prompt = prompt
+    def capture(messages: list[ModelMessage], info: AgentInfo) -> ModelResponse:
+        request = messages[-1]
+        assert isinstance(request, ModelRequest)
+        prompts.extend(str(p.content) for p in request.parts if isinstance(p, UserPromptPart))
+        return ModelResponse(
+            parts=[ToolCallPart(info.output_tools[0].name, mock_output.model_dump())]
+        )
 
-            class Res:
-                output = self._output
-
-            return Res()
-
-    mock_agent = MockAgent(mock_output)
-    classifier = DriveClassifier(agent=mock_agent)  # type: ignore[arg-type]
+    classifier = DriveClassifier(
+        document_task=make_task(DocumentClassification, FunctionModel(capture))
+    )
 
     res = classifier.classify_sync(
         filename="LeetCode Progress Notes.pdf",
@@ -165,8 +172,8 @@ def test_classify_sync_feeds_extracted_text_to_llm():
         mime_type="application/pdf",
     )
 
-    assert "Two Sum, 3Sum, LRU Cache" in mock_agent.last_prompt
-    assert "--- EXTRACTED DOCUMENT TEXT ---" in mock_agent.last_prompt
+    assert "Two Sum, 3Sum, LRU Cache" in prompts[0]
+    assert "--- EXTRACTED DOCUMENT TEXT ---" in prompts[0]
     assert res.clean_filename == "LeetCode Solutions.pdf"
     assert res.category == "Career"
     assert res.subcategory == "Interview Prep"

@@ -3,8 +3,9 @@ kind: Kustomization
 namespace: drive-organizer
 resources:
 - namespace.yaml
-- openrouter-secret.yaml
 - secret-personal.yaml
 - cronjob-personal.yaml
 - secret-family.yaml
 - cronjob-family.yaml
+components:
+- ../../packages/homelab-ai/kustomize

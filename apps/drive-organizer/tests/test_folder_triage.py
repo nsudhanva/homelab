@@ -1,8 +1,10 @@
 from unittest.mock import MagicMock
 
-from drive_organizer.classifier import DriveClassifier, FolderTriageDecision
+from drive_organizer.classifier import DocumentClassification, DriveClassifier, FolderTriageDecision
 from drive_organizer.drive_client import PROTECTED_ROOT_FOLDERS, DriveClient
 from drive_organizer.pre_router import PreRouter
+
+from .conftest import Down, returning
 
 
 def test_protected_root_folders():
@@ -41,12 +43,8 @@ def test_list_unorganized_root_folders_filters_protected():
     assert "Code" not in names
 
 
-def test_folder_triage_heuristics_code_intact():
-    class FailingAgent:
-        def run_sync(self, prompt: str):
-            raise RuntimeError("LLM offline")
-
-    classifier = DriveClassifier(triage_agent=FailingAgent())  # type: ignore[arg-type]
+def test_folder_triage_heuristics_code_intact(make_task):
+    classifier = DriveClassifier(triage_task=make_task(FolderTriageDecision, Down()))
     decision = classifier.triage_folder_sync(
         folder_name="homelab-service",
         sample_files=["src/main.py", "pyproject.toml", "README.md"],
@@ -57,12 +55,8 @@ def test_folder_triage_heuristics_code_intact():
     assert decision.target_folder == "Code/homelab-service"
 
 
-def test_folder_triage_heuristics_notebooks_intact():
-    class FailingAgent:
-        def run_sync(self, prompt: str):
-            raise RuntimeError("LLM offline")
-
-    classifier = DriveClassifier(triage_agent=FailingAgent())  # type: ignore[arg-type]
+def test_folder_triage_heuristics_notebooks_intact(make_task):
+    classifier = DriveClassifier(triage_task=make_task(FolderTriageDecision, Down()))
     decision = classifier.triage_folder_sync(
         folder_name="ml-experiments",
         sample_files=["data.csv", "exploration.ipynb"],
@@ -73,12 +67,8 @@ def test_folder_triage_heuristics_notebooks_intact():
     assert decision.target_folder == "Colab Notebooks/ml-experiments"
 
 
-def test_folder_triage_heuristics_documents_dismantle():
-    class FailingAgent:
-        def run_sync(self, prompt: str):
-            raise RuntimeError("LLM offline")
-
-    classifier = DriveClassifier(triage_agent=FailingAgent())  # type: ignore[arg-type]
+def test_folder_triage_heuristics_documents_dismantle(make_task):
+    classifier = DriveClassifier(triage_task=make_task(FolderTriageDecision, Down()))
     decision = classifier.triage_folder_sync(
         folder_name="folder 1",
         sample_files=["sub folder 1/dummy.pdf", "receipt.png"],
@@ -89,7 +79,7 @@ def test_folder_triage_heuristics_documents_dismantle():
     assert decision.target_folder is None
 
 
-def test_folder_triage_mock_agent():
+def test_folder_triage_mock_agent(make_task):
     mock_decision = FolderTriageDecision(
         action="dismantle",
         is_code=False,
@@ -98,14 +88,9 @@ def test_folder_triage_mock_agent():
         reasoning="Document batch for personal organization.",
     )
 
-    class MockAgent:
-        def run_sync(self, prompt: str):
-            class Res:
-                output = mock_decision
-
-            return Res()
-
-    classifier = DriveClassifier(triage_agent=MockAgent())  # type: ignore[arg-type]
+    classifier = DriveClassifier(
+        triage_task=make_task(FolderTriageDecision, returning(mock_decision))
+    )
     decision = classifier.triage_folder_sync(
         folder_name="Scans",
         sample_files=["scan1.pdf"],
@@ -207,7 +192,7 @@ def test_pre_router_with_folder_breadcrumbs():
     assert res.subcategory == "2024"
 
 
-def test_end_to_end_process_dummy_pdf_inside_folder1_subfolder1_with_fallback():
+def test_end_to_end_process_dummy_pdf_inside_folder1_subfolder1_with_fallback(make_task):
     """Verify end-to-end processing of dummy.pdf inside folder 1 > sub folder 1 with model fallback to OpenRouter."""
     from pydantic_ai.exceptions import ModelAPIError
     from pydantic_ai.models.test import TestModel
@@ -300,8 +285,7 @@ def test_end_to_end_process_dummy_pdf_inside_folder1_subfolder1_with_fallback():
     )
 
     classifier = DriveClassifier(
-        primary_model=FailingLocalModel(),
-        fallback_model=openrouter_model,
+        document_task=make_task(DocumentClassification, FailingLocalModel(), openrouter_model)
     )
 
     client.download_file_header_bytes = MagicMock(return_value=b"%PDF-1.4 simulated pdf stream")
