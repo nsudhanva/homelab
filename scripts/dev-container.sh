@@ -49,7 +49,7 @@ cmd_up() {
     log_info "Provisioning tooling (Docker, Ansible, kubectl)..."
     container exec "$DEV_NAME" bash -c "mount -o remount,rw /proc/sys 2>/dev/null; echo 1 > /proc/sys/net/ipv4/ip_forward"
     container exec "$DEV_NAME" bash -c "command -v docker >/dev/null || (apt-get update && apt-get install -y docker.io curl ca-certificates ansible)"
-    K8S_VERSION="1.36.4"
+    K8S_VERSION="1.37.1"
     ARCH="$(container exec "$DEV_NAME" uname -m | tr -d '[:space:]')"
     [[ "$ARCH" == "aarch64" ]] && TARCH="arm64" || TARCH="amd64"
     container exec "$DEV_NAME" bash -c "command -v kubectl >/dev/null || (curl -sSL -o /usr/local/bin/kubectl https://dl.k8s.io/release/v${K8S_VERSION}/bin/linux/${TARCH}/kubectl && chmod +x /usr/local/bin/kubectl)"

@@ -7,7 +7,7 @@
 """Interactive script to generate Google OAuth refresh token with Drive and Gmail scopes."""
 
 import argparse
-import subprocess
+import os
 import sys
 
 from google_auth_oauthlib.flow import InstalledAppFlow
@@ -18,57 +18,15 @@ SCOPES = [
 ]
 
 
-def get_client_credentials(kubeconfig: str | None = None) -> tuple[str, str]:
-    base_cmd = ["kubectl"]
-    if kubeconfig:
-        base_cmd.extend(["--kubeconfig", kubeconfig])
-
-    for secret_name in (
-        "drive-credentials-personal",
-        "gmail-credentials-personal",
-        "drive-credentials-primary",
-        "drive-credentials",
-        "gmail-credentials-primary",
-        "gmail-credentials",
-    ):
-        try:
-            id_cmd = base_cmd + [
-                "-n",
-                "drive-organizer",
-                "get",
-                "secret",
-                secret_name,
-                "-o",
-                "jsonpath={.data.DRIVE_CLIENT_ID}",
-            ]
-            cid_b64 = subprocess.check_output(
-                id_cmd, text=True, stderr=subprocess.DEVNULL
-            ).strip()
-
-            secret_cmd = base_cmd + [
-                "-n",
-                "drive-organizer",
-                "get",
-                "secret",
-                secret_name,
-                "-o",
-                "jsonpath={.data.DRIVE_CLIENT_SECRET}",
-            ]
-            csec_b64 = subprocess.check_output(
-                secret_cmd, text=True, stderr=subprocess.DEVNULL
-            ).strip()
-
-            import base64
-
-            if cid_b64 and csec_b64:
-                client_id = base64.b64decode(cid_b64).decode("utf-8")
-                client_secret = base64.b64decode(csec_b64).decode("utf-8")
-                return client_id, client_secret
-        except (subprocess.SubprocessError, KeyError, ValueError, Exception):  # noqa: BLE001, S112
-            continue
-
-    client_id = input("Enter Google Client ID: ").strip()
-    client_secret = input("Enter Google Client Secret: ").strip()
+def get_client_credentials() -> tuple[str, str]:
+    """Read the OAuth client from GOOGLE_CLIENT_ID and GOOGLE_CLIENT_SECRET, or prompt."""
+    client_id = (
+        os.environ.get("GOOGLE_CLIENT_ID") or input("Enter Google Client ID: ").strip()
+    )
+    client_secret = (
+        os.environ.get("GOOGLE_CLIENT_SECRET")
+        or input("Enter Google Client Secret: ").strip()
+    )
     return client_id, client_secret
 
 
@@ -79,17 +37,14 @@ def main() -> None:
     parser.add_argument(
         "--account",
         default="account",
-        help="Account nickname (e.g. personal, work, family)",
-    )
-    parser.add_argument(
-        "--kubeconfig", default=None, help="Path to optional kubeconfig"
+        help="Account nickname from apps/accounts.yaml (e.g. personal, family)",
     )
     parser.add_argument(
         "--port", type=int, default=8080, help="Local redirect server port"
     )
     args = parser.parse_args()
 
-    client_id, client_secret = get_client_credentials(args.kubeconfig)
+    client_id, client_secret = get_client_credentials()
     if not client_id or not client_secret:
         print("Missing client_id or client_secret.", file=sys.stderr)
         sys.exit(1)
@@ -117,9 +72,11 @@ def main() -> None:
 
     print("\nAuthentication successful!")
     print(f"Refresh Token: {creds.refresh_token}")
-    print(f"\nStore credentials in Vault for account '{args.account}':")
     print(
-        f"kubectl -n vault exec -it vault-0 -- vault kv put kv/google/accounts/{args.account} \\\n"
+        f"\nStore credentials in Vault at the vault_path of '{args.account}' in apps/accounts.yaml:"
+    )
+    print(
+        "kubectl -n vault exec -it vault-0 -- vault kv put kv/<vault_path> \\\n"
         f'  client_id="{client_id}" \\\n'
         f'  client_secret="{client_secret}" \\\n'
         f'  refresh_token="{creds.refresh_token}"\n'

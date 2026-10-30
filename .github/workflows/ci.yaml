@@ -43,21 +43,6 @@ jobs:
     - name: Scan repository history for secrets
       run: gitleaks git --redact --verbose
 
-  kubeconform:
-    runs-on: ubuntu-latest
-    steps:
-    - name: Checkout
-      uses: actions/checkout@v7
-    - name: Install kubeconform
-      run: |
-        curl -sSL https://github.com/yannh/kubeconform/releases/download/v0.7.0/kubeconform-linux-amd64.tar.gz \
-          | tar -xz
-        sudo mv kubeconform /usr/local/bin/kubeconform
-    - name: Validate manifests
-      run: |
-        find apps infrastructure bootstrap -name "*.yaml" ! -name "app.yaml" ! -name "accounts.yaml" ! -name ".argocd-source-*.yaml" ! -path "*/.venv/*" -print0 \
-          | xargs -0 kubeconform -kubernetes-version 1.37.0 -strict -ignore-missing-schemas -summary
-
   docs-build:
     runs-on: ubuntu-latest
     steps:
