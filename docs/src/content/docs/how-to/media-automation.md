@@ -49,18 +49,20 @@ The stack contains these services:
 
 Store the WireGuard credentials in HashiCorp Vault at path `kv/qbittorrent/vpn`.
 
-You can use Cloudflare WARP credentials or a custom WireGuard provider configuration.
+You can use Cloudflare WARP credentials or a custom WireGuard provider configuration. Take every value from your WireGuard profile.
 
 Run this command to write the credentials to Vault:
 
 ```bash
 kubectl -n vault exec -it vault-0 -- vault kv put kv/qbittorrent/vpn \
   private_key="REPLACE_ME" \
-  public_key="bmXOC+F1FxEMF9dyiK2H5/1SUtzH0JuVo51h2wPfgyo=" \
-  endpoint_ip="162.159.192.9" \
-  endpoint_port="2408" \
-  addresses="172.16.0.2/32"
+  public_key="REPLACE_ME" \
+  endpoint_ip="REPLACE_ME" \
+  endpoint_port="REPLACE_ME" \
+  addresses="REPLACE_ME/32"
 ```
+
+The `qbittorrent-vpn` ExternalSecret (`apps/qbittorrent/external-secret-vpn.yaml`) copies the five properties into the `qbittorrent-vpn` Secret. The Gluetun container reads them as `WIREGUARD_PRIVATE_KEY`, `WIREGUARD_PUBLIC_KEY`, `WIREGUARD_ENDPOINT_IP`, `WIREGUARD_ENDPOINT_PORT`, and `WIREGUARD_ADDRESSES`.
 
 Verify that the ExternalSecret synchronizes the Kubernetes Secret:
 
@@ -76,6 +78,8 @@ kubectl -n media get secret qbittorrent-vpn
 Back up all service credentials to the Bitwarden `Homelab` folder.
 
 Use the standardized item title format `Homelab - <Component> <Role>`.
+
+Only `kv/qbittorrent/vpn` is read by a manifest in this repository. The other paths in this table store admin credentials and API keys for humans. No ExternalSecret reads them, and the apps keep their own settings on their config PVCs.
 
 | Service | Vault Path | Bitwarden Item Title |
 | --- | --- | --- |
@@ -115,14 +119,14 @@ Gluetun creates network interface `tun0` inside the shared pod network namespace
 
 Lock qBittorrent to interface `tun0` to prevent network packet leaks.
 
-Run this script to set the interface binding through the qBittorrent API:
+Run this script to set the interface binding through the qBittorrent API. Replace `REPLACE_ME` with the tunnel address from the `addresses` property in Vault, without the `/32` suffix:
 
 ```bash
 kubectl -n media exec deploy/qbittorrent -c qbittorrent -- python3 -c '
 import urllib.request, urllib.parse, json
 prefs = {
     "current_network_interface": "tun0",
-    "current_interface_address": "172.16.0.2",
+    "current_interface_address": "REPLACE_ME",
     "upnp": False,
     "lsd": False
 }
@@ -132,7 +136,7 @@ print("Interface locked to tun0.")
 '
 ```
 
-Verify that the configuration persists in `/config/qBittorrent/qBittorrent.conf`:
+This setting lives on the `qbittorrent-config` PVC, not in Git. Verify that the configuration persists in `/config/qBittorrent/qBittorrent.conf`:
 
 ```bash
 kubectl -n media exec deploy/qbittorrent -c qbittorrent -- grep -E "Interface=" /config/qBittorrent/qBittorrent.conf
@@ -318,14 +322,15 @@ for line in trace.splitlines():
 
 The output must show `warp=on` with a VPN exit IP address.
 
-Step 2: Test an outbound TCP connection on interface `eth0`:
+Step 2: Test an outbound TCP connection on interface `eth0`. The script binds to the pod IP, which changes each time the pod restarts:
 
 ```bash
 kubectl -n media exec deploy/qbittorrent -c qbittorrent -- python3 -c '
 import socket
+pod_ip = socket.gethostbyname(socket.gethostname())
 s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 s.settimeout(3)
-s.bind(("10.42.0.194", 0))
+s.bind((pod_ip, 0))
 try:
     s.connect(("1.1.1.1", 443))
     print("LEAK DETECTED!")
@@ -348,4 +353,4 @@ with open("/proc/net/tcp") as f:
 '
 ```
 
-All non-local peer sockets must originate from tunnel IP `172.16.0.2`.
+All non-local peer sockets must originate from the tunnel address in `WIREGUARD_ADDRESSES`.

@@ -16,17 +16,25 @@ This guide adds a new AI workload, for example `apps/receipt-reader`. The worklo
 
 ## Step 1: Add the dependency
 
-In `apps/receipt-reader/pyproject.toml`, add `homelab-ai` as a path dependency:
+In `apps/receipt-reader/pyproject.toml`, add `homelab-ai` as a path dependency. The app gets `pydantic-ai` at runtime through `homelab-ai`. Add `pydantic-ai` to the dev group only, because the tests import its test models:
 
 ```toml
 [project]
 dependencies = [
-    "pydantic-ai>=2.63.0",
+    "pydantic>=2.9.0",
     "homelab-ai",
 ]
 
 [tool.uv.sources]
 homelab-ai = { path = "../../packages/homelab-ai", editable = true }
+
+[dependency-groups]
+dev = [
+    "pydantic-ai>=2.63.0",
+    "pytest>=8.3.0",
+    "ruff>=0.16.8",
+    "ty>=0.0.81",
+]
 ```
 
 Then run `uv lock && uv sync` in the app directory.
@@ -139,7 +147,7 @@ env:
 
 ## Step 5: Add the Dockerfile and CI entry
 
-Build from the repository root so the image can copy `packages/homelab-ai`. Copy `apps/gmail-classifier/Dockerfile` and change the app name.
+Build from the repository root so the image can copy `packages/homelab-ai`. Copy `apps/gmail-classifier/Dockerfile` and change the app name. CI builds every image with the repository root as the context, so the root `.dockerignore` applies to every image. Do not add a `.dockerignore` in the app directory.
 
 CI finds the app without changes to the workflow. Every `apps/*/pyproject.toml` and `packages/*/pyproject.toml` is a Python project, and a `Dockerfile` next to it means that CI builds an image.
 

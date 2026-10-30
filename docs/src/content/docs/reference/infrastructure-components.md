@@ -41,7 +41,6 @@ flowchart TB
     ExtDNS["external-dns"]
     ExtSecrets["external-secrets"]
     Vault["vault"]
-    Storage["local-path-storage"]
     Monitoring["monitoring"]
   end
 
@@ -57,7 +56,6 @@ flowchart TB
   InfraApps --> ExtDNS
   InfraApps --> ExtSecrets
   InfraApps --> Vault
-  InfraApps --> Storage
   InfraApps --> Monitoring
 ```
 
@@ -70,14 +68,16 @@ ApplicationSets watch `apps/` and `infrastructure/` and automatically create Arg
 
 ## Core infrastructure
 
+K3s provides the Local-Path Provisioner itself (StorageClass `local-path`). It is not an `infrastructure/` component.
+
 | Component | Path | Purpose | Notes |
 | --- | --- | --- | --- |
-| ArgoCD | `bootstrap/argocd/` | GitOps controller install | Apply once before bootstrap |
-| ArgoCD Image Updater | `infrastructure/argocd-image-updater/` | Automated image updates | Uses the ImageUpdater CRD and Vault credentials |
-| Gateway API CRDs | `infrastructure/gateway-api-crds/gateway-api-crds.yaml` | Installs Gateway API CRDs | ArgoCD pulls upstream `config/crd` |
-| Envoy Gateway CRDs | `infrastructure/envoy-gateway-crds/` | Installs Envoy Gateway CRDs | Kustomize pulls upstream CRD bundle |
-| Envoy Gateway | `infrastructure/envoy-gateway/envoy-gateway.yaml` | Ingress controller for Gateway API | Helm chart with pinned image tag |
-| Tailscale Operator | `infrastructure/tailscale/tailscale-operator.yaml` | Tailnet integration and LoadBalancer proxy pods | Needs the `operator-oauth` Secret |
+| ArgoCD | `bootstrap/argocd/` | GitOps controller install (`v3.5.6`) | The `argocd` Ansible role applies it. Not managed by an ApplicationSet |
+| ArgoCD Image Updater | `infrastructure/argocd-image-updater/` | Automated image updates | Uses the ImageUpdater CRD and the `argocd-image-updater-registries` Secret from Vault |
+| Gateway API CRDs | `infrastructure/gateway-api-crds/gateway-api-crds.yaml` | Installs Gateway API CRDs and the safe-upgrades ValidatingAdmissionPolicy | ArgoCD pulls upstream `config/crd` at `v1.6.3` |
+| Envoy Gateway CRDs | `infrastructure/envoy-gateway-crds/` | Installs Envoy Gateway CRDs | Kustomize pulls the upstream `v1.9.2` CRD bundle |
+| Envoy Gateway | `infrastructure/envoy-gateway/envoy-gateway.yaml` | Ingress controller for Gateway API | Helm chart `v1.9.2` with image `v1.9.2`. Bundled CRDs are off (`crds.enabled: false`) |
+| Tailscale Operator | `infrastructure/tailscale/tailscale-operator.yaml` | Tailnet integration and LoadBalancer proxy pods | Needs the `operator-oauth` Secret, which an ExternalSecret creates from Vault |
 | cert-manager | `infrastructure/cert-manager/cert-manager.yaml` | TLS certificate management | Used with DNS-01 |
 | ClusterIssuer | `infrastructure/cert-manager-issuer/cluster-issuer.yaml` | ACME issuer for wildcard certs | Cloudflare API token solver |
 | ExternalDNS | `infrastructure/external-dns/external-dns.yaml` | Creates DNS records for HTTPRoutes | Watches `external-dns.alpha.kubernetes.io/expose=true` |
@@ -91,8 +91,8 @@ ApplicationSets watch `apps/` and `infrastructure/` and automatically create Arg
 | Prometheus stack | `infrastructure/prometheus/` | Metrics, alerting, dashboards | Grafana, Prometheus, Alertmanager, and HTTPRoutes |
 | Kubescape | `infrastructure/kubescape/` | Cluster security scanning | Operator runs in offline mode |
 | Metrics Server | `infrastructure/metrics-server/` | CPU and memory metrics API | Necessary for the Headlamp usage graphs |
-| GPU Operator | `infrastructure/gpu/` | NVIDIA GPU Operator | Helm chart v26.7.0 with Container Device Interface (CDI) |
-| System Upgrade Controller | `infrastructure/system-upgrade-controller/` | Automated K3s cluster upgrades | Managed with system-upgrade-controller Plans |
+| GPU Operator | `infrastructure/gpu/` | NVIDIA GPU Operator | Helm chart `v26.7.2` with Container Device Interface (CDI) as the default |
+| System Upgrade Controller | `infrastructure/system-upgrade-controller/` | Automated K3s cluster upgrades | Kustomize pulls the upstream `v0.20.2` manifests and adds the `k3s-server` Plan |
 
 ## Gateway and route definitions
 

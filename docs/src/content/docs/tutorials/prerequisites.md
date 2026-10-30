@@ -1,6 +1,6 @@
 ---
 title: Prerequisites for Bare-Metal K3s Homelab
-description: Install Ansible, kubectl, and Helm on your operator workstation. Prepare SSH access and accounts for the bare-metal K3s cluster.
+description: Install Ansible, kubectl, and pre-commit on your operator workstation. Prepare SSH access and accounts for the bare-metal K3s cluster.
 keywords:
   - k3s prerequisites
   - ansible installation
@@ -22,14 +22,20 @@ Install the automation and Kubernetes management tools on your local workstation
 ### macOS (Homebrew)
 
 ```bash
-brew install ansible kubectl helm pre-commit
+brew install ansible kubectl pre-commit
 ```
 
 ### Linux (APT)
 
+The Ubuntu archive does not ship `kubectl`. Install the other tools with APT, then download `kubectl` from `dl.k8s.io`:
+
 ```bash
-sudo apt-get update && sudo apt-get install -y curl git ansible kubectl helm pre-commit
+sudo apt-get update && sudo apt-get install -y curl git ansible pre-commit
+curl -sSLo kubectl "https://dl.k8s.io/release/v1.37.1/bin/linux/amd64/kubectl"
+sudo install -m 0755 kubectl /usr/local/bin/kubectl
 ```
+
+ArgoCD installs every Helm chart in this repo. You do not need Helm on the workstation.
 
 ### Dev Container Workstation
 
@@ -67,12 +73,13 @@ Get these credentials before you start the platform integration:
 
 - Tailscale: An OAuth client secret with permissions to manage Tailscale devices and Kubernetes operator resources.
 - Cloudflare: An API token with Zone.DNS edit permissions for your managed domain (`sudhanva.me`).
-- GitHub: A personal access token for Git authentication and ArgoCD Image Updater write-back.
+- GitHub: A personal access token for ArgoCD repository access and ArgoCD Image Updater write-back (Vault `kv/argocd/repo-creds`).
+- Container registries: Read tokens for GHCR and Docker Hub, which ArgoCD Image Updater uses to check tags (Vault `kv/argocd-image-updater/ghcr` and `kv/argocd-image-updater/dockerhub`).
 
 ## Step 4: Next steps
 
 When your workstation tools and SSH access to the target host operate correctly, go to these pages:
 
-- Prepare the bare-metal machine in [Host Preparation](./system-prep.md).
-- Configure Ansible variables in [Ansible Configuration](./containerd.md).
-- Bootstrap the cluster in [K3s Bootstrap](./kubernetes.md).
+- Prepare the bare-metal machine in [Host Preparation](/tutorials/system-prep/).
+- Configure Ansible variables in [Ansible Configuration](/tutorials/containerd/).
+- Bootstrap the cluster in [K3s Bootstrap](/tutorials/kubernetes/).

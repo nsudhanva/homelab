@@ -41,11 +41,13 @@ argocd app sync <app-name>
 argocd app wait <app-name> --health
 ```
 
-## Step 4: Sync an entire ApplicationSet
+## Step 4: Sync all apps from one ApplicationSet
+
+The ApplicationSets do not set labels on the Applications that they create. Select the Applications by name prefix instead. The `apps` ApplicationSet names its Applications `app-<name>`, and the `infrastructure` ApplicationSet names its Applications `infra-<directory>`:
 
 ```bash
-argocd app sync -l app.kubernetes.io/instance=apps
-argocd app sync -l app.kubernetes.io/instance=infrastructure
+argocd app list -o name | grep '/app-' | xargs -n1 argocd app sync
+argocd app list -o name | grep '/infra-' | xargs -n1 argocd app sync
 ```
 
 ## Step 5: Reconcile drift

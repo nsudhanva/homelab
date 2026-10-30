@@ -27,13 +27,13 @@ flowchart TD
   subgraph ClusterUp["In-Cluster GitOps Upgrades"]
     GitK3s["Commit Plan CRD (infrastructure/system-upgrade-controller/)"] --> Argo["ArgoCD"]
     Argo --> SUC["System Upgrade Controller"]
-    SUC --> K3sUpgrade["Cordon, Upgrade K3s Binary, Uncordon"]
+    SUC --> K3sUpgrade["Upgrade K3s Binary, Restart Service (no cordon or drain)"]
   end
 ```
 
 ## Host Provisioning with GitHub Actions
 
-You do not run playbooks manually from your workstation. When changes to `ansible/` are pushed to `master`, GitHub Actions runs Ansible.
+When changes to `ansible/**` or `.github/workflows/provision.yaml` are pushed to `master`, the `Ansible Provision` workflow runs `ansible-playbook -i ansible/inventory/hosts.yaml ansible/site.yaml`. The playbook applies the roles `common`, `tailscale`, `nvidia`, `k3s_server`, and `argocd`. Preview node changes locally with `--check --diff` before you push.
 
 ### Step 1: Secure Tailscale Connection
 
@@ -68,11 +68,11 @@ Add these secrets to your GitHub repository (`Settings > Secrets and variables >
 
 ### Step 3: Trigger Provisioning
 
-Provisioning starts automatically when a push changes `ansible/**`. You can also start it manually with the GitHub Actions **Run workflow** button (`workflow_dispatch`).
+Provisioning starts automatically when a push to `master` changes `ansible/**` or the workflow file. You can also start it manually with the GitHub Actions **Run workflow** button (`workflow_dispatch`).
 
 ## Automated K3s Upgrades with System Upgrade Controller
 
-The cluster runs the official Rancher System Upgrade Controller (`infrastructure/system-upgrade-controller/`).
+The cluster runs the Rancher System Upgrade Controller `v0.20.2`. `infrastructure/system-upgrade-controller/kustomization.yaml` pulls the upstream release manifests (`crd.yaml` and `system-upgrade-controller.yaml`), adds `k3s-upgrade-plan.yaml`, sets the kubectl Job image to `rancher/kubectl:v1.36.2`, and adds resource requests and limits to the controller.
 
 ### Step 1: Define Target K3s Version
 
@@ -86,13 +86,19 @@ metadata:
   namespace: system-upgrade
 spec:
   concurrency: 1
-  version: v1.36.4+k3s1
+  version: v1.37.1+k3s1
   nodeSelector:
     matchExpressions:
       - key: node-role.kubernetes.io/control-plane
         operator: Exists
   serviceAccountName: system-upgrade
-  cordon: true
+  tolerations:
+    - key: CriticalAddonsOnly
+      operator: Exists
+    - key: node-role.kubernetes.io/control-plane
+      operator: Exists
+      effect: NoSchedule
+  cordon: false
   upgrade:
     image: rancher/k3s-upgrade
 ```
@@ -103,4 +109,4 @@ Commit and push your change. ArgoCD syncs the `Plan` resource to the cluster.
 
 ### Step 3: Automated Execution
 
-The System Upgrade Controller finds the new version and automatically drains/cordons the node. It runs the official `rancher/k3s-upgrade` container to update the binary and restarts the service. When the node is healthy, the controller uncordons it.
+The System Upgrade Controller finds the new version and starts an upgrade Job on the control-plane node. The Plan sets `cordon: false` and has no `drain` block, so the node is not cordoned or drained. The Job runs the `rancher/k3s-upgrade` container, which replaces the K3s binary and restarts the `k3s` service. Pods keep running during the restart.

@@ -15,7 +15,7 @@ sidebar:
 
 # Scheduling Workloads
 
-Use Node Affinity, Taints, and Tolerations to control where your pods run in the cluster. This guide shows how to target specific nodes (such as an ARM64 worker) and keep high availability.
+Use Node Affinity, Taints, and Tolerations to control where your pods run in the cluster. The cluster has one node today (`legion`), so these rules matter only after you add more nodes. Refer to [Add a Worker Node](/how-to/add-worker-node/).
 
 ## Concepts
 
@@ -25,13 +25,18 @@ A node can have labels, which are key-value pairs. Standard labels include:
 
 - `kubernetes.io/arch`: `amd64`, `arm64`
 - `kubernetes.io/os`: `linux`
-- `node-role.kubernetes.io/worker`: `worker`
+- `node-role.kubernetes.io/control-plane`: `true` (K3s sets it on server nodes)
 
-You can add custom labels:
+The `k3s_server` Ansible role adds these labels to `legion` through `ansible/roles/k3s_server/templates/config.yaml.j2`:
 
-```bash
-kubectl label node <node-name> disk=ssd
-```
+- `node.homelab/role=controlplane`
+- `gpu.nvidia.com/present=true`
+
+The GPU Operator also adds `nvidia.com/gpu.*` labels, such as `nvidia.com/gpu.product`.
+
+No node has the label `node-role.kubernetes.io/worker`.
+
+Add node labels through Ansible, not with `kubectl label`. Labels that you add by hand are lost when the node is rebuilt.
 
 ### Node Affinity
 
@@ -49,7 +54,7 @@ To get zero downtime when you move workloads or update deployments, configure th
 
 ## Example: Preferring a Specific Worker Node
 
-This configuration tells the scheduler to prefer a node with the label `node-role.kubernetes.io/worker=worker` (for example, a dedicated worker). If the worker is down, the pod can run on the control plane.
+This example tells the scheduler to prefer a node with the label `node-role.kubernetes.io/worker=worker`. No manifest in this repo uses this rule, and no node has the label today. If you add a worker with this label, a pod with this rule goes there first and can still fall back to the control plane.
 
 ```yaml
 apiVersion: apps/v1
@@ -87,7 +92,7 @@ A taint keeps pods off a node. To run on a tainted node, a pod must have a match
 **Example Taint:**
 
 ```bash
-kubectl taint nodes node1 key=value:NoSchedule
+kubectl taint nodes <node-name> key=value:NoSchedule
 ```
 
 **Example Toleration:**
@@ -116,8 +121,10 @@ If you add `affinity` or `nodeSelector` to all workloads, you create rigid const
 
 Do not force a pod onto a node if it shares dependencies with other pods.
 
-- **Scenario:** Filebrowser shared a volume with Jellyfin.
+This example uses hypothetical nodes `node-1` and `node-2`.
+
+- **Scenario:** Filebrowser shares the `jellyfin-media` volume with Jellyfin.
 - **Constraint 1:** Jellyfin _must_ run on `node-1` (GPU).
-- **Constraint 2:** Because of this, the Filebrowser volume is locked to `node-1`.
-- **Error:** An affinity that forced Filebrowser to `node-2` caused a deadlock, because the volume could not move with the pod.
+- **Constraint 2:** Local-path volumes stay on the node where they were created, so the shared volume is locked to `node-1`.
+- **Error:** An affinity that forces Filebrowser to `node-2` causes a deadlock, because the volume cannot move with the pod.
 - **Fix:** Remove the affinity. Let Kubernetes put the two pods on the same node.

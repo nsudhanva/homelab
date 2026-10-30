@@ -45,12 +45,12 @@ Run the automated provisioning script from the repository root.
 
 The script runs the Ansible playbook `ansible/site.yaml`. The playbook does these tasks:
 
-- Host prerequisites: It loads the kernel modules (`overlay`, `br_netfilter`), sets the sysctls, and creates the storage path on the dedicated SSD (`/home/k3s-storage`).
-- NVIDIA integration: It installs the NVIDIA Container Toolkit, generates the CDI specifications, and configures the containerd GPU runtime.
-- Tailscale: It makes sure that Tailscale runs. It disables Tailscale DNS on the node, so the host uses its upstream network resolvers.
-- K3s Server: It installs K3s and disables Traefik and ServiceLB. It uses the Tailscale IP as the node IP and reserves CPU and memory for the system. It sets K3s to start after `tailscaled`, then starts the systemd service.
+- Host prerequisites (`common`): It installs base packages, loads the kernel modules (`overlay`, `br_netfilter`), sets the sysctls, and creates the storage path on the dedicated SSD (`/home/k3s-storage`).
+- NVIDIA integration (`nvidia`): It makes sure that `nvidia-smi` runs, installs the NVIDIA Container Toolkit and `runc`, and generates the CDI specification at `/etc/cdi/nvidia.yaml`.
+- Tailscale (`tailscale`): It fails if Tailscale is not installed. It disables Tailscale DNS on the node, so the host uses its upstream network resolvers. It waits until `tailscale0` has the node IP.
+- K3s Server (`k3s_server`): It writes `/etc/rancher/k3s/config.yaml`, which disables Traefik, ServiceLB, and the bundled metrics-server, sets `default-runtime: nvidia`, uses the Tailscale IP as the node IP, and reserves CPU and memory for the system. It sets K3s to start after `tailscaled`. It installs K3s `v1.37.1+k3s1` only if the `k3s` binary is not on the host yet, then starts the systemd service.
 - Kubeconfig: It gets the cluster credentials and configures the Tailscale endpoint.
-- GitOps bootstrap: It deploys ArgoCD with server-side apply and applies the root Application (`bootstrap/root.yaml`).
+- GitOps bootstrap (`argocd`): It deploys ArgoCD with server-side apply and applies the root Application (`bootstrap/root.yaml`).
 
 ## Step 3: Validate the Cluster
 
@@ -65,4 +65,4 @@ kubectl get apps -n argocd
 
 ## Step 4: Configure Vault and External Secrets
 
-Follow [Vault](../how-to/vault.md) to initialize Vault. Then sync the necessary secrets for ExternalDNS, cert-manager, and the Tailscale operator.
+Follow [Vault](/how-to/vault/) to initialize and unseal Vault, enable KV v2 at `kv/`, and configure the Kubernetes auth role for External Secrets. Then write the secrets that the ExternalSecrets read. The first ones are for ExternalDNS, cert-manager, the Tailscale operator, and the ArgoCD repository. Until Vault has these values, the components that need them stay degraded.

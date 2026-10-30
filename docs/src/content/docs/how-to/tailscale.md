@@ -20,54 +20,37 @@ sidebar:
 
 ### Install Tailscale Client
 
+Install Tailscale on each node with the official install script, and join the node to your tailnet:
+
 ```bash
-curl -fsSL https://pkgs.tailscale.com/stable/ubuntu/noble.noarmor.gpg | sudo gpg --dearmor -o /usr/share/keyrings/tailscale-archive-keyring.gpg
-echo "deb [signed-by=/usr/share/keyrings/tailscale-archive-keyring.gpg] https://pkgs.tailscale.com/stable/ubuntu noble main" | sudo tee /etc/apt/sources.list.d/tailscale.list
-sudo apt-get update
-sudo apt-get install -y tailscale
+curl -fsSL https://tailscale.com/install.sh | sh
 sudo tailscale up
+tailscale ip -4
 ```
+
+The `tailscale` Ansible role fails if Tailscale is not installed. It does not install Tailscale for you.
 
 ### Update ACL tag owners
 
-Make sure that the Tailscale ACL lets the operator tag devices. Set a real owner for `tag:k8s-operator`. Then let `tag:k8s-operator` own `tag:k8s`:
+The operator and every proxy that it creates use `tag:k8s`. `operatorConfig.defaultTags` in `infrastructure/tailscale/tailscale-operator.yaml` sets the operator tag, and the `tailscale.com/tags: tag:k8s` annotations on the Envoy proxy and the `tailscale-dns` Service set the proxy tags. The repo does not use `tag:k8s-operator`. Make sure that the tailnet policy has an owner for `tag:k8s`:
 
 ```json
 {
   "tagOwners": {
-    "tag:k8s-operator": ["autogroup:admin"],
-    "tag:k8s": ["tag:k8s-operator"]
+    "tag:k8s": ["autogroup:admin"]
   }
 }
 ```
 
-### Create OAuth Secret
+### Store the OAuth credentials in Vault
 
-If Vault and External Secrets are configured, put the OAuth credentials in Vault. External Secrets Operator then creates the `operator-oauth` secret.
+Create an OAuth client at `https://login.tailscale.com/admin/settings/oauth`. Give it write access to devices and auth keys, and the tag `tag:k8s`. Then put the credentials in Vault:
 
 ```bash
 kubectl -n vault exec -it vault-0 -- vault kv put kv/tailscale/operator-oauth client_id=YOUR_CLIENT_ID client_secret=YOUR_CLIENT_SECRET
 ```
 
-External Secrets Operator syncs the secret with `infrastructure/external-secrets/external-secret-tailscale-operator.yaml`. If you did not initialize Vault, follow the Vault setup guide.
-
-If Vault is not set up, create the secret manually for bootstrap.
-
-Get the OAuth credentials from https://login.tailscale.com/admin/settings/oauth. Create them with the `devices:write` scope and the tag `tag:k8s`.
-
-```bash
-kubectl create namespace tailscale
-kubectl create secret generic operator-oauth \
-  --namespace tailscale \
-  --from-literal=client_id=YOUR_CLIENT_ID \
-  --from-literal=client_secret=YOUR_CLIENT_SECRET
-```
-
-:::warning
-
-Create the `operator-oauth` secret before you apply `bootstrap/root.yaml`. If you do not, the Tailscale Operator does not deploy correctly.
-
-:::
+The ExternalSecret `infrastructure/external-secrets/external-secret-tailscale-operator.yaml` creates the `operator-oauth` Secret in the `tailscale` namespace from `kv/tailscale/operator-oauth` (properties `client_id` and `client_secret`). The operator chart reads that Secret. Do not create the Secret with `kubectl`. Until Vault has the values, the Tailscale Operator cannot start, and the Gateway gets no Tailscale address. Set up Vault first with the [Vault guide](/how-to/vault/).
 
 ### Enable SSH for Remote Access
 
@@ -78,32 +61,18 @@ sudo systemctl enable --now ssh
 
 ### Remote kubectl Access
 
-From a different tailnet device, connect with SSH and run kubectl:
+The provisioning playbook writes the kubeconfig to `k3s.kubeconfig` in the repo root on your workstation. It sets the server address to `https://<ansible_host>:6443`, which is the Tailscale IP of `legion`. Any tailnet device with a copy of that file can run kubectl:
 
 ```bash
-ssh user@<tailscale-hostname> kubectl get pods -A
-```
-
-As an alternative, copy the kubeconfig to your other machine:
-
-```bash
-mkdir -p ~/.kube
-scp user@<tailscale-hostname>:~/.kube/config ~/.kube/config
-sed -i 's|server: https://.*:6443|server: https://<tailscale-hostname>:6443|' ~/.kube/config
+export KUBECONFIG=$PWD/k3s.kubeconfig
 kubectl get pods -A
 ```
 
-If the kubeconfig is not on the node, create it first:
-
-```bash
-mkdir -p ~/.kube
-sudo cp /etc/rancher/k3s/k3s.yaml ~/.kube/config
-sudo chown $(id -u):$(id -g) ~/.kube/config
-```
+The API server certificate covers the names in `tls_sans` in `ansible/group_vars/all.yaml`, so you can also use `legion` or its MagicDNS name as the server address.
 
 ### Node DNS
 
-Cluster nodes do not use Tailscale DNS. The `tailscale` Ansible role runs `tailscale set --accept-dns=false` on each node. Thus, the host resolves names through its uplink resolvers. Image pulls and other node DNS lookups do not depend on DNS services in the cluster. Refer to [Node Networking and DNS](../explanation/node-networking.md).
+Cluster nodes do not use Tailscale DNS. The `tailscale` Ansible role runs `tailscale set --accept-dns=false` on each node. Thus, the host resolves names through its uplink resolvers. Image pulls and other node DNS lookups do not depend on DNS services in the cluster. Refer to [Node Networking and DNS](/explanation/node-networking/).
 
 ### Configure tailnet nameservers
 
@@ -123,30 +92,22 @@ ExternalDNS creates only the subdomain records that you annotate. These records 
 
 :::
 
-### Create Cloudflare API token secrets
+### Store the Cloudflare API token in Vault
 
-If Vault is configured, write the Cloudflare token to Vault. External Secrets Operator then creates the Kubernetes secrets:
+In Cloudflare, create a token with DNS edit permissions for the `sudhanva.me` zone. Write it to Vault:
 
 ```bash
 kubectl -n vault exec -it vault-0 -- vault kv put kv/external-dns/cloudflare api-token=YOUR_CLOUDFLARE_API_TOKEN
 kubectl -n vault exec -it vault-0 -- vault kv put kv/cert-manager/cloudflare api-token=YOUR_CLOUDFLARE_API_TOKEN
 ```
 
-External Secrets Operator syncs these secrets with the manifests in `infrastructure/external-secrets/`. If Vault is not ready, create the secrets manually.
+ExternalSecrets in `infrastructure/external-secrets/` create a Secret named `cloudflare-api-token` (key `api-token`) in three namespaces:
 
-In Cloudflare, create a token with DNS edit permissions for the `sudhanva.me` zone. Put the token in the two namespaces:
+- `external-dns`, from `kv/external-dns/cloudflare` (`external-secret-cloudflare-external-dns.yaml`)
+- `cert-manager`, from `kv/cert-manager/cloudflare` (`external-secret-cloudflare-cert-manager.yaml`)
+- `tailscale`, from `kv/cert-manager/cloudflare` (`external-secret-cloudflare-cert-manager-tailscale.yaml`)
 
-```bash
-kubectl create namespace external-dns
-kubectl create secret generic cloudflare-api-token \
-  --namespace external-dns \
-  --from-literal=api-token=YOUR_CLOUDFLARE_API_TOKEN
-
-kubectl create namespace cert-manager
-kubectl create secret generic cloudflare-api-token \
-  --namespace cert-manager \
-  --from-literal=api-token=YOUR_CLOUDFLARE_API_TOKEN
-```
+Do not create these Secrets with `kubectl`.
 
 :::note
 
@@ -165,7 +126,7 @@ Before you sync, set your email in `infrastructure/cert-manager-issuer/cluster-i
 
 ### Set the Tailscale Gateway target
 
-In `infrastructure/gateway/gateway.yaml`, change the `external-dns.alpha.kubernetes.io/target` value. Set it to the Tailscale hostname of the Envoy Gateway service (for example, `gateway-envoy.TAILNET.ts.net`). The repo default is `GATEWAY_ENVOY_HOSTNAME`.
+The `external-dns.alpha.kubernetes.io/target` annotation in `infrastructure/gateway/gateway.yaml` sets the CNAME target for ExternalDNS records. The repo value is `gateway-envoy-1.ainu-herring.ts.net`, the MagicDNS name of the Envoy proxy device in the tailnet. The `tailscale.com/hostname: gateway-envoy` annotation in `infrastructure/gateway/envoyproxy.yaml` requests the hostname. Tailscale adds the `-1` suffix when the name is already taken. If you rebuild the tailnet device, compare the device name in the Tailscale admin console with this annotation and update it in Git.
 
 ### Split DNS resolver IP
 
@@ -265,7 +226,7 @@ curl -I https://homelab.sudhanva.me
 
 Expected results:
 
-- DNS resolves to the Tailscale Gateway IP (for example, `TAILSCALE_GATEWAY_IP`).
+- DNS resolves to the Tailscale Gateway IP (the `status.addresses` value of `tailscale-gateway`).
 - The response headers do not include Cloudflare headers such as `cf-ray`.
 
 On a device that is not on the tailnet, run:

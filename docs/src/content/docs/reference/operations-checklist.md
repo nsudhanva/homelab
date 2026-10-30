@@ -30,11 +30,16 @@ kubectl get apps -n argocd
 pre-commit run --all-files
 kubectl get nodes
 kubectl get pods -A
+kubectl get applications -n argocd
 ```
 
 ## After a node reboot
 
+Vault starts sealed after every restart. Check its status, and unseal it if `Sealed` is `true`. Refer to [Vault Unseal Keys](/how-to/maintenance/#vault-unseal-keys).
+
 ```bash
 kubectl get nodes
+kubectl -n vault exec vault-0 -- vault status
 kubectl get pods -A
+kubectl get externalsecrets -A
 ```

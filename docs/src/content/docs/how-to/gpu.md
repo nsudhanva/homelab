@@ -36,12 +36,12 @@ The Ansible playbook (`ansible/roles/nvidia/`) installs and configures the host 
 
 ## Step 1: Deploy the GPU Operator with GitOps
 
-The file `infrastructure/gpu/gpu-operator.yaml` declares the NVIDIA GPU Operator (Helm chart `v26.7.0`) as an ArgoCD Application. Its configuration uses the drivers on the host:
+The file `infrastructure/gpu/gpu-operator.yaml` declares the NVIDIA GPU Operator (Helm chart `v26.7.2`) as an ArgoCD Application in the `gpu-operator` namespace. Its values use the driver and toolkit that are already on the host:
 
 - `driver.enabled: false` (uses the 580 series kernel module that is already on the host).
-- `toolkit.enabled: false` (uses the containerd runtime that is already configured on the host).
-- `cdi.enabled: true` (enables the Container Device Interface for OCI device injection).
-- `validator.plugin.env`: `DISABLE_CUDA_VALIDATION=true` (skips the synthetic checks for Ampere, because the GPU uses the Pascal architecture).
+- `toolkit.enabled: false` (uses the NVIDIA Container Toolkit that the `nvidia` Ansible role installs).
+- `cdi.enabled: true` and `cdi.default: true` (the operator uses the Container Device Interface to inject devices, and makes CDI the default injection method).
+- `validator.plugin.env`: `DISABLE_CUDA_VALIDATION=true` and `validator.cuda.env`: `WITH_WORKLOAD=false` (the validator skips the CUDA workload test pods on this Pascal GPU).
 
 ## Step 2: Examine the GPU Allocation
 
@@ -69,22 +69,25 @@ Expected output:
 NVIDIA-GeForce-GTX-1050-Ti
 ```
 
-## Step 3: Run a Test Workload
+## Step 3: Check GPU access from a running pod
 
-Run a short `nvidia-smi` test pod. This test makes sure that a container can use the GPU from end to end:
+The llama.cpp server holds the only `nvidia.com/gpu` resource, so a new test pod that requests the GPU stays `Pending`. Check GPU access from the running pods instead:
 
 ```bash
-kubectl run gpu-test --rm -i --restart=Never \
-  --image=nvidia/cuda:12.4.1-base-ubuntu22.04 \
-  --overrides='{"spec":{"containers":[{"name":"gpu-test","image":"nvidia/cuda:12.4.1-base-ubuntu22.04","command":["nvidia-smi"],"resources":{"limits":{"nvidia.com/gpu":"1"}}}]}}'
+kubectl -n llama exec deploy/llama-server -c llama-server -- nvidia-smi
+kubectl -n media exec deploy/jellyfin -- nvidia-smi
 ```
+
+The output shows the GPU model, the driver version, and the processes that use the GPU.
 
 ## Step 4: Request GPUs in Workloads
 
-In application manifests (for example, Jellyfin or AI inference workloads), use standard resource limits to request GPU access:
+The node has one GPU, and the device plugin advertises it as `nvidia.com/gpu: 1`. Only one pod can request it. In this repo, only the llama.cpp server (`apps/llama/deployment.yaml`) requests it:
 
 ```yaml
 resources:
   limits:
     nvidia.com/gpu: "1"
 ```
+
+Jellyfin (`apps/jellyfin/deployment.yaml`) does not request `nvidia.com/gpu`. It sets `NVIDIA_VISIBLE_DEVICES=all` and `NVIDIA_DRIVER_CAPABILITIES=all`, and the K3s default runtime (`nvidia`) gives the container access to the GPU. Thus Jellyfin can transcode while llama.cpp holds the GPU resource.

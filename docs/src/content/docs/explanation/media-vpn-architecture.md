@@ -20,16 +20,16 @@ flowchart TB
   subgraph Pod["Kubernetes Pod: qbittorrent (media namespace)"]
     subgraph NetNS["Shared Linux Network Namespace (netns)"]
       Loopback["lo (127.0.0.1)"]
-      Eth0["eth0 (10.42.0.194) - Cluster Pod Network"]
-      Tun0["tun0 (172.16.0.2) - WireGuard Tunnel"]
+      Eth0["eth0 (pod IP) - Cluster Pod Network"]
+      Tun0["tun0 (WIREGUARD_ADDRESSES) - WireGuard Tunnel"]
     end
 
     Gluetun["Gluetun Container\n- Holds NET_ADMIN capability\n- Manages WireGuard crypto\n- Configures iptables killswitch"]
-    Qbit["qBittorrent Container\n- Web UI listens on 127.0.0.1:8080\n- Bound strictly to tun0\n- Zero-seeding policy"]
+    Qbit["qBittorrent Container\n- Web UI listens on pod IP port 8080\n- Bound strictly to tun0\n- Zero-seeding policy"]
   end
 
   subgraph External["External Network"]
-    WGServer["WireGuard Server Endpoint\n(UDP 2408)"]
+    WGServer["WireGuard Server Endpoint\n(WIREGUARD_ENDPOINT_IP:PORT, UDP)"]
     Swarm["BitTorrent Swarm Peers"]
     Gateway["Tailscale Gateway / Cluster DNS"]
   end
@@ -53,7 +53,8 @@ In `apps/qbittorrent/deployment.yaml`, `gluetun` and `qbittorrent` run in the sa
 
 - `gluetun` creates and manages network interface `tun0`.
 - `qbittorrent` sees interface `tun0` immediately in its local network stack.
-- `qbittorrent` binds its listening sockets directly to `172.16.0.2` on `tun0`.
+- `qbittorrent` binds its peer sockets to the `tun0` address. That address comes from the `addresses` property of `kv/qbittorrent/vpn`, through `WIREGUARD_ADDRESSES`.
+- The qBittorrent Web UI listens on port 8080 on the pod IP. Gluetun opens that port in its firewall with `FIREWALL_INPUT_PORTS=8080`, so the `qbittorrent` Service (port 80 to 8080) can reach it.
 
 ---
 
@@ -72,15 +73,15 @@ flowchart TD
 
 ### Layer 1: Application-Level Socket Binding
 
-qBittorrent sets `Session\Interface=tun0` in `/config/qBittorrent/qBittorrent.conf`.
+qBittorrent sets `Session\Interface=tun0` in `/config/qBittorrent/qBittorrent.conf`. This file lives on the `qbittorrent-config` PVC, not in Git. The [media automation guide](/how-to/media-automation/#step-4-configure-the-vpn-interface-lock) shows how to set it.
 
-The BitTorrent engine binds its raw sockets strictly to `172.16.0.2`.
+The BitTorrent engine binds its raw sockets strictly to the `tun0` address.
 
 The application refuses to open peer sockets on interface `eth0`.
 
 ### Layer 2: Linux Kernel Policy Routing
 
-Gluetun creates advanced policy routing rules in the kernel:
+Gluetun creates advanced policy routing rules in the kernel. The values below come from Gluetun at runtime, not from the manifests:
 
 - Mark `0xca6c` identifies encrypted WireGuard traffic.
 - Table `51820` directs all standard outbound traffic to device `tun0`.
@@ -103,8 +104,10 @@ The pod firewall sets default `DROP` policies on all chains:
 
 The kernel allows outbound traffic on `eth0` for only two destinations:
 
-- The WireGuard UDP endpoint address (`162.159.192.9:2408`).
-- Internal Kubernetes cluster subnets (`10.42.0.0/16` and `10.43.0.0/16`).
+- The WireGuard UDP endpoint (`WIREGUARD_ENDPOINT_IP` and `WIREGUARD_ENDPOINT_PORT`, from the `qbittorrent-vpn` Secret).
+- Internal Kubernetes cluster subnets (`10.42.0.0/16` and `10.43.0.0/16`, from `FIREWALL_OUTBOUND_SUBNETS`).
+
+Inbound traffic on `eth0` is allowed only on port 8080 (`FIREWALL_INPUT_PORTS`), for the Web UI.
 
 The kernel drops all unencrypted outbound internet packets instantly.
 
@@ -128,7 +131,7 @@ Downloading and storing media requires efficient storage management.
 
 Duplicating 50 GB video files wastes disk space and stresses solid-state drives.
 
-The homelab uses one shared PersistentVolumeClaim named `jellyfin-media` mounted at `/media`:
+The homelab uses one shared PersistentVolumeClaim named `jellyfin-media`. qBittorrent, Sonarr, Radarr, Bazarr, and Jellyfin mount it at `/media`. Filebrowser mounts it at `/srv`. Prowlarr and Seerr do not mount it:
 
 ```text
 /media/
@@ -168,7 +171,7 @@ Real-time file monitoring (`inotify`) can miss events across container mount bou
 
 Radarr and Sonarr solve this problem through explicit REST API webhooks.
 
-When an import completes, Radarr sends a notification to `http://jellyfin.media.svc:80`.
+When an import completes, Radarr sends a notification to `http://jellyfin.media.svc:80`. The `jellyfin` Service forwards port 80 to container port 8096. You set up this connection in the Radarr and Sonarr UI, as the [media automation guide](/how-to/media-automation/#step-8-configure-jellyfin-library-scan-notifications) shows.
 
 Jellyfin immediately starts an internal library scan on the specific movie directory.
 

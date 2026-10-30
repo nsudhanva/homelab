@@ -57,7 +57,7 @@ flowchart TB
     end
     subgraph Cluster["K3s cluster"]
         CoreDNS["CoreDNS (kube-system)"]
-        Technitium["Technitium (technitium-dns)"]
+        Technitium["Technitium (namespace technitium)"]
         SplitDNS["tailscale-dns CoreDNS"]
     end
     Upstream["LAN / ISP resolvers"]
@@ -91,7 +91,7 @@ Tailnet clients get their DNS configuration from the Tailscale admin console:
 
 | Admin console setting | Value |
 | --- | --- |
-| Global nameserver | `technitium-dns` Tailscale IP, which provides ad blocking and DNSSEC validation (`apps/technitium/`) |
+| Global nameserver | Tailscale IP of the `technitium-tailscale` Service in namespace `technitium` (Tailscale hostname `technitium-dns`). Technitium provides ad blocking and DNSSEC validation (`apps/technitium/`) |
 | Secondary global nameserver | A public resolver such as `1.1.1.1`, used when Technitium is unreachable |
 | Split DNS for `sudhanva.me` | `tailscale-dns` Tailscale IP (`infrastructure/tailscale-dns/`) |
 | MagicDNS | Enabled |

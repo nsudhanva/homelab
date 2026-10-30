@@ -1,6 +1,6 @@
 ---
 title: Add Worker Node to K3s Cluster
-description: Add a new bare-metal Ubuntu worker node to an existing K3s cluster. Covers the inventory, Ansible agent provisioning, GPU labels, and a check that the node joined the cluster.
+description: How to approach adding a worker node to this K3s homelab. The cluster has one server node, and the repo does not automate worker joins yet.
 keywords:
   - add k3s worker node
   - k3s cluster scaling
@@ -13,59 +13,51 @@ sidebar:
 
 # Add a Worker Node
 
-Use this guide to add a bare-metal Ubuntu worker node to an existing K3s cluster.
+:::caution
+
+Joining workers is not automated in this repository yet. There is no `k3s_agents` inventory group and no agent role. If you run `ansible/site.yaml` with `--limit` on a new host, nothing joins the cluster. The playbook only targets `k3s_servers`.
+
+:::
+
+## Current state
+
+- The cluster has one server node, `legion`, in the `k3s_servers` group of `ansible/inventory/hosts.yaml`.
+- The `k3s_server` role installs K3s in server mode. It sets `node-ip` and `node-external-ip` to the Tailscale IP of the node (`k3s_node_ip` and `k3s_external_ip`). The LAN address can come from DHCP, because K3s does not use it.
+- `ansible/roles/k3s_server/templates/config.yaml.j2` hardcodes the node labels `gpu.nvidia.com/present=true` and `node.homelab/role=controlplane`. There is no per-node label variable.
+- The `nvidia` role fails on any host where `nvidia-smi` does not run.
 
 ## Step 1: Prepare the target machine
 
-Install Ubuntu 26.04 LTS on the new machine. Configure a static LAN IP address. Make sure that the machine can connect to the control-plane node `legion`. Install your SSH public key for passwordless sudo access.
+Install Ubuntu 26.04 LTS on the new machine. The LAN address can come from DHCP. Install Tailscale and run `sudo tailscale up`, as in [Host Preparation](/tutorials/system-prep/). Install your SSH public key and give the user passwordless sudo.
 
-## Step 2: Retrieve the cluster node token
+## Step 2: Add the agent automation
 
-Log in to the control plane node `legion` and get the K3s node join token:
+Add these items through Git before you join the node:
 
-```bash
-ssh sudhanva@100.66.139.118 "sudo cat /var/lib/rancher/k3s/server/node-token"
-```
+- An inventory group, for example `k3s_agents` under `k3s_cluster`. Set `ansible_host` and `k3s_node_ip` to the output of `tailscale ip -4` on the worker.
+- An agent role that installs K3s in agent mode with the server URL `https://<legion Tailscale IP>:6443` and the node token. The token is in `/var/lib/rancher/k3s/server/node-token` on `legion`. Store it in Vault and read it at run time. Do not commit it.
+- A play in `ansible/site.yaml` that runs `common`, `tailscale`, and the agent role against the new group. Run the `nvidia` role only on GPU hosts.
+- A node label variable, so that only GPU nodes get `gpu.nvidia.com/present=true`.
 
-Keep this token in a secure location. You need it to register the agent.
+## Step 3: Preview and run the playbook
 
-## Step 3: Update the Ansible inventory
-
-Add the new machine to `ansible/inventory/hosts.yaml` under the `k3s_agents` group:
-
-```yaml
-k3s_agents:
-  hosts:
-    worker-01:
-      ansible_host: WORKER_TAILSCALE_IP
-      ansible_user: sudhanva
-      k3s_node_ip: "WORKER_TAILSCALE_IP"
-```
-
-Replace `WORKER_TAILSCALE_IP` with the output of `tailscale ip -4` on the worker. Each node uses its Tailscale IP as the node IP. Thus, the nodes connect to each other and to the API server over the tailnet, independently of the LAN addresses.
-
-If the node has an NVIDIA GPU, add the node label `gpu.nvidia.com/present=true` under the node variables. The GPU Operator can then manage the node.
-
-## Step 4: Provision the agent with Ansible
-
-Run the Ansible playbook on the new worker node:
+Preview the change, then apply it:
 
 ```bash
-ansible-playbook -i ansible/inventory/hosts.yaml ansible/site.yaml --limit worker-01
+ansible-playbook -i ansible/inventory/hosts.yaml ansible/site.yaml --limit <worker> --check --diff
+ansible-playbook -i ansible/inventory/hosts.yaml ansible/site.yaml --limit <worker>
 ```
 
-Ansible installs the system prerequisites and configures the kernel modules and sysctl parameters. It then installs the K3s agent binary and registers the node with the control plane.
+## Step 4: Validate node registration
 
-## Step 5: Validate node registration
-
-From your workstation, make sure that the new node has joined and shows `Ready`:
+Make sure that the new node has joined and shows `Ready`:
 
 ```bash
 kubectl get nodes -o wide
 ```
 
-Make sure that the Flannel CNI pod runs on the new node:
+K3s runs Flannel inside the `k3s` process, so there is no Flannel pod to check. Make sure that pods can run on the new node:
 
 ```bash
-kubectl get pods -n kube-system -o wide
+kubectl get pods -A -o wide
 ```

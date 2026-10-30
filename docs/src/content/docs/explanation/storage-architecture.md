@@ -28,9 +28,9 @@ flowchart TB
   end
 
   subgraph Claims["PersistentVolumeClaims"]
-    PVCVault["vault: local-path"]
-    PVCProm["prometheus: local-path"]
-    PVCJelly["jellyfin: local-path"]
+    PVCVault["data-vault-0: local-path"]
+    PVCProm["prometheus-db: local-path"]
+    PVCJelly["jellyfin-config: local-path"]
   end
 
   subgraph Provisioner["K3s Local-Path Provisioner"]
@@ -40,8 +40,8 @@ flowchart TB
 
   subgraph Host["Host Filesystem (Ubuntu 26.04)"]
     Root["/home/k3s-storage/"]
-    DirVault["pvc-uuid_vault_data"]
-    DirProm["pvc-uuid_monitoring_prometheus"]
+    DirVault["pvc-uuid_vault_data-vault-0"]
+    DirProm["pvc-uuid_monitoring_prometheus-db"]
     DirJelly["pvc-uuid_media_jellyfin-config"]
   end
 
@@ -81,13 +81,13 @@ The default `local-path` StorageClass sets volume binding to `volumeBindingMode:
 
 ## Host Directory Structure
 
-All persistent volume data has a fixed, predictable structure on the node:
+All persistent volume data has a fixed, predictable structure on the node. The Vault chart (`dataStorage` in `infrastructure/vault/vault.yaml`) creates the PVC `data-vault-0`. The Prometheus Operator names the Prometheus PVC after the StatefulSet. To see the real names, run `kubectl get pvc -A`:
 
 ```text
 /home/k3s-storage/
-├── pvc-1a2b3c4d-5e6f_media_jellyfin-config/
-├── pvc-9z8y7x6w-5v4u_monitoring_prometheus-data/
-└── pvc-3f4e5d6c-7b8a_vault_vault-data/
+├── pvc-<uuid>_media_jellyfin-config/
+├── pvc-<uuid>_monitoring_prometheus-<release>-db-prometheus-<release>-0/
+└── pvc-<uuid>_vault_data-vault-0/
 ```
 
 ## Backup and Disaster Recovery Strategy

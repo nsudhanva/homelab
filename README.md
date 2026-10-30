@@ -1,12 +1,12 @@
 # Homelab
 
-A self-hosted bare-metal Kubernetes cluster on Ubuntu 26.04 LTS (node `legion`). It runs K3s `v1.37+` (`v1.37.1+k3s1`). ArgoCD manages 100% of the cluster through GitOps.
+A self-hosted bare-metal Kubernetes cluster on Ubuntu 26.04 LTS (node `legion`). It runs K3s `v1.37.1+k3s1`. Ansible bootstraps the node and ArgoCD, and ArgoCD manages everything else through GitOps.
 
-- Ansible playbooks install the bare-metal host from scratch with no manual steps
+- Ansible playbooks configure the bare-metal host after you install Ubuntu, the NVIDIA driver, and Tailscale
 - Tailscale gives secure ingress and Envoy Gateway routes the traffic. Vault and External Secrets keep the credentials
 - Local SSD storage uses the K3s Local-Path Provisioner on `/home/k3s-storage`
-- The NVIDIA GPU Operator `v26.7.0` gives the NVIDIA GTX 1050 Ti to workloads through the Container Device Interface (CDI)
-- The Rancher System Upgrade Controller upgrades K3s automatically with zero downtime
+- The NVIDIA GPU Operator `v26.7.2` gives the NVIDIA GTX 1050 Ti to workloads through the Container Device Interface (CDI)
+- The Rancher System Upgrade Controller upgrades K3s from a `Plan` in Git, without cordoning or draining the node
 - ArgoCD applies all infrastructure and user applications from this repository through GitOps
 
 ## Table of contents
@@ -27,10 +27,10 @@ A self-hosted bare-metal Kubernetes cluster on Ubuntu 26.04 LTS (node `legion`).
 
 ## Features
 
-- Single-node / multi-node bare-metal K3s Kubernetes `v1.37.1+k3s1` on node `legion` with Flannel CNI
+- Single-node bare-metal K3s Kubernetes `v1.37.1+k3s1` on node `legion` with Flannel CNI (worker joins are not automated yet)
 - Ansible playbooks for host preparation, runtime configuration, and cluster bootstrap
 - NVIDIA GPU Operator `v26.7.2` with Container Device Interface (CDI) for GTX 1050 Ti transcoding
-- Rancher System Upgrade Controller for declarative K3s upgrades with zero downtime
+- Rancher System Upgrade Controller `v0.20.2` for declarative K3s upgrades
 - ArgoCD ApplicationSets that manage the infrastructure and apps through GitOps
 - Tailscale Gateway API ingress with split-horizon DNS
 - Vault and External Secrets Operator for central secret management
@@ -39,10 +39,11 @@ A self-hosted bare-metal Kubernetes cluster on Ubuntu 26.04 LTS (node `legion`).
 - Telegram alerts through @ManassuHomelabBot from Alertmanager, Grafana, and AI assistants
 - Media automation stack (Prowlarr, Sonarr, Radarr, Bazarr, Seerr) sharing `jellyfin-media` storage for instant atomic hardlinks
 - qBittorrent isolated inside a Gluetun WireGuard VPN sidecar with an iptables firewall killswitch and zero-seeding limits
-- Personal finance tracking with Actual Budget and local AI transaction classification
+- Personal finance tracking with Actual Budget and AI transaction classification
 - Local AI inference with Google Gemma 4 (E2B) on the NVIDIA GTX 1050 Ti through llama.cpp
-- A Gmail classifier that sorts mail each day with local Gemma 4 and sends Telegram summaries
-- A symmetrical Google Drive organizer that classifies documents with local Gemma 4 and syncs with a partner
+- A Gmail classifier that sorts mail each day and sends Telegram summaries
+- A symmetrical Google Drive organizer that classifies documents and copies joint documents to the partner's folder
+- AI jobs call Claude Haiku 5.5 (`anthropic:claude-haiku-5-5`) first, then OpenRouter `google/gemma-4-31b-it`, then the local Gemma 4 E2B model (`packages/homelab-ai/kustomize/kustomization.yaml`). Email, document, and transaction text goes to Anthropic first
 - Automatic container image updates with ArgoCD Image Updater
 - Envoy Gateway data plane for the Kubernetes Gateway API
 - Kubescape operator for automatic cluster security scans
@@ -73,6 +74,7 @@ flowchart LR
   end
 
   Ansible --> Host
+  Ansible --> Argo
   Host --> K3s
   K3s --> Argo
   Bootstrap --> Argo
@@ -176,18 +178,18 @@ To build the documentation locally, run these commands:
 ```bash
 cd docs
 bun install
-bun dev
+bun run dev
 ```
 
 Main guides:
 
-- From scratch installation: [Build K3s Cluster from Scratch](docs/src/content/docs/how-to/from-scratch.md)
-- Media automation & VPN: [Media Automation and WireGuard VPN Stack](docs/src/content/docs/how-to/media-automation.md)
-- Media VPN architecture: [Media VPN and Storage Architecture](docs/src/content/docs/explanation/media-vpn-architecture.md)
-- Secrets management: [HashiCorp Vault Secrets Management](docs/src/content/docs/how-to/vault.md)
-- Persistent storage: [Local-Path Storage Architecture](docs/src/content/docs/explanation/storage-architecture.md)
-- Version matrix: [Component Version Matrix](docs/src/content/docs/reference/versions.md)
-- Applications catalog: [Applications Catalog Reference](docs/src/content/docs/reference/applications.md)
+- From scratch installation: [Build K3s Cluster from Scratch](https://homelab.sudhanva.me/how-to/from-scratch/)
+- Media automation & VPN: [Media Automation and WireGuard VPN Stack](https://homelab.sudhanva.me/how-to/media-automation/)
+- Media VPN architecture: [Media VPN and Storage Architecture](https://homelab.sudhanva.me/explanation/media-vpn-architecture/)
+- Secrets management: [HashiCorp Vault Secrets Management](https://homelab.sudhanva.me/how-to/vault/)
+- Persistent storage: [Local-Path Storage Architecture](https://homelab.sudhanva.me/explanation/storage-architecture/)
+- Version matrix: [Component Version Matrix](https://homelab.sudhanva.me/reference/versions/)
+- Applications catalog: [Applications Catalog Reference](https://homelab.sudhanva.me/reference/applications/)
 
 ## Repository layout
 
@@ -205,8 +207,8 @@ docs/             Astro Starlight documentation
 
 | App | Purpose | Hostname |
 | --- | --- | --- |
-| Docs | Documentation site for cluster guides | `homelab.sudhanva.me` |
-| Headlamp | Kubernetes UI with OIDC support and metrics | `headlamp.sudhanva.me` |
+| Docs | Documentation site for cluster guides | `homelab.sudhanva.me`, `docs.sudhanva.me` |
+| Headlamp | Kubernetes UI that signs in with a ServiceAccount token, with metrics | `headlamp.sudhanva.me` |
 | Homer | Home dashboard with service shortcuts | `home.sudhanva.me` |
 | Jellyfin | Media streaming with NVIDIA GPU acceleration | `jellyfin.sudhanva.me` |
 | Filebrowser | File manager for persistent media volumes | `filebrowser.sudhanva.me` |
@@ -217,13 +219,13 @@ docs/             Astro Starlight documentation
 | Bazarr | Automated subtitle download manager | `bazarr.sudhanva.me` |
 | Seerr | Media discovery and request interface | `seerr.sudhanva.me` |
 | Actual Budget | Privacy-focused personal finance tracking | `actual.sudhanva.me` |
-| Technitium DNS | Authoritative and recursive DNS server | `dns.sudhanva.me` |
+| Technitium DNS | Recursive DNS server with ad blocking, the global tailnet nameserver | `dns.sudhanva.me` |
 | Home Assistant | Smart home automation platform | `homeassistant.sudhanva.me` |
 | Gemma 4 AI | Local LLM inference on NVIDIA GPU | `ai.sudhanva.me` |
-| Gmail Classifier | Symmetrical email sorting and daily summary with a local LLM | Background CronJob |
-| Drive Organizer | Symmetrical family document organizer with local Gemma 4 | Background CronJob |
-| Actual Classifier | Daily bank transaction categorization with local Gemma 4 | Background CronJob |
-| Alert Summarizer | Telegram digest and triage of cluster Prometheus alerts with Gemma 4 | Background CronJob |
+| Gmail Classifier | Daily email sorting and Telegram summary for each account, plus a weekly mark-read job | CronJobs (01:00 and 01:15 America/Los_Angeles) |
+| Drive Organizer | Symmetrical family document organizer | CronJobs (02:00 and 02:15 America/Los_Angeles) |
+| Actual Classifier | Daily bank transaction categorization in Actual Budget | CronJob (03:00 America/Los_Angeles) |
+| Alert Summarizer | Alertmanager webhook that summarizes alerts with the AI model chain and posts them to Telegram | Deployment (no HTTPRoute) |
 | ArgoCD | GitOps control plane UI | `argocd.sudhanva.me` |
 | Vault | Central secrets management | `vault.sudhanva.me` |
 | Grafana | Metrics dashboards | `grafana.sudhanva.me` |

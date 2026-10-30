@@ -17,10 +17,10 @@ sidebar:
 
 This repository uses 100% infrastructure-as-code and GitOps automation. Each layer of the homelab is declarative. A control loop automates each layer:
 
-- **Ansible Automation (`ansible/`)**: Installs the bare-metal Ubuntu hosts, the kernel parameters, the container runtime with NVIDIA CDI, and the initial K3s bootstrap.
+- **Ansible Automation (`ansible/`)**: Configures the bare-metal Ubuntu host, the kernel parameters, the Tailscale node settings, the NVIDIA Container Toolkit and CDI, and the initial K3s install and ArgoCD bootstrap.
 - **ArgoCD GitOps Engine (`bootstrap/`, `infrastructure/`, `apps/`)**: Continuously reconciles all cluster infrastructure and user applications against git HEAD.
-- **Rancher System Upgrade Controller (`infrastructure/system-upgrade-controller/`)**: Does rolling K3s upgrades declaratively through Kubernetes Custom Resources (`Plan`).
-- **ArgoCD Image Updater (`infrastructure/argocd-image-updater/`)**: Scans container registries and commits updated image tags back to git automatically.
+- **Rancher System Upgrade Controller (`infrastructure/system-upgrade-controller/`)**: Upgrades K3s declaratively through a `Plan` custom resource.
+- **ArgoCD Image Updater (`infrastructure/argocd-image-updater/`)**: Scans container registries and commits updated image tags or digests back to Git.
 
 ```mermaid
 flowchart TB
@@ -33,7 +33,7 @@ flowchart TB
 
   subgraph HostLayer["Bare-Metal Host: legion (Ubuntu 26.04)"]
     Ansible["Ansible Engine (SSH)"]
-    Host["Kernel + NVIDIA CDI + Containerd"]
+    Host["Kernel + Tailscale + NVIDIA CDI"]
     K3s["K3s Server Daemon"]
   end
 
@@ -58,7 +58,7 @@ flowchart TB
   Argo --> AppSets
   AppSets --> Infra
   AppSets --> Apps
-  SUC -->|Automated node drains & upgrades| K3s
+  SUC -->|In-place binary upgrades| K3s
   ImgUpdater -->|Git commit write-back| AppsRepo
 ```
 
@@ -66,17 +66,18 @@ flowchart TB
 
 The Ansible roles can make the same host configuration again at any time:
 
-- `ansible/roles/common/`: Installs OS packages, loads kernel modules (`overlay`, `br_netfilter`), sets the sysctl network values, and prepares `/home/k3s-storage`.
+- `ansible/roles/common/`: Installs OS packages, loads kernel modules (`overlay`, `br_netfilter`), sets the sysctl network and inotify values, and prepares `/home/k3s-storage`.
+- `ansible/roles/tailscale/`: Requires Tailscale on the node, turns off Tailscale DNS (`--accept-dns=false`), and waits for the Tailscale node IP.
 - `ansible/roles/nvidia/`: Configures the NVIDIA Container Toolkit and makes the CDI specifications (`/etc/cdi/nvidia.yaml`).
-- `ansible/roles/k3s_server/`: Deploys the K3s server with these flags (`default-runtime: "nvidia"`, `default-local-storage-path: "/home/k3s-storage"`).
+- `ansible/roles/k3s_server/`: Writes the K3s server config (`default-runtime: "nvidia"`, `default-local-storage-path: "/home/k3s-storage"`, the Tailscale `node-ip`, node labels, and kubelet reservations), adds a systemd drop-in that starts K3s after `tailscaled`, installs K3s if the binary is missing, and fetches the kubeconfig.
 - `ansible/roles/argocd/`: Installs the ArgoCD control plane and applies `bootstrap/root.yaml`.
 
 ## Layer 2: In-Cluster Declarative GitOps (ArgoCD)
 
 ArgoCD is the main reconcile loop. The root application `bootstrap/root.yaml` creates two ApplicationSets:
 
-- `infra-appset.yaml`: Watches each directory in `infrastructure/*` and makes one `infra-<component>` application for each.
-- `apps-appset.yaml`: Finds the application definitions in `apps/*/app.yaml` and deploys the workloads into their target namespaces.
+- `infra-appset.yaml` (ApplicationSet `infrastructure`): Watches each directory in `infrastructure/*` and makes one `infra-<component>` application for each.
+- `apps-appset.yaml` (ApplicationSet `apps`): Finds the application definitions in `apps/*/app.yaml` and makes one `app-<name>` application for each, in the namespace from `app.yaml`.
 
 Both ApplicationSets use automatic pruning and self-healing:
 
@@ -89,5 +90,5 @@ syncPolicy:
 
 ## Layer 3: Automated Lifecycle & Image Updates
 
-- **System Upgrade Controller**: Removes the need for manual node patches. When you set a new K3s version tag in `k3s-upgrade-plan.yaml`, the controller does these steps: node cordon, drain, in-place binary upgrade, and uncordon.
-- **Image Updater**: Monitors upstream semantic tags or digests. It examines the container registries on a schedule and pushes Git commits back to `master`.
+- **System Upgrade Controller**: Removes the need for manual K3s upgrades. When you set a new K3s version in `k3s-upgrade-plan.yaml`, the controller runs a `rancher/k3s-upgrade` Job on the control-plane node. The Plan sets `cordon: false` and has no `drain` block, so the Job replaces the binary and restarts the `k3s` service without cordoning or draining the node.
+- **Image Updater**: Monitors semver tags or `latest` digests. It reads GHCR and Docker Hub with the credentials in the `argocd-image-updater-registries` Secret and pushes Git commits back to `master`.

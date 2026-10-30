@@ -33,20 +33,26 @@ flowchart TB
         APP["App Pod (e.g., docs, jellyfin)"]
     end
 
+    subgraph DNS["Tailnet DNS"]
+        TSDNS["tailscale-dns resolver (split DNS for sudhanva.me)"]
+    end
+
     subgraph External["External Services"]
         CF["Cloudflare DNS"]
         LE["Let's Encrypt"]
     end
 
-    Client -->|"1. DNS: homelab.sudhanva.me"| CF
-    CF -->|"2. CNAME: gateway-envoy.TAILNET.ts.net"| Client
-    Client -->|"3. TLS to TAILSCALE_GATEWAY_IP:443"| TS
+    Client -->|"1. DNS: grafana.sudhanva.me"| TSDNS
+    TSDNS -->|"2. A: Gateway Tailscale IP"| Client
+    Client -->|"3. TLS to Gateway Tailscale IP:443"| TS
     TS -->|"4. DNAT to ClusterIP"| SVC
     SVC --> ENVOY
     ENVOY -->|"5. Route by hostname"| APP
 
     LE -.->|"ACME DNS-01"| CF
 ```
+
+ExternalDNS also writes a public CNAME in Cloudflare for each exposed hostname, for example `grafana.sudhanva.me` to `gateway-envoy-1.ainu-herring.ts.net`. Only tailnet devices can resolve and reach that target.
 
 ## Detailed Request Path
 
@@ -62,13 +68,13 @@ sequenceDiagram
     participant Pod as App Pod
 
     Client->>TSdns: Query homelab.sudhanva.me
-    TSdns-->>Client: 100.x.y.z
+    TSdns-->>Client: 100.x.y.z (from the tailscale-dns resolver)
     Client->>TS: TLS 443 to 100.x.y.z
     TS->>Svc: DNAT to ClusterIP:443
     Svc->>Envoy: Forward to Envoy Gateway
     Envoy->>Route: Match Host header + SNI
     Route->>AppSvc: Pick backend Service:80
-    AppSvc->>Pod: Forward to Pod:8080
+    AppSvc->>Pod: Forward to Pod:80 (docs container port)
     Pod-->>Client: HTTP response
 ```
 
@@ -114,8 +120,8 @@ flowchart LR
 
 The Tailscale Kubernetes Operator creates proxy pods for `LoadBalancer` services that set `spec.loadBalancerClass: tailscale`. Each proxy pod does these tasks:
 
-- It joins your Tailnet as a device (for example, `gateway-envoy`).
-- It gets a Tailscale IP (for example, `TAILSCALE_GATEWAY_IP`).
+- It joins your Tailnet as a device. The Envoy proxy requests the hostname `gateway-envoy`, and the device is `gateway-envoy-1.ainu-herring.ts.net`.
+- It gets a Tailscale IP. The Gateway reports it in `status.addresses`.
 - It uses iptables DNAT to send traffic to the Kubernetes ClusterIP.
 
 ### Envoy Gateway
@@ -130,10 +136,12 @@ The `EnvoyProxy` resource configures the Envoy deployment as a `LoadBalancer` wi
 
 ### ExternalDNS
 
-ExternalDNS watches HTTPRoute resources that have the annotation `external-dns.alpha.kubernetes.io/expose: "true"`. It creates these DNS records in Cloudflare:
+ExternalDNS (source `gateway-httproute`) watches HTTPRoute resources that have the annotation `external-dns.alpha.kubernetes.io/expose: "true"`. It creates these DNS records in Cloudflare:
 
-- Subdomain CNAMEs (for example, `homelab.sudhanva.me`).
-- Each CNAME points to the Tailscale hostname (`gateway-envoy.TAILNET.ts.net`).
+- Subdomain CNAMEs (for example, `grafana.sudhanva.me`).
+- Each CNAME points to the target in the `external-dns.alpha.kubernetes.io/target` annotation on the Gateway in `infrastructure/gateway/gateway.yaml`: `gateway-envoy-1.ainu-herring.ts.net`.
+
+The docs HTTPRoute (`homelab.sudhanva.me`, `docs.sudhanva.me`) does not have the annotation, so ExternalDNS does not manage those records.
 
 ### cert-manager
 
@@ -152,7 +160,7 @@ All of these resources must agree. If one is incorrect, HTTPS routing through Ta
 - The Gateway uses `gatewayClassName: tailscale` and points to the wildcard certificate.
 - ExternalDNS uses the Gateway annotation to target the Tailscale hostname.
 - cert-manager creates the wildcard certificate in the `tailscale` namespace.
-- HTTPRoutes are in the app namespaces and have the ExternalDNS expose annotation.
+- HTTPRoutes are in the app namespaces. All of them except the docs route have the ExternalDNS expose annotation.
 - External Secrets Operator syncs the Cloudflare API tokens and the Tailscale OAuth credentials from Vault.
 
 ## Split-horizon DNS for public hostnames
@@ -161,19 +169,19 @@ Some hostnames need one target on the tailnet and a different target off the tai
 
 To get this result, do these steps:
 
-- Keep the public Cloudflare DNS record that points to Pages.
+- Keep the public Cloudflare DNS record for the hostname. ExternalDNS does not manage it.
 - Send tailnet DNS through the `tailscale-dns` resolver. This resolver answers HTTPRoute hostnames with the Tailscale Gateway IP. It sends all other `sudhanva.me` names to public DNS.
 - Do not add the `external-dns.alpha.kubernetes.io/expose: "true"` annotation to the HTTPRoute. Without it, ExternalDNS does not overwrite the public record.
 - Let the `tailscale-dns-updater` CronJob update the Gateway IP and the list of HTTPRoute hostnames in the resolver configuration.
 
 ## In-cluster access to Gateway services
 
-Pods in the cluster cannot route to Tailscale IPs (`100.x.x.x`). Some pods must connect to a service that the Tailscale Gateway exposes (for example, Vault for OIDC token exchange). For these pods, DNS must resolve to an internal IP.
+Pods in the cluster cannot route to Tailscale IPs (`100.x.x.x`). Some pods must connect to a service that the Tailscale Gateway exposes (for example, `https://vault.sudhanva.me`). For these pods, DNS must resolve to an internal IP.
 
 ```mermaid
 flowchart LR
     subgraph Cluster["Kubernetes Cluster"]
-        Pod["App Pod (e.g., Headlamp)"]
+        Pod["App Pod"]
         CoreDNS["CoreDNS"]
         GWInt["gateway-internal Service"]
         Envoy["Envoy Gateway"]
@@ -225,17 +233,17 @@ kubectl get httproute -A
 
 When you open `https://homelab.sudhanva.me` from your Mac, these events occur:
 
-- **DNS resolution**: Your Tailscale client sends a query to Tailscale DNS (100.100.100.100). Tailscale DNS knows that `homelab.sudhanva.me` points to `gateway-envoy.TAILNET.ts.net`. That name resolves to `TAILSCALE_GATEWAY_IP`.
+- **DNS resolution**: Your Tailscale client sends a query to Tailscale DNS (100.100.100.100). Split DNS sends `sudhanva.me` queries to the `tailscale-dns` resolver (`infrastructure/tailscale-dns/`). The resolver answers each HTTPRoute hostname, such as `homelab.sudhanva.me`, with the Tailscale IP of the Gateway.
 
-- **TLS connection**: Your browser connects to `TAILSCALE_GATEWAY_IP:443` through the WireGuard tunnel. The Tailscale proxy pod receives the connection.
+- **TLS connection**: Your browser connects to the Gateway Tailscale IP on port 443 through the WireGuard tunnel. The Tailscale proxy pod receives the connection.
 
-- **DNAT**: iptables rules in the proxy pod change the destination from `TAILSCALE_GATEWAY_IP:443` to the ClusterIP `10.x.x.x:443`.
+- **DNAT**: iptables rules in the proxy pod change the destination from the Gateway Tailscale IP to the ClusterIP `10.x.x.x:443`.
 
 - **Packet routing**: Flannel CNI sends the packet across the cluster network to the Envoy Gateway pod.
 
 - **TLS termination**: Envoy reads the SNI (`homelab.sudhanva.me`) and selects the filter chain with the wildcard certificate.
 
-- **HTTPRoute matching**: Envoy matches the `Host` header to an HTTPRoute. Then it sends the request to the backend Service (for example, `docs.docs.svc.cluster.local:80`).
+- **HTTPRoute matching**: Envoy matches the `Host` header to an HTTPRoute. Then it sends the request to the backend Service (for example, `docs.docs.svc.cluster.local:80`). The docs container listens on port 80.
 
 ## Key Configuration Files
 
@@ -247,7 +255,8 @@ When you open `https://homelab.sudhanva.me` from your Mac, these events occur:
 | Certificate | `infrastructure/gateway/certificate.yaml` | Wildcard cert request |
 | Internal Service | `infrastructure/gateway/internal-service.yaml` | In-cluster access to gateway |
 | CoreDNS | `infrastructure/coredns/configmap.yaml` | Split-horizon DNS for pods |
-| HTTPRoutes | `apps/*/httproute.yaml` | Per-app routing rules |
+| HTTPRoutes | `apps/*/httproute.yaml`, `infrastructure/gateway/*-httproute.yaml`, `infrastructure/prometheus/httproute-*.yaml` | Per-app routing rules |
+| Tailnet resolver | `infrastructure/tailscale-dns/` | Split DNS for tailnet clients |
 
 ## Common Issues
 

@@ -38,6 +38,8 @@ CONFIDENCE_THRESHOLD: "0.6"
 BATCH_SIZE: "200"
 ```
 
+`BATCH_SIZE` is the maximum number of transactions that one run classifies. The `Settings` default is `25`, and the CronJob sets `200`. The `--limit` flag overrides it for one run. Without `--limit`, the run uses `BATCH_SIZE`.
+
 The `actual-classifier-secrets` ExternalSecret reads `ACTUAL_PASSWORD` from Vault `kv/actual` (`password`).
 
 ### Switch models or providers
@@ -77,7 +79,7 @@ The benchmark reports category accuracy, tag precision, payee normalization, and
 
 ## Step 4: Preview Run with Dry-Run Mode
 
-To examine pending unclassified transactions without changes to Actual Budget, run this command:
+To examine pending unclassified transactions without changes to Actual Budget, run this command. `--limit 10` overrides `BATCH_SIZE` for this run:
 
 ```bash
 cd apps/actual-classifier

@@ -31,7 +31,12 @@ Example layout:
 
 :::note
 
-App namespaces use Pod Security Admission warn and audit labels at the baseline level. These labels do not stop workloads. If a manifest requests privileged features, you get warnings. If your app needs access to the Kubernetes API, set `automountServiceAccountToken: true` and bind a dedicated ServiceAccount.
+Most app namespaces (`actual-budget`, `docs`, `headlamp`, `home-assistant`, `homer`, `llama`, `media`, `technitium`) set Pod Security Admission `warn` and `audit` labels at the `baseline` level. These labels do not stop workloads. If a manifest requests privileged features, you get warnings. There are exceptions:
+
+- `drive-organizer` also sets `enforce: baseline`, so the API server rejects pods that break the baseline policy.
+- `gmail-classifier` and `actual-classifier` have no Pod Security labels.
+
+Add the `warn` and `audit` labels to the `namespace.yaml` of a new app. If your app needs access to the Kubernetes API, set `automountServiceAccountToken: true` and bind a dedicated ServiceAccount.
 
 :::
 
@@ -59,7 +64,9 @@ Hostnames must agree with the wildcard certificate in `infrastructure/gateway/ce
 
 :::note
 
-ExternalDNS manages only the hostnames that have the annotation `external-dns.alpha.kubernetes.io/expose: "true"`. Some hostnames are split-horizon (public on Cloudflare Pages, private on the tailnet). For these hostnames, do not add the annotation. Manage the public DNS and the Tailscale DNS overrides manually.
+ExternalDNS manages only the hostnames that have the annotation `external-dns.alpha.kubernetes.io/expose: "true"`. The docs hostnames (`homelab.sudhanva.me` and `docs.sudhanva.me`) are split-horizon: they have a public record that ExternalDNS does not manage, and a private answer on the tailnet. For such hostnames, do not add the annotation. Manage the public DNS record manually.
+
+If you add a new HTTPRoute, also add it to the Homer dashboard in `apps/homer/configmap.yaml`. The `tailscale-dns-updater` CronJob adds the hostname to the tailnet resolver within 10 minutes.
 
 :::
 

@@ -209,7 +209,41 @@ kubectl -n cert-manager get secret cloudflare-api-token
 kubectl -n tailscale get secret operator-oauth
 ```
 
-When the secrets agree with Vault, remove all secrets that you created manually. External Secrets Operator then owns the secrets.
+Every Secret that comes from Vault has `creationPolicy: Owner`, so External Secrets Operator owns it. Do not create or edit these Secrets with `kubectl`.
+
+## Vault paths and the ExternalSecrets that read them
+
+This table lists every ExternalSecret in the repo. All paths are under the KV v2 mount `kv/`. The `homelab-ai-credentials` ExternalSecret comes from the kustomize Component `packages/homelab-ai/kustomize/`, so each app that includes the Component gets its own copy in its namespace.
+
+| Vault path | Properties read | ExternalSecret (namespace/name) | Manifest |
+| --- | --- | --- | --- |
+| `kv/argocd-image-updater/ghcr` | `username`, `token` | `argocd/argocd-image-updater-registries` | `infrastructure/external-secrets/external-secret-argocd-image-updater-registries.yaml` |
+| `kv/argocd-image-updater/dockerhub` | `username`, `token` | `argocd/argocd-image-updater-registries` | `infrastructure/external-secrets/external-secret-argocd-image-updater-registries.yaml` |
+| `kv/argocd/repo-creds` | `username`, `token` | `argocd/repo-homelab` | `infrastructure/external-secrets/external-secret-argocd-repo-creds.yaml` |
+| `kv/cert-manager/cloudflare` | `api-token` | `cert-manager/cloudflare-api-token` | `infrastructure/external-secrets/external-secret-cloudflare-cert-manager.yaml` |
+| `kv/cert-manager/cloudflare` | `api-token` | `tailscale/cloudflare-api-token` | `infrastructure/external-secrets/external-secret-cloudflare-cert-manager-tailscale.yaml` |
+| `kv/external-dns/cloudflare` | `api-token` | `external-dns/cloudflare-api-token` | `infrastructure/external-secrets/external-secret-cloudflare-external-dns.yaml` |
+| `kv/tailscale/operator-oauth` | `client_id`, `client_secret` | `tailscale/operator-oauth` | `infrastructure/external-secrets/external-secret-tailscale-operator.yaml` |
+| `kv/monitoring/grafana-admin` | `admin-user`, `admin-password` | `monitoring/grafana-admin` | `infrastructure/prometheus/external-secret-grafana.yaml` |
+| `kv/telegram/bot` | `token`, `chat_id` | `monitoring/alertmanager-telegram` | `infrastructure/prometheus/external-secret-telegram.yaml` |
+| `kv/telegram/bot` | `token` | `gmail-classifier/gmail-credentials-personal`, `gmail-classifier/gmail-credentials-family` | `apps/gmail-classifier/secret-personal.yaml`, `apps/gmail-classifier/secret-family.yaml` |
+| `kv/telegram/bot` | `token` | `drive-organizer/drive-credentials-personal`, `drive-organizer/drive-credentials-family` | `apps/drive-organizer/secret-personal.yaml`, `apps/drive-organizer/secret-family.yaml` |
+| `kv/gmail/credentials` | `client_id`, `client_secret`, `refresh_token` | `gmail-classifier/gmail-credentials-personal` | `apps/gmail-classifier/secret-personal.yaml` |
+| `kv/gmail/credentials` | `client_id`, `client_secret`, `refresh_token` | `drive-organizer/drive-credentials-personal` | `apps/drive-organizer/secret-personal.yaml` |
+| `kv/google/accounts/family` | `client_id`, `client_secret`, `refresh_token` | `gmail-classifier/gmail-credentials-family` | `apps/gmail-classifier/secret-family.yaml` |
+| `kv/google/accounts/family` | `client_id`, `client_secret`, `refresh_token` | `drive-organizer/drive-credentials-family` | `apps/drive-organizer/secret-family.yaml` |
+| `kv/actual` | `password` | `actual-classifier/actual-classifier-secrets` | `apps/actual-classifier/secret.yaml` |
+| `kv/filebrowser/auth` | `username`, `password_hash` | `media/filebrowser-auth` | `apps/filebrowser/external-secret-auth.yaml` |
+| `kv/qbittorrent/vpn` | `private_key`, `public_key`, `endpoint_ip`, `endpoint_port`, `addresses` | `media/qbittorrent-vpn` | `apps/qbittorrent/external-secret-vpn.yaml` |
+| `kv/technitium/admin` | `admin-user`, `admin-password` | `technitium/technitium-admin` | `apps/technitium/external-secret.yaml` |
+| `kv/openrouter` | `api_key` | `<namespace>/homelab-ai-credentials` in `actual-classifier`, `monitoring`, `drive-organizer`, and `gmail-classifier` | `packages/homelab-ai/kustomize/externalsecret.yaml` |
+| `kv/anthropic` | `api_key`, `workspace_id` | `<namespace>/homelab-ai-credentials` in `actual-classifier`, `monitoring`, `drive-organizer`, and `gmail-classifier` | `packages/homelab-ai/kustomize/externalsecret.yaml` |
+
+Vault can also hold paths that no manifest reads, for example the plaintext `password` property in `kv/filebrowser/auth`, or logins for the media apps that you keep for yourself. The cluster does not use these values. To find the readers of a path, search the repo:
+
+```bash
+git grep -n "key: <path>" -- apps infrastructure packages
+```
 
 ## Step 8: Access the Vault UI
 

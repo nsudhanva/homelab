@@ -133,13 +133,22 @@ export default defineConfig({
               items: [
                 { label: 'Add Worker Node', slug: 'how-to/add-worker-node' },
                 { label: 'Deploy Apps', slug: 'how-to/deploy-apps' },
-                { label: 'Add an AI Job', slug: 'how-to/add-ai-app' },
                 { label: 'Media Automation & VPN', slug: 'how-to/media-automation' },
                 { label: 'Actual Budget', slug: 'how-to/actual-budget' },
                 { label: 'Sync ArgoCD Apps', slug: 'how-to/argocd-sync' },
                 { label: 'Connect Repo to ArgoCD', slug: 'how-to/argocd-repo' },
                 { label: 'Automated Image Updates', slug: 'how-to/image-updates' },
                 { label: 'GitOps Automation', slug: 'how-to/gitops-automation' },
+              ],
+            },
+            {
+              label: 'AI Jobs',
+              collapsed: true,
+              items: [
+                { label: 'Add an AI Job', slug: 'how-to/add-ai-app' },
+                { label: 'Add a Google Account', slug: 'how-to/add-google-account' },
+                { label: 'Actual Classifier', slug: 'how-to/actual-classifier' },
+                { label: 'Drive Organizer', slug: 'how-to/drive-organizer' },
               ],
             },
             {

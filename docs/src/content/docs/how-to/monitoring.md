@@ -54,15 +54,15 @@ kubectl -n monitoring get servicemonitors
 
 ## Step 5: Telegram Alerting
 
-Alertmanager sends alerts to the `alert-summarizer` service (`apps/alert-summarizer/`). This service uses the shared `homelab-ai` model chain to summarize each alert and posts the summary to Telegram. Grafana posts to Telegram directly.
+Alertmanager sends alerts to the `alert-summarizer` Deployment (`apps/alert-summarizer/`). This service uses the shared `homelab-ai` model chain to summarize each alert and posts the summary to Telegram.
 
-- Bot: `@ManassuHomelabBot`
-- Target Chat ID: `7341944813`
-- Secret storage: Vault keeps the bot token at `kv/telegram/bot`
-- GitOps Secret Sync: The ExternalSecret in `infrastructure/prometheus/external-secret-telegram.yaml` creates `alertmanager-telegram` in `monitoring`. The `alert-summarizer` service mounts this Secret
+- Bot: The homelab Telegram bot. Its token is in Vault
+- Target Chat ID: `7341944813` (`ALERT_TELEGRAM_CHAT_ID` in `apps/alert-summarizer/deployment.yaml`)
+- Secret storage: Vault keeps the bot at `kv/telegram/bot` with the properties `token` and `chat_id`
+- GitOps Secret Sync: The ExternalSecret in `infrastructure/prometheus/external-secret-telegram.yaml` creates `alertmanager-telegram` in `monitoring` with the keys `token` and `chat-id`. The `alert-summarizer` Deployment mounts this Secret at `/etc/secrets` and reads `/etc/secrets/token`. The Alertmanager pod also mounts it through `alertmanagerSpec.secrets`
 - Alertmanager route: `prometheus.yaml` groups alerts by `alertname` and `namespace` (`group_wait: 30s`, `group_interval: 5m`, `repeat_interval: 1h`). It sends them to `http://alert-summarizer.monitoring.svc.cluster.local:8000/webhook` with `send_resolved: true`
 - Silenced routes: `Watchdog`, `InfoInhibitor`, `Alertmanager*FailedToSendAlerts`, and `severity=info` go to the `null` receiver
-- Grafana: The contact point `Telegram AlertBot` is the default notification policy
+- Grafana: Git defines no Grafana contact points or notification policies. If you add a Telegram contact point in the Grafana UI, it is stored in the Grafana database and is not managed by ArgoCD
 
 ### Alert summarizer behavior
 
@@ -71,10 +71,10 @@ Alertmanager sends alerts to the `alert-summarizer` service (`apps/alert-summari
 - The service ignores a repeated delivery of the same alert state (same fingerprint and status) in the `ALERT_DEDUP_WINDOW_SECONDS` window (default 3000 seconds). This window is shorter than `repeat_interval`. Thus the service still sends hourly reminders for alerts that continue to fire.
 - Argo CD Image Updater deploys new images automatically (digest strategy).
 
-To test the alert pipeline, send a test alert payload to Alertmanager.
+To test the alert pipeline, send a test alert payload to Alertmanager. Use `severity: warning`, because Alertmanager sends `severity=info` alerts to the `null` receiver.
 
 ```bash
 kubectl exec -n monitoring alertmanager-monitoring-alertmanager-0 -c alertmanager -- \
-  wget -qO- --post-data='[{"labels":{"alertname":"TestTelegramAlert","severity":"info","instance":"k3s-cluster"},"annotations":{"summary":"Homelab Alerting Verified","description":"Telegram alerts delivered successfully."}}]' \
+  wget -qO- --post-data='[{"labels":{"alertname":"TestTelegramAlert","severity":"warning","instance":"k3s-cluster"},"annotations":{"summary":"Homelab Alerting Verified","description":"Telegram alerts delivered successfully."}}]' \
   --header='Content-Type: application/json' http://localhost:9093/api/v2/alerts
 ```

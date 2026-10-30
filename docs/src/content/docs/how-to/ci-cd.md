@@ -1,6 +1,6 @@
 ---
 title: CI/CD Pipeline with GitHub Actions
-description: Configure GitHub Actions for Kubernetes manifest validation, pre-commit checks, and docs image builds. Learn how CI validation and ArgoCD deployment work together.
+description: How GitHub Actions runs pre-commit, kubeconform, secret scans, Python tests, and image builds, and how ArgoCD handles deployment.
 keywords:
   - github actions kubernetes
   - kubeconform validation
@@ -15,47 +15,59 @@ sidebar:
 
 # CI And CD With GitHub Actions
 
-This guide shows how CI runs in GitHub Actions. It also shows how CD goes through ArgoCD and the docs image build.
+This guide shows how CI runs in GitHub Actions. It also shows how CD goes through ArgoCD.
 
 ## Step 1: Review the workflows
 
-These workflows are in `.github/workflows/`:
+There are two workflows in `.github/workflows/`.
 
-- `ci.yaml` runs pre-commit, kubeconform validation, and a docs build check. When files under `docs/` change, it also pushes the docs image.
-- `ci.yaml` also tests every Python project. It finds them by convention: each `apps/*/pyproject.toml` and `packages/*/pyproject.toml` is a project, and a project with a `Dockerfile` gets an image. A project runs ruff, ty, and pytest when its directory or `packages/homelab-ai` changes. On `master`, CI then pushes the image of each changed project to `ghcr.io/nsudhanva/homelab-<name>`.
-- `cluster-smoke.yaml` is a manual and scheduled workflow. It connects to the tailnet and runs `kubectl get nodes` and `kubectl get pods -A`.
+### `ci.yaml` (CI)
+
+`ci.yaml` runs on pull requests and on pushes to `master`. It ignores changes that touch only `apps/**/.argocd-source-*.yaml`, which are the Image Updater write-back commits. It has these jobs:
+
+| Job | What it does | When it runs |
+| --- | --- | --- |
+| `pre-commit` | Runs `pre-commit run --all-files`. The hooks include YAML checks, gitleaks, yamllint, markdownlint, ruff, and kubeconform | Every run |
+| `gitleaks` | Scans the full Git history with `gitleaks git --redact` | Every run |
+| `docs-build` | Builds the Astro Starlight site with Bun | When `docs/**` or `ci.yaml` changes |
+| `docs-push` | Builds the docs image from `docs/` for `linux/amd64` and `linux/arm64` and pushes `ghcr.io/nsudhanva/homelab-docs` with the tags `latest` and the short SHA | Pushes to `master`, when `docs/**` or `ci.yaml` changes |
+| `python-changes` | Finds each `apps/*/pyproject.toml` and `packages/*/pyproject.toml`, and selects the projects whose directory, `packages/homelab-ai/`, or `ci.yaml` changed | Every run |
+| `test (<project>)` | Runs `uv run ruff check`, `uv run ruff format --check`, `uv run ty check`, and `uv run pytest` for each selected project | When `python-changes` selects a project |
+| `push (<app>)` | Builds the image of each selected project that has a `Dockerfile`, with the repo root as the build context, and pushes `ghcr.io/nsudhanva/homelab-<name>` with the tags `latest` and the short SHA | Pushes to `master`, after the tests pass |
+
+kubeconform runs only inside the `pre-commit` job. The local hook calls `scripts/run-kubeconform.sh`. The script downloads kubeconform `v0.7.0`, checks its checksum, and validates every YAML file under `apps/`, `infrastructure/`, and `bootstrap/` against Kubernetes `1.37.0`. It skips `app.yaml`, `apps/accounts.yaml`, and the `.argocd-source-*.yaml` files.
+
+The image jobs build with the repo root as the context, so the root `.dockerignore` controls what goes into every image.
+
+### `provision.yaml` (Ansible Provision)
+
+`provision.yaml` runs on pushes to `master` that change `ansible/**` or the workflow file, and on manual runs (`workflow_dispatch`). It joins the tailnet as `tag:ci`, connects to `legion` over SSH, and runs `ansible-playbook -i ansible/inventory/hosts.yaml ansible/site.yaml`. Refer to [GitOps Automation](/how-to/gitops-automation/).
 
 ## Step 2: Configure GitHub secrets
 
-Add these repository secrets for the workflow that uses the tailnet:
+`ci.yaml` uses only the built-in `GITHUB_TOKEN` to push images to GHCR. `provision.yaml` needs these repository secrets:
 
 - `TS_OAUTH_CLIENT_ID`
 - `TS_OAUTH_SECRET`
-- `KUBECONFIG_B64`
+- `SSH_PRIVATE_KEY`
 
-`KUBECONFIG_B64` must be a base64-encoded kubeconfig that can connect to the cluster API on the tailnet.
+## Step 3: Run the same checks locally
 
-## Step 3: Understand what each check covers
+Before you push, run the hooks that CI runs:
 
-CI validation examines the Kubernetes and GitOps manifests in this repo.
+```bash
+pre-commit run --all-files
+```
 
-| Area | Coverage | Workflow |
-| --- | --- | --- |
-| `apps/` | YAML lint, schema validation (excluding `app.yaml`) | `ci.yaml` |
-| `infrastructure/` | YAML lint, schema validation | `ci.yaml` |
-| `bootstrap/` | YAML lint, schema validation | `ci.yaml` |
-| `docs/` | Astro Starlight build and container image push | `ci.yaml` |
-| Python projects | ruff, ty, pytest, and container image push | `ci.yaml` |
+For a Python project, run the checks in the project directory:
 
-## Step 4: Trigger a cluster smoke test
+```bash
+uv run ruff check
+uv run ruff format --check
+uv run ty check
+uv run pytest
+```
 
-To examine the health of the live cluster over Tailscale, run the workflow manually.
+## Step 4: Rely on ArgoCD for CD
 
-- Workflow: `Cluster Smoke` in GitHub Actions
-- Checks: `kubectl get nodes`, `kubectl get pods -A`, and ArgoCD app status
-
-A scheduled trigger also runs the workflow every six hours.
-
-## Step 5: Rely on ArgoCD for CD
-
-ArgoCD watches this repo and applies changes through ApplicationSets. GitHub Actions validates and builds artifacts. ArgoCD does the deployment and reconciliation in the cluster.
+ArgoCD watches this repo and applies changes through ApplicationSets. GitHub Actions validates and builds artifacts. ArgoCD does the deployment and reconciliation in the cluster. Image Updater rolls out new `latest` digests for the `docs` and `alert-summarizer` images through Git commits. The CronJob apps pull `latest` on each run. Refer to [Automated Image Updates](/how-to/image-updates/).

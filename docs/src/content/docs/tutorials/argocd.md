@@ -14,7 +14,7 @@ sidebar:
 
 # ArgoCD and GitOps
 
-ArgoCD is the main declarative engine for the cluster. It continuously syncs the Kubernetes resources with the master branch of this repository.
+ArgoCD is the main declarative engine for the cluster. It continuously syncs the Kubernetes resources with `HEAD` of this repository (the `master` branch). The install is ArgoCD `v3.5.6`, pinned in `bootstrap/argocd/kustomization.yaml`.
 
 ## Step 1: Automated vs Manual Installation
 
@@ -37,25 +37,27 @@ kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath='{.data.pas
 
 ArgoCD is available through the Gateway API at `argocd.sudhanva.me`.
 
-TLS terminates at Envoy Gateway. Thus, the deployment includes `argocd-cmd-params-patch.yaml`, which sets `server.insecure: "true"`.
+TLS terminates at Envoy Gateway. Thus, `bootstrap/argocd/kustomization.yaml` applies `bootstrap/argocd/cmd-params-patch.yaml`, which sets `server.insecure: "true"` in the `argocd-cmd-params-cm` ConfigMap.
 
 :::
 
 ## Step 2: The ApplicationSet pattern
 
-The repository uses two ApplicationSets in `bootstrap/templates/`:
+The root Application `bootstrap` syncs `bootstrap/templates/`, which holds two ApplicationSets:
 
 ```mermaid
 flowchart TD
   Root["bootstrap/root.yaml"] --> Argo["ArgoCD Engine"]
-  Argo --> InfraSet["infra ApplicationSet"]
+  Argo --> InfraSet["infrastructure ApplicationSet"]
   Argo --> AppsSet["apps ApplicationSet"]
   InfraSet --> InfraApps["infra-* apps (infrastructure/*)"]
   AppsSet --> UserApps["app-* apps (apps/*)"]
 ```
 
-- **`bootstrap/templates/infra-appset.yaml`**: Finds each subdirectory in `infrastructure/` and deploys its manifests or Helm charts into the cluster.
-- **`bootstrap/templates/apps-appset.yaml`**: Finds workloads through `apps/*/app.yaml`. It deploys the applications into their target namespaces with auto-prune and self-healing.
+- **`bootstrap/templates/infra-appset.yaml`** (ApplicationSet `infrastructure`): Finds each subdirectory in `infrastructure/` and makes one Application named `infra-<directory>` for it.
+- **`bootstrap/templates/apps-appset.yaml`** (ApplicationSet `apps`): Finds workloads through `apps/*/app.yaml` and makes one Application named `app-<name>` for each. It deploys them into the namespace from `app.yaml`.
+
+Both ApplicationSets turn on automated sync with prune and self-heal.
 
 ## Step 3: Apply the root bootstrap application
 

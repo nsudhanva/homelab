@@ -79,4 +79,4 @@ In the inventory, use the address from `tailscale ip -4` for `ansible_host`, `k3
 
 ## Step 5: Next steps
 
-The bare-metal host now has the operating system, the network, and the storage mount. Go to [Ansible Configuration](./containerd.md) to define the cluster inventory variables.
+The bare-metal host now has the operating system, the network, and the storage mount. Go to [Ansible Configuration](/tutorials/containerd/) to define the cluster inventory variables.
