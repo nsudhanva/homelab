@@ -137,412 +137,102 @@ jobs:
         tags: ${{ steps.meta.outputs.tags }}
         labels: ${{ steps.meta.outputs.labels }}
 
-  alert-summarizer-test:
+  python-changes:
     runs-on: ubuntu-latest
+    outputs:
+      projects: ${{ steps.select.outputs.projects }}
+      images: ${{ steps.select.outputs.images }}
     steps:
     - name: Checkout
       uses: actions/checkout@v7
-    - name: Detect alert-summarizer changes
+    - name: Build path filters from the project list
+      id: filters
+      run: |
+        {
+          echo "filters<<EOF"
+          jq -r '.[] | "\(.name):\n  - \"\(.path)/**\"\n  - \"packages/homelab-ai/**\"\n  - \".github/workflows/ci.yaml\"\n  - \".github/python-projects.json\""' .github/python-projects.json
+          echo "EOF"
+        } >> "$GITHUB_OUTPUT"
+    - name: Detect changed projects
       id: changes
       uses: dorny/paths-filter@v4
       with:
-        filters: |
-          summarizer:
-            - "apps/alert-summarizer/**"
-            - ".github/workflows/ci.yaml"
+        filters: ${{ steps.filters.outputs.filters }}
+    - name: Select changed projects
+      id: select
+      env:
+        CHANGED: ${{ steps.changes.outputs.changes }}
+      run: |
+        projects=$(jq -c --argjson changed "$CHANGED" '[.[] | select(.name as $n | $changed | index($n))]' .github/python-projects.json)
+        echo "projects=$projects" >> "$GITHUB_OUTPUT"
+        echo "images=$(jq -c '[.[] | select(.image)]' <<< "$projects")" >> "$GITHUB_OUTPUT"
+
+  python-test:
+    name: test (${{ matrix.name }})
+    needs: python-changes
+    if: needs.python-changes.outputs.projects != '[]'
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(needs.python-changes.outputs.projects) }}
+    defaults:
+      run:
+        working-directory: ${{ matrix.path }}
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v7
     - name: Install uv
-      if: steps.changes.outputs.summarizer == 'true'
       uses: astral-sh/setup-uv@v7
       with:
         version: "latest"
     - name: Set up Python
-      if: steps.changes.outputs.summarizer == 'true'
       run: uv python install 3.12
     - name: Run ruff lint
-      if: steps.changes.outputs.summarizer == 'true'
       run: uv run ruff check
-      working-directory: apps/alert-summarizer
     - name: Run ruff format check
-      if: steps.changes.outputs.summarizer == 'true'
       run: uv run ruff format --check
-      working-directory: apps/alert-summarizer
     - name: Run ty type check
-      if: steps.changes.outputs.summarizer == 'true'
       run: uv run ty check
-      working-directory: apps/alert-summarizer
     - name: Run unit tests
-      if: steps.changes.outputs.summarizer == 'true'
       run: uv run pytest
-      working-directory: apps/alert-summarizer
 
-  alert-summarizer-push:
-    if: github.event_name == 'push'
-    needs: alert-summarizer-test
+  image-push:
+    name: push (${{ matrix.name }})
+    needs: [python-changes, python-test]
+    if: github.event_name == 'push' && needs.python-changes.outputs.images != '[]'
     runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
-    env:
-      REGISTRY: ghcr.io
-      IMAGE_NAME: ${{ github.repository }}-alert-summarizer
+    strategy:
+      fail-fast: false
+      matrix:
+        include: ${{ fromJSON(needs.python-changes.outputs.images) }}
     steps:
     - name: Checkout
       uses: actions/checkout@v7
-    - name: Detect alert-summarizer changes
-      id: changes
-      uses: dorny/paths-filter@v4
-      with:
-        filters: |
-          summarizer:
-            - "apps/alert-summarizer/**"
-            - ".github/workflows/ci.yaml"
-    - name: Set up QEMU
-      if: steps.changes.outputs.summarizer == 'true'
-      uses: docker/setup-qemu-action@v4
     - name: Set up Docker Buildx
-      if: steps.changes.outputs.summarizer == 'true'
       uses: docker/setup-buildx-action@v4
     - name: Log in to the Container registry
-      if: steps.changes.outputs.summarizer == 'true'
       uses: docker/login-action@v4
       with:
-        registry: ${{ env.REGISTRY }}
+        registry: ghcr.io
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
     - name: Extract metadata
-      if: steps.changes.outputs.summarizer == 'true'
       id: meta
       uses: docker/metadata-action@v6
       with:
-        images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+        images: ghcr.io/${{ github.repository }}-${{ matrix.name }}
         tags: |
           type=raw,value=latest
           type=sha,format=short
-    - name: Build and push alert-summarizer image
-      if: steps.changes.outputs.summarizer == 'true'
-      uses: docker/build-push-action@v7
-      with:
-        context: ./apps/alert-summarizer
-        push: true
-        platforms: linux/amd64
-        tags: ${{ steps.meta.outputs.tags }}
-        labels: ${{ steps.meta.outputs.labels }}
-
-  homelab-ai-test:
-    runs-on: ubuntu-latest
-    steps:
-    - name: Checkout
-      uses: actions/checkout@v7
-    - name: Detect homelab-ai changes
-      id: changes
-      uses: dorny/paths-filter@v4
-      with:
-        filters: |
-          homelab_ai:
-            - "packages/homelab-ai/**"
-            - ".github/workflows/ci.yaml"
-    - name: Install uv
-      if: steps.changes.outputs.homelab_ai == 'true'
-      uses: astral-sh/setup-uv@v7
-      with:
-        version: "latest"
-    - name: Set up Python
-      if: steps.changes.outputs.homelab_ai == 'true'
-      run: uv python install 3.12
-    - name: Run ruff lint
-      if: steps.changes.outputs.homelab_ai == 'true'
-      run: uv run ruff check
-      working-directory: packages/homelab-ai
-    - name: Run ruff format check
-      if: steps.changes.outputs.homelab_ai == 'true'
-      run: uv run ruff format --check
-      working-directory: packages/homelab-ai
-    - name: Run ty type check
-      if: steps.changes.outputs.homelab_ai == 'true'
-      run: uv run ty check
-      working-directory: packages/homelab-ai
-    - name: Run unit tests
-      if: steps.changes.outputs.homelab_ai == 'true'
-      run: uv run pytest
-      working-directory: packages/homelab-ai
-
-  gmail-classifier-test:
-    runs-on: ubuntu-latest
-    steps:
-    - name: Checkout
-      uses: actions/checkout@v7
-    - name: Detect gmail-classifier changes
-      id: changes
-      uses: dorny/paths-filter@v4
-      with:
-        filters: |
-          classifier:
-            - "apps/gmail-classifier/**"
-            - "packages/homelab-ai/**"
-            - ".github/workflows/ci.yaml"
-    - name: Install uv
-      if: steps.changes.outputs.classifier == 'true'
-      uses: astral-sh/setup-uv@v7
-      with:
-        version: "latest"
-    - name: Set up Python
-      if: steps.changes.outputs.classifier == 'true'
-      run: uv python install 3.12
-    - name: Run ruff lint
-      if: steps.changes.outputs.classifier == 'true'
-      run: uv run ruff check
-      working-directory: apps/gmail-classifier
-    - name: Run ruff format check
-      if: steps.changes.outputs.classifier == 'true'
-      run: uv run ruff format --check
-      working-directory: apps/gmail-classifier
-    - name: Run ty type check
-      if: steps.changes.outputs.classifier == 'true'
-      run: uv run ty check
-      working-directory: apps/gmail-classifier
-    - name: Run unit tests
-      if: steps.changes.outputs.classifier == 'true'
-      run: uv run pytest
-      working-directory: apps/gmail-classifier
-
-  gmail-classifier-push:
-    if: github.event_name == 'push'
-    needs: gmail-classifier-test
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
-    env:
-      REGISTRY: ghcr.io
-      IMAGE_NAME: ${{ github.repository }}-gmail-classifier
-    steps:
-    - name: Checkout
-      uses: actions/checkout@v7
-    - name: Detect gmail-classifier changes
-      id: changes
-      uses: dorny/paths-filter@v4
-      with:
-        filters: |
-          classifier:
-            - "apps/gmail-classifier/**"
-            - "packages/homelab-ai/**"
-            - ".github/workflows/ci.yaml"
-    - name: Set up QEMU
-      if: steps.changes.outputs.classifier == 'true'
-      uses: docker/setup-qemu-action@v4
-    - name: Set up Docker Buildx
-      if: steps.changes.outputs.classifier == 'true'
-      uses: docker/setup-buildx-action@v4
-    - name: Log in to the Container registry
-      if: steps.changes.outputs.classifier == 'true'
-      uses: docker/login-action@v4
-      with:
-        registry: ${{ env.REGISTRY }}
-        username: ${{ github.actor }}
-        password: ${{ secrets.GITHUB_TOKEN }}
-    - name: Extract metadata
-      if: steps.changes.outputs.classifier == 'true'
-      id: meta
-      uses: docker/metadata-action@v6
-      with:
-        images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
-        tags: |
-          type=raw,value=latest
-          type=sha,format=short
-    - name: Build and push gmail-classifier image
-      if: steps.changes.outputs.classifier == 'true'
+    - name: Build and push image
       uses: docker/build-push-action@v7
       with:
         context: .
-        file: ./apps/gmail-classifier/Dockerfile
-        push: true
-        platforms: linux/amd64
-        tags: ${{ steps.meta.outputs.tags }}
-        labels: ${{ steps.meta.outputs.labels }}
-
-  drive-organizer-test:
-    runs-on: ubuntu-latest
-    steps:
-    - name: Checkout
-      uses: actions/checkout@v7
-    - name: Detect drive-organizer changes
-      id: changes
-      uses: dorny/paths-filter@v4
-      with:
-        filters: |
-          organizer:
-            - "apps/drive-organizer/**"
-            - "packages/homelab-ai/**"
-            - ".github/workflows/ci.yaml"
-    - name: Install uv
-      if: steps.changes.outputs.organizer == 'true'
-      uses: astral-sh/setup-uv@v7
-      with:
-        version: "latest"
-    - name: Set up Python
-      if: steps.changes.outputs.organizer == 'true'
-      run: uv python install 3.12
-    - name: Run ruff lint
-      if: steps.changes.outputs.organizer == 'true'
-      run: uv run ruff check
-      working-directory: apps/drive-organizer
-    - name: Run ruff format check
-      if: steps.changes.outputs.organizer == 'true'
-      run: uv run ruff format --check
-      working-directory: apps/drive-organizer
-    - name: Run ty type check
-      if: steps.changes.outputs.organizer == 'true'
-      run: uv run ty check
-      working-directory: apps/drive-organizer
-    - name: Run unit tests
-      if: steps.changes.outputs.organizer == 'true'
-      run: uv run pytest
-      working-directory: apps/drive-organizer
-
-  drive-organizer-push:
-    if: github.event_name == 'push'
-    needs: drive-organizer-test
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
-    env:
-      REGISTRY: ghcr.io
-      IMAGE_NAME: ${{ github.repository }}-drive-organizer
-    steps:
-    - name: Checkout
-      uses: actions/checkout@v7
-    - name: Detect drive-organizer changes
-      id: changes
-      uses: dorny/paths-filter@v4
-      with:
-        filters: |
-          organizer:
-            - "apps/drive-organizer/**"
-            - "packages/homelab-ai/**"
-            - ".github/workflows/ci.yaml"
-    - name: Set up QEMU
-      if: steps.changes.outputs.organizer == 'true'
-      uses: docker/setup-qemu-action@v4
-    - name: Set up Docker Buildx
-      if: steps.changes.outputs.organizer == 'true'
-      uses: docker/setup-buildx-action@v4
-    - name: Log in to the Container registry
-      if: steps.changes.outputs.organizer == 'true'
-      uses: docker/login-action@v4
-      with:
-        registry: ${{ env.REGISTRY }}
-        username: ${{ github.actor }}
-        password: ${{ secrets.GITHUB_TOKEN }}
-    - name: Extract metadata
-      if: steps.changes.outputs.organizer == 'true'
-      id: meta
-      uses: docker/metadata-action@v6
-      with:
-        images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
-        tags: |
-          type=raw,value=latest
-          type=sha,format=short
-    - name: Build and push drive-organizer image
-      if: steps.changes.outputs.organizer == 'true'
-      uses: docker/build-push-action@v7
-      with:
-        context: .
-        file: ./apps/drive-organizer/Dockerfile
-        push: true
-        platforms: linux/amd64
-        tags: ${{ steps.meta.outputs.tags }}
-        labels: ${{ steps.meta.outputs.labels }}
-
-  actual-classifier-test:
-    runs-on: ubuntu-latest
-    steps:
-    - name: Checkout
-      uses: actions/checkout@v7
-    - name: Detect actual-classifier changes
-      id: changes
-      uses: dorny/paths-filter@v4
-      with:
-        filters: |
-          classifier:
-            - "apps/actual-classifier/**"
-            - "packages/homelab-ai/**"
-            - ".github/workflows/ci.yaml"
-    - name: Install uv
-      if: steps.changes.outputs.classifier == 'true'
-      uses: astral-sh/setup-uv@v7
-      with:
-        version: "latest"
-    - name: Set up Python
-      if: steps.changes.outputs.classifier == 'true'
-      run: uv python install 3.12
-    - name: Run ruff lint
-      if: steps.changes.outputs.classifier == 'true'
-      run: uv run ruff check
-      working-directory: apps/actual-classifier
-    - name: Run ruff format check
-      if: steps.changes.outputs.classifier == 'true'
-      run: uv run ruff format --check
-      working-directory: apps/actual-classifier
-    - name: Run ty type check
-      if: steps.changes.outputs.classifier == 'true'
-      run: uv run ty check
-      working-directory: apps/actual-classifier
-    - name: Run unit tests
-      if: steps.changes.outputs.classifier == 'true'
-      run: uv run pytest
-      working-directory: apps/actual-classifier
-
-  actual-classifier-push:
-    if: github.event_name == 'push'
-    needs: actual-classifier-test
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
-    env:
-      REGISTRY: ghcr.io
-      IMAGE_NAME: ${{ github.repository }}-actual-classifier
-    steps:
-    - name: Checkout
-      uses: actions/checkout@v7
-    - name: Detect actual-classifier changes
-      id: changes
-      uses: dorny/paths-filter@v4
-      with:
-        filters: |
-          classifier:
-            - "apps/actual-classifier/**"
-            - "packages/homelab-ai/**"
-            - ".github/workflows/ci.yaml"
-    - name: Set up QEMU
-      if: steps.changes.outputs.classifier == 'true'
-      uses: docker/setup-qemu-action@v4
-    - name: Set up Docker Buildx
-      if: steps.changes.outputs.classifier == 'true'
-      uses: docker/setup-buildx-action@v4
-    - name: Log in to the Container registry
-      if: steps.changes.outputs.classifier == 'true'
-      uses: docker/login-action@v4
-      with:
-        registry: ${{ env.REGISTRY }}
-        username: ${{ github.actor }}
-        password: ${{ secrets.GITHUB_TOKEN }}
-    - name: Extract metadata
-      if: steps.changes.outputs.classifier == 'true'
-      id: meta
-      uses: docker/metadata-action@v6
-      with:
-        images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
-        tags: |
-          type=raw,value=latest
-          type=sha,format=short
-    - name: Build and push actual-classifier image
-      if: steps.changes.outputs.classifier == 'true'
-      uses: docker/build-push-action@v7
-      with:
-        context: .
-        file: ./apps/actual-classifier/Dockerfile
+        file: ./${{ matrix.path }}/Dockerfile
         push: true
         platforms: linux/amd64
         tags: ${{ steps.meta.outputs.tags }}
