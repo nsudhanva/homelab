@@ -40,7 +40,7 @@ data:
                     "0": {
                       "color": "green",
                       "index": 0,
-                      "text": "Daily 01:00 UTC"
+                      "text": "Daily 01:00 Pacific"
                     }
                   },
                   "type": "value"
@@ -323,7 +323,7 @@ data:
         },
         {
           "id": 6,
-          "title": "Local SLM Engine",
+          "title": "Primary Model",
           "type": "stat",
           "gridPos": {
             "h": 4,
@@ -343,7 +343,7 @@ data:
                     "1": {
                       "color": "purple",
                       "index": 0,
-                      "text": "Gemma 4 (GTX 1050 Ti)"
+                      "text": "Claude Haiku 5.5"
                     }
                   },
                   "type": "value"
@@ -903,7 +903,7 @@ data:
             "y": 28
           },
           "options": {
-            "content": "### Privacy & Safety Architecture\n- **Strict Append-Only**: User emails are tagged exclusively via `addLabelIds`. Messages are **never** archived, removed from Inbox, or deleted.\n- **Zero PII Retention**: Message bodies, subjects, sender emails, and sensitive details are never written to observability storage or databases.\n- **Air-Gapped Local Inference**: All classifications run 100% locally on the in-cluster NVIDIA GeForce GTX 1050 Ti via Google Gemma 4 (E2B). Zero telemetry leaves your private network.\n- **Quarantine Safeguard**: Ambiguous or low-confidence (< 0.80) reachouts are safely quarantined under `ai-review` with daily Telegram digest dispatch.\n- **Zero External Overhead**: Telemetry is gathered seamlessly from Kubernetes Job metrics, cAdvisor, and NVIDIA DCGM without intrusive sidecars or heavy logging pipelines.",
+            "content": "### Privacy & Safety Architecture\n- **No Deletion**: The classifier adds labels with `addLabelIds`. The archive sweep removes the Inbox label from emails older than `ARCHIVE_OLDER_THAN_DAYS`. Messages are never deleted.\n- **Zero PII Retention**: Message bodies, subjects, sender emails, and sensitive details are never written to observability storage or databases.\n- **Model Chain**: The sender, subject, and up to `MAX_BODY_CHARS` of the body go to Claude Haiku 5.5 through `homelab-ai`. OpenRouter and the in-cluster Gemma 4 model on the GTX 1050 Ti are the fallbacks. The GPU panels show the local fallback model.\n- **Quarantine Safeguard**: Ambiguous or low-confidence (< 0.80) reachouts are safely quarantined under `ai-review` with daily Telegram digest dispatch.\n- **Zero External Overhead**: Telemetry is gathered seamlessly from Kubernetes Job metrics, cAdvisor, and NVIDIA DCGM without intrusive sidecars or heavy logging pipelines.",
             "mode": "markdown"
           }
         }
@@ -930,7 +930,7 @@ data:
         ]
       },
       "timezone": "browser",
-      "title": "Gmail Classifier & SLM Operations",
+      "title": "Gmail Classifier Operations",
       "uid": "gmail-classifier-ops",
       "version": 1
     }

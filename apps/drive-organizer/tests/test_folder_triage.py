@@ -45,7 +45,7 @@ def test_list_unorganized_root_folders_filters_protected():
 
 def test_folder_triage_heuristics_code_intact(make_task):
     classifier = DriveClassifier(triage_task=make_task(FolderTriageDecision, Down()))
-    decision = classifier.triage_folder_sync(
+    decision = classifier.triage_folder(
         folder_name="homelab-service",
         sample_files=["src/main.py", "pyproject.toml", "README.md"],
         tree_summary="Folder: homelab-service\n  📁 src/\n    📄 main.py\n  📄 pyproject.toml",
@@ -57,7 +57,7 @@ def test_folder_triage_heuristics_code_intact(make_task):
 
 def test_folder_triage_heuristics_notebooks_intact(make_task):
     classifier = DriveClassifier(triage_task=make_task(FolderTriageDecision, Down()))
-    decision = classifier.triage_folder_sync(
+    decision = classifier.triage_folder(
         folder_name="ml-experiments",
         sample_files=["data.csv", "exploration.ipynb"],
         tree_summary="Folder: ml-experiments\n  📄 data.csv\n  📄 exploration.ipynb",
@@ -69,7 +69,7 @@ def test_folder_triage_heuristics_notebooks_intact(make_task):
 
 def test_folder_triage_heuristics_documents_dismantle(make_task):
     classifier = DriveClassifier(triage_task=make_task(FolderTriageDecision, Down()))
-    decision = classifier.triage_folder_sync(
+    decision = classifier.triage_folder(
         folder_name="folder 1",
         sample_files=["sub folder 1/dummy.pdf", "receipt.png"],
         tree_summary="Folder: folder 1\n  📁 sub folder 1/\n    📄 dummy.pdf",
@@ -91,7 +91,7 @@ def test_folder_triage_mock_agent(make_task):
     classifier = DriveClassifier(
         triage_task=make_task(FolderTriageDecision, returning(mock_decision))
     )
-    decision = classifier.triage_folder_sync(
+    decision = classifier.triage_folder(
         folder_name="Scans",
         sample_files=["scan1.pdf"],
         tree_summary="Folder: Scans\n  📄 scan1.pdf",

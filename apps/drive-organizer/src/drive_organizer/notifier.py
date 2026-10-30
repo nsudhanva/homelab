@@ -13,7 +13,7 @@ class OrganizerRunStats:
     total_scanned: int = 0
     total_media_sorted: int = 0
     total_docs_classified: int = 0
-    total_joint_shortcuts: int = 0
+    total_joint_copies: int = 0
     total_quarantined: int = 0
     total_folders_dismantled: int = 0
     total_folders_kept_intact: int = 0
@@ -38,7 +38,7 @@ class TelegramNotifier:
         self.topic_id = topic_id
         self.base_url = f"https://api.telegram.org/bot{bot_token}"
 
-    def send_message_sync(self, text: str) -> bool:
+    def send_message(self, text: str) -> bool:
         if not self.bot_token or not self.chat_id:
             logger.info("Telegram notifications disabled (missing bot token or chat ID).")
             return False
@@ -81,7 +81,7 @@ class TelegramNotifier:
             f"• <b>Files Scanned:</b> {stats.total_scanned}",
             f"• <b>Documents Classified:</b> {stats.total_docs_classified}",
             f"• <b>Media Chrono-Sorted:</b> {stats.total_media_sorted}",
-            f"• <b>Joint Shortcuts Created:</b> {stats.total_joint_shortcuts}",
+            f"• <b>Joint Copies Created:</b> {stats.total_joint_copies}",
         ]
 
         if stats.total_folders_dismantled > 0:
@@ -106,4 +106,4 @@ class TelegramNotifier:
             for err in stats.errors[:5]:
                 lines.append(f"• ❌ {html.escape(err)}")
 
-        return self.send_message_sync("\n".join(lines))
+        return self.send_message("\n".join(lines))

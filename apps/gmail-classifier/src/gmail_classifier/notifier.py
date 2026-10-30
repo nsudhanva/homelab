@@ -104,33 +104,8 @@ class TelegramNotifier:
 
         return chunks
 
-    async def send_message(self, text: str, parse_mode: str = "HTML") -> bool:
-        """Send a single text message via Telegram Bot API asynchronously."""
-        if not self.bot_token:
-            logger.info("Telegram bot token not configured. Skipping message dispatch.")
-            return True
-
-        endpoint = f"{self.api_url}/bot{self.bot_token}/sendMessage"
-        payload: dict[str, Any] = {
-            "chat_id": self.chat_id,
-            "text": text,
-            "parse_mode": parse_mode,
-            "disable_web_page_preview": True,
-        }
-        if self.topic_id is not None:
-            payload["message_thread_id"] = self.topic_id
-
-        try:
-            async with httpx.AsyncClient(timeout=self.timeout) as client:
-                resp = await client.post(endpoint, json=payload)
-                resp.raise_for_status()
-            return True
-        except Exception as exc:
-            logger.error(f"Failed to dispatch Telegram message: {exc}")
-            return False
-
-    def send_message_sync(self, text: str, parse_mode: str = "HTML") -> bool:
-        """Send a single text message via Telegram Bot API synchronously."""
+    def send_message(self, text: str, parse_mode: str = "HTML") -> bool:
+        """Send a single text message via Telegram Bot API."""
         if not self.bot_token:
             logger.info("Telegram bot token not configured. Skipping message dispatch.")
             return True
@@ -154,7 +129,7 @@ class TelegramNotifier:
             logger.error(f"Failed to dispatch Telegram message: {exc}")
             return False
 
-    async def send_daily_summary(
+    def send_daily_summary(
         self,
         target_date: str,
         total_count: int,
@@ -163,7 +138,7 @@ class TelegramNotifier:
         dry_run: bool = False,
         archived_count: int = 0,
     ) -> bool:
-        """Send formatted daily summary messages asynchronously."""
+        """Send formatted daily summary messages."""
         messages = self.format_daily_summary(
             target_date=target_date,
             total_count=total_count,
@@ -174,30 +149,6 @@ class TelegramNotifier:
         )
         success = True
         for msg in messages:
-            if not await self.send_message(msg):
-                success = False
-        return success
-
-    def send_daily_summary_sync(
-        self,
-        target_date: str,
-        total_count: int,
-        label_counts: dict[str, int],
-        quarantined_items: list[dict[str, Any]],
-        dry_run: bool = False,
-        archived_count: int = 0,
-    ) -> bool:
-        """Send formatted daily summary messages synchronously."""
-        messages = self.format_daily_summary(
-            target_date=target_date,
-            total_count=total_count,
-            label_counts=label_counts,
-            quarantined_items=quarantined_items,
-            dry_run=dry_run,
-            archived_count=archived_count,
-        )
-        success = True
-        for msg in messages:
-            if not self.send_message_sync(msg):
+            if not self.send_message(msg):
                 success = False
         return success

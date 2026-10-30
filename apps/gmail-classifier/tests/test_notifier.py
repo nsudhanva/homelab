@@ -1,5 +1,4 @@
 import httpx
-import pytest
 
 from gmail_classifier.notifier import TelegramNotifier
 
@@ -96,10 +95,10 @@ def test_format_daily_summary_chunking():
 def test_send_message_missing_token():
     notifier = TelegramNotifier(bot_token=None, chat_id=123)
     # Should safely return True without attempting HTTP
-    assert notifier.send_message_sync("Hello") is True
+    assert notifier.send_message("Hello") is True
 
 
-def test_send_message_sync(monkeypatch):
+def test_send_message(monkeypatch):
     notifier = TelegramNotifier(bot_token="token123", chat_id=12345)
 
     def fake_post(self, url, json=None, **kwargs):
@@ -110,18 +109,17 @@ def test_send_message_sync(monkeypatch):
         return httpx.Response(200, json={"ok": True}, request=httpx.Request("POST", url))
 
     monkeypatch.setattr(httpx.Client, "post", fake_post)
-    assert notifier.send_message_sync("Test alert") is True
+    assert notifier.send_message("Test alert") is True
 
 
-@pytest.mark.asyncio
-async def test_send_daily_summary_async(monkeypatch):
+def test_send_daily_summary(monkeypatch):
     notifier = TelegramNotifier(bot_token="token123", chat_id=12345)
 
-    async def fake_post(self, url, json=None, **kwargs):
+    def fake_post(self, url, json=None, **kwargs):
         return httpx.Response(200, json={"ok": True}, request=httpx.Request("POST", url))
 
-    monkeypatch.setattr(httpx.AsyncClient, "post", fake_post)
-    success = await notifier.send_daily_summary(
+    monkeypatch.setattr(httpx.Client, "post", fake_post)
+    success = notifier.send_daily_summary(
         target_date="2026-09-16",
         total_count=1,
         label_counts={"Work": 1},
@@ -139,4 +137,4 @@ def test_send_message_with_topic_id(monkeypatch):
         return httpx.Response(200, json={"ok": True}, request=httpx.Request("POST", url))
 
     monkeypatch.setattr(httpx.Client, "post", fake_post)
-    assert notifier.send_message_sync("Topic test") is True
+    assert notifier.send_message("Topic test") is True

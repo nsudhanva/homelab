@@ -45,7 +45,6 @@ class TransactionInput(BaseModel):
     imported_payee: str
     account_name: str
     current_notes: str = ""
-    current_category: str | None = None
 
     @property
     def amount_dollars(self) -> float:

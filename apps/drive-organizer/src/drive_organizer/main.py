@@ -85,7 +85,7 @@ def process_single_file(
                 f"No extractable text in '{filename}' ({mime_type}). Submitting metadata to LLM..."
             )
 
-        res = classifier.classify_sync(
+        res = classifier.classify(
             filename=filename,
             extracted_text=inspection.extracted_text,
             mime_type=mime_type,
@@ -129,7 +129,7 @@ def process_single_file(
                     description=f"Joint copy for {spouse}: {res.summary}",
                     search_tags=res.search_tags,
                 )
-                stats.total_joint_shortcuts += 1
+                stats.total_joint_copies += 1
                 logger.info(f"Created joint copy under {spouse_path}/")
 
         action_desc = f"📄 {clean_name} → {target_folder}/"
@@ -217,7 +217,7 @@ def run_pipeline(
             sample_files, tree_summary = drive_client.get_folder_manifest(
                 folder_id_val, folder_name, max_files=settings.triage_max_files
             )
-            triage = classifier.triage_folder_sync(folder_name, sample_files, tree_summary)
+            triage = classifier.triage_folder(folder_name, sample_files, tree_summary)
             logger.info(
                 f"Folder '{folder_name}' triage decision: action='{triage.action}', is_code={triage.is_code}, "
                 f"target='{triage.target_folder}', conf={triage.confidence:.2f}: {triage.reasoning}"

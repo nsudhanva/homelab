@@ -149,7 +149,7 @@ class DriveClassifier:
             settings=settings,
         )
 
-    def triage_folder_sync(
+    def triage_folder(
         self,
         folder_name: str,
         sample_files: list[str],
@@ -252,7 +252,7 @@ class DriveClassifier:
             reasoning="Folder contains personal files/documents; dismantling and organizing files individually.",
         )
 
-    def classify_sync(
+    def classify(
         self,
         filename: str,
         extracted_text: str = "",

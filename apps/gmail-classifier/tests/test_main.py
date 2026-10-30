@@ -43,7 +43,7 @@ def test_run_pipeline_normal(monkeypatch):
 
     mock_classifier = MagicMock()
     mock_classifier.filter_candidate_labels.return_value = ["Finance", "Work"]
-    mock_classifier.classify_sync.side_effect = [
+    mock_classifier.classify.side_effect = [
         ClassificationResult(label="Work", confidence=0.92, reason="Work update"),
         ClassificationResult(label="ai-review", confidence=0.50, reason="Low confidence"),
     ]
@@ -69,8 +69,8 @@ def test_run_pipeline_normal(monkeypatch):
         "msg-2", add_label_ids=["lbl-ai-review", "lbl-ai-processed"]
     )
     # Check notifier
-    mock_notifier.send_daily_summary_sync.assert_called_once()
-    call_kwargs = mock_notifier.send_daily_summary_sync.call_args.kwargs
+    mock_notifier.send_daily_summary.assert_called_once()
+    call_kwargs = mock_notifier.send_daily_summary.call_args.kwargs
     assert call_kwargs["total_count"] == 2
     assert call_kwargs["label_counts"] == {"Work": 1, "ai-review": 1}
     assert len(call_kwargs["quarantined_items"]) == 1
@@ -90,7 +90,7 @@ def test_run_pipeline_dry_run(monkeypatch):
 
     mock_classifier = MagicMock()
     mock_classifier.filter_candidate_labels.return_value = ["Work"]
-    mock_classifier.classify_sync.return_value = ClassificationResult(
+    mock_classifier.classify.return_value = ClassificationResult(
         label="Work", confidence=0.95, reason="Clear work topic"
     )
 
@@ -109,8 +109,8 @@ def test_run_pipeline_dry_run(monkeypatch):
     assert processed_count == 1
     # apply_label should NOT be called in dry-run mode
     mock_gmail.apply_label.assert_not_called()
-    mock_notifier.send_daily_summary_sync.assert_called_once()
-    assert mock_notifier.send_daily_summary_sync.call_args.kwargs["dry_run"] is True
+    mock_notifier.send_daily_summary.assert_called_once()
+    assert mock_notifier.send_daily_summary.call_args.kwargs["dry_run"] is True
 
 
 def test_run_pipeline_with_limit(monkeypatch):
@@ -127,7 +127,7 @@ def test_run_pipeline_with_limit(monkeypatch):
 
     mock_classifier = MagicMock()
     mock_classifier.filter_candidate_labels.return_value = ["Work"]
-    mock_classifier.classify_sync.return_value = ClassificationResult(
+    mock_classifier.classify.return_value = ClassificationResult(
         label="Work", confidence=0.9, reason="Work"
     )
 
@@ -167,7 +167,7 @@ def test_run_pipeline_handles_message_fetch_error(monkeypatch):
 
     mock_classifier = MagicMock()
     mock_classifier.filter_candidate_labels.return_value = ["Work"]
-    mock_classifier.classify_sync.return_value = ClassificationResult(
+    mock_classifier.classify.return_value = ClassificationResult(
         label="Work", confidence=0.95, reason="Work email"
     )
 
@@ -187,8 +187,8 @@ def test_run_pipeline_handles_message_fetch_error(monkeypatch):
     # Only msg-success should have apply_label called
     assert mock_gmail.apply_label.call_count == 1
     # Notifier should still be called with quarantine item recorded for failure
-    mock_notifier.send_daily_summary_sync.assert_called_once()
-    call_kwargs = mock_notifier.send_daily_summary_sync.call_args.kwargs
+    mock_notifier.send_daily_summary.assert_called_once()
+    call_kwargs = mock_notifier.send_daily_summary.call_args.kwargs
     assert len(call_kwargs["quarantined_items"]) == 1
     assert "Transient Google API error" in call_kwargs["quarantined_items"][0]["reason"]
 
@@ -212,7 +212,7 @@ def test_run_pipeline_concurrent(monkeypatch):
 
     mock_classifier = MagicMock()
     mock_classifier.filter_candidate_labels.return_value = ["Personal", "Work"]
-    mock_classifier.classify_sync.return_value = ClassificationResult(
+    mock_classifier.classify.return_value = ClassificationResult(
         label="Work", confidence=0.95, reason="Work email"
     )
 
@@ -231,8 +231,8 @@ def test_run_pipeline_concurrent(monkeypatch):
 
     assert processed_count == 4
     assert mock_gmail.apply_label.call_count == 4
-    mock_notifier.send_daily_summary_sync.assert_called_once()
-    call_kwargs = mock_notifier.send_daily_summary_sync.call_args.kwargs
+    mock_notifier.send_daily_summary.assert_called_once()
+    call_kwargs = mock_notifier.send_daily_summary.call_args.kwargs
     assert call_kwargs["total_count"] == 4
     assert call_kwargs["label_counts"] == {"Work": 4}
 

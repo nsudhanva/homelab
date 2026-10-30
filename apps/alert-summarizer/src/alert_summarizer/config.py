@@ -15,17 +15,10 @@ class Settings(BaseSettings):
 
     # Telegram Settings
     telegram_bot_token: SecretStr | None = None
-    telegram_bot_token_file: Path | None = Path(
-        "/etc/alertmanager/secrets/alertmanager-telegram/token"
-    )
+    telegram_bot_token_file: Path | None = Path("/etc/secrets/token")
     telegram_chat_id: int = 7341944813
     telegram_timeout_seconds: float = 5.0
     telegram_api_url: str = "https://api.telegram.org"
-
-    # Server Settings
-    host: str = "0.0.0.0"
-    port: int = 8000
-    log_level: str = "INFO"
 
     def get_telegram_token(self) -> str:
         if self.telegram_bot_token:

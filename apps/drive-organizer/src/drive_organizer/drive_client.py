@@ -10,7 +10,6 @@ from googleapiclient.http import MediaIoBaseDownload
 logger = logging.getLogger(__name__)
 
 FOLDER_MIME = "application/vnd.google-apps.folder"
-SHORTCUT_MIME = "application/vnd.google-apps.shortcut"
 
 PROTECTED_ROOT_FOLDERS: set[str] = {
     "sudhanva",
@@ -191,32 +190,6 @@ class DriveClient:
         logger.info(
             f"Updated file {file_id}: name='{new_name}', moved to folder {target_folder_id}"
         )
-
-    def create_shortcut(
-        self,
-        target_id: str,
-        shortcut_name: str,
-        target_folder_id: str,
-        description: str = "",
-    ) -> str:
-        """Creates a Google Drive shortcut pointing to target_id."""
-        body = {
-            "name": shortcut_name,
-            "mimeType": SHORTCUT_MIME,
-            "shortcutDetails": {
-                "targetId": target_id,
-            },
-            "parents": [target_folder_id],
-            "description": description,
-            "appProperties": {
-                self.app_property_key: "true",
-            },
-        }
-        res = self.service.files().create(body=body, fields="id, name").execute()
-        logger.info(
-            f"Created shortcut '{shortcut_name}' in folder {target_folder_id} -> {target_id}"
-        )
-        return res["id"]
 
     def copy_file(
         self,

@@ -35,7 +35,7 @@ def test_document_classification_fails_over_to_next_model(make_task: MakeTask) -
     fallback = TestModel(custom_output_args=DOCUMENT.model_dump())
     classifier = DriveClassifier(document_task=make_task(DocumentClassification, Down(), fallback))
 
-    res = classifier.classify_sync(
+    res = classifier.classify(
         filename="System Design Cheatsheet.pdf",
         extracted_text="Consistent hashing, Raft consensus, vector clocks",
     )
@@ -49,14 +49,14 @@ def test_folder_triage_fails_over_to_next_model(make_task: MakeTask) -> None:
     fallback = TestModel(custom_output_args=decision.model_dump())
     classifier = DriveClassifier(triage_task=make_task(FolderTriageDecision, Down(), fallback))
 
-    res = classifier.triage_folder_sync("homelab-service", ["main.py"], "Folder: homelab-service")
+    res = classifier.triage_folder("homelab-service", ["main.py"], "Folder: homelab-service")
     assert res.action == "keep_intact"
     assert res.target_folder == "Code/homelab-service"
 
 
 def test_total_failure_uses_confident_pre_router(make_task: MakeTask) -> None:
     classifier = DriveClassifier(document_task=make_task(DocumentClassification, Down(), Down()))
-    res = classifier.classify_sync(
+    res = classifier.classify(
         filename="checkpoint.safetensors", mime_type="application/octet-stream"
     )
     assert res.category == "Models"
@@ -66,6 +66,6 @@ def test_total_failure_uses_confident_pre_router(make_task: MakeTask) -> None:
 def test_total_failure_on_unidentifiable_file_raises(make_task: MakeTask) -> None:
     classifier = DriveClassifier(document_task=make_task(DocumentClassification, Down(), Down()))
     with pytest.raises(LLMConnectionError, match="LLM classification failed"):
-        classifier.classify_sync(
+        classifier.classify(
             filename="unidentifiable_random_junk_file.xyz", mime_type="application/octet-stream"
         )

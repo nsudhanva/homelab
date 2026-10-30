@@ -138,7 +138,7 @@ def test_low_confidence_routes_to_review():
     assert DriveClassifier.resolve_target_folder(cls_unknown) == "Review/Needs Review"
 
 
-def test_classify_sync_feeds_extracted_text_to_llm(make_task):
+def test_classify_feeds_extracted_text_to_llm(make_task):
     mock_output = DocumentClassification(
         person="Sudhanva",
         jurisdiction="USA",
@@ -166,7 +166,7 @@ def test_classify_sync_feeds_extracted_text_to_llm(make_task):
         document_task=make_task(DocumentClassification, FunctionModel(capture))
     )
 
-    res = classifier.classify_sync(
+    res = classifier.classify(
         filename="LeetCode Progress Notes.pdf",
         extracted_text="Two Sum, 3Sum, LRU Cache implementation details and runtime analysis",
         mime_type="application/pdf",

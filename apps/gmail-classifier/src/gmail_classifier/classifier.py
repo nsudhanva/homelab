@@ -148,24 +148,8 @@ class EmailClassifier:
             return None, curated
         return self.build_prompt(email, curated), curated
 
-    async def classify(
-        self, email: SanitizedEmail, candidate_labels: list[str]
-    ) -> ClassificationResult:
+    def classify(self, email: SanitizedEmail, candidate_labels: list[str]) -> ClassificationResult:
         """Classify an email. LLMConnectionError propagates so batch runs can abort."""
-        prompt, curated = self._prepare(email, candidate_labels)
-        if prompt is None:
-            return self._quarantine(0.0, "No active curated user labels available")
-        try:
-            labels, message = prompt
-            raw = await self.task.run(message, stable_prefix=labels)
-        except LLMOutputError as exc:
-            return self._quarantine(0.0, f"Model output error: {exc}")
-        return self._evaluate_result(raw, set(curated))
-
-    def classify_sync(
-        self, email: SanitizedEmail, candidate_labels: list[str]
-    ) -> ClassificationResult:
-        """Synchronous ``classify`` for worker threads."""
         prompt, curated = self._prepare(email, candidate_labels)
         if prompt is None:
             return self._quarantine(0.0, "No active curated user labels available")

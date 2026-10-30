@@ -2,6 +2,7 @@ import asyncio
 import logging
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
+from importlib.metadata import version
 from typing import Any
 
 import httpx
@@ -40,19 +41,21 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 app = FastAPI(
     title="AI Alert Summarizer",
     description="Alertmanager webhook relay that summarizes alerts with homelab-ai",
-    version="0.2.0",
+    version=version("alert-summarizer"),
     lifespan=lifespan,
 )
 
 
 def get_service() -> AlertSummarizerService:
+    if http_client is None:
+        raise HTTPException(status.HTTP_503_SERVICE_UNAVAILABLE, "HTTP client not started")
     token = settings.get_telegram_token()
     telegram = TelegramClient(
+        client=http_client,
         bot_token=token,
         chat_id=settings.telegram_chat_id,
         api_url=settings.telegram_api_url,
         timeout_seconds=settings.telegram_timeout_seconds,
-        client=http_client,
     )
     return AlertSummarizerService(
         agent_client=agent_client, telegram_client=telegram, deduplicator=deduplicator

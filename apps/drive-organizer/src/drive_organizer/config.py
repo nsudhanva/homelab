@@ -21,30 +21,18 @@ class Settings(BaseSettings):
         validation_alias="TELEGRAM_TOPIC_ID",
     )
 
-    # Google OAuth credentials (supports both DRIVE_* and GMAIL_* env vars)
-    drive_client_id: str = Field(
+    # Google OAuth credentials
+    client_id: str = Field(
         default="",
         validation_alias="DRIVE_CLIENT_ID",
     )
-    gmail_client_id: str = Field(
-        default="",
-        validation_alias="GMAIL_CLIENT_ID",
-    )
-    drive_client_secret: str = Field(
+    client_secret: str = Field(
         default="",
         validation_alias="DRIVE_CLIENT_SECRET",
     )
-    gmail_client_secret: str = Field(
-        default="",
-        validation_alias="GMAIL_CLIENT_SECRET",
-    )
-    drive_refresh_token: str = Field(
+    refresh_token: str = Field(
         default="",
         validation_alias="DRIVE_REFRESH_TOKEN",
-    )
-    gmail_refresh_token: str = Field(
-        default="",
-        validation_alias="GMAIL_REFRESH_TOKEN",
     )
 
     confidence_threshold: float = Field(
@@ -97,15 +85,3 @@ class Settings(BaseSettings):
         validation_alias="TRIAGE_MAX_FILES",
         description="Files listed in a folder manifest for folder triage",
     )
-
-    @property
-    def client_id(self) -> str:
-        return self.drive_client_id or self.gmail_client_id
-
-    @property
-    def client_secret(self) -> str:
-        return self.drive_client_secret or self.gmail_client_secret
-
-    @property
-    def refresh_token(self) -> str:
-        return self.drive_refresh_token or self.gmail_refresh_token

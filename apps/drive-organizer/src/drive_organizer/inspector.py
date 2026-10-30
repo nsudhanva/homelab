@@ -17,7 +17,6 @@ class DocumentInspection:
     page_count: int = 1
     has_extractable_text: bool = False
     extracted_text: str = ""
-    suggested_ext: str = ""
     folder_breadcrumbs: list[str] = field(default_factory=list)
 
 

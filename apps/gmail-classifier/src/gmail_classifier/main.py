@@ -253,7 +253,7 @@ def run_pipeline(
             with gmail_lock:
                 raw_msg = gmail.get_message_content(msg_id)
             email = sanitize_message(raw_msg, settings.max_body_chars)
-            result = classifier.classify_sync(email, candidate_labels)
+            result = classifier.classify(email, candidate_labels)
 
             with state_lock:
                 label_counts[result.label] = label_counts.get(result.label, 0) + 1
@@ -302,7 +302,7 @@ def run_pipeline(
                         "Dispatching interim progress checkpoint "
                         f"({current_count}/{len(message_ids)})..."
                     )
-                    notifier.send_daily_summary_sync(
+                    notifier.send_daily_summary(
                         target_date=f"Inbox Progress ({current_count}/{len(message_ids)})",
                         total_count=current_count,
                         label_counts=dict(label_counts),
@@ -323,7 +323,7 @@ def run_pipeline(
                     "<i>Exiting immediately without marking as processed "
                     "for Kubernetes to restart.</i>"
                 )
-                notifier.send_message_sync(msg_text)
+                notifier.send_message(msg_text)
             raise
         except Exception as exc:
             logger.error(f"Failed to process message {msg_id}: {exc}", exc_info=True)
@@ -377,7 +377,7 @@ def run_pipeline(
     # Dispatch final summary notification to Telegram
     final_header = "All Inbox Messages" if inbox_mode else (target_date or "Unknown")
     logger.info("Dispatching summary to Telegram...")
-    notifier.send_daily_summary_sync(
+    notifier.send_daily_summary(
         target_date=final_header,
         total_count=len(message_ids),
         label_counts=label_counts,

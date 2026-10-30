@@ -22,7 +22,7 @@ def test_notifier_account_badge() -> None:
     notifier = TelegramNotifier("fake_token", "fake_chat", account_name="family")
     stats = OrganizerRunStats(total_scanned=2, total_docs_classified=2)
 
-    with patch.object(notifier, "send_message_sync", return_value=True) as mock_send:
+    with patch.object(notifier, "send_message", return_value=True) as mock_send:
         notifier.send_summary(stats)
         mock_send.assert_called_once()
         text = mock_send.call_args[0][0]
@@ -39,7 +39,7 @@ def test_notifier_telegram_topic_id() -> None:
         mock_resp.raise_for_status.return_value = None
         mock_client.post.return_value = mock_resp
 
-        success = notifier.send_message_sync("Test message")
+        success = notifier.send_message("Test message")
         assert success is True
         mock_client.post.assert_called_once()
         call_json = mock_client.post.call_args[1]["json"]
