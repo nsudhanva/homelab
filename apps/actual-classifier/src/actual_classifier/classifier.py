@@ -1,8 +1,6 @@
-"""Transaction classifier powered by local LLM and homelab-ai routing."""
+"""Transaction classifier built on a homelab-ai task."""
 
 import logging
-
-from pydantic_ai import Agent
 
 from actual_classifier.config import Settings
 from actual_classifier.models import (
@@ -11,7 +9,7 @@ from actual_classifier.models import (
     TagEnum,
     TransactionInput,
 )
-from homelab_ai import ModelRouter
+from homelab_ai import AITask, HomelabAIError
 
 logger = logging.getLogger(__name__)
 
@@ -74,14 +72,16 @@ Return strict JSON matching the schema with category, tag, clean_payee, confiden
 
 
 class TransactionClassifier:
-    """Classifies transactions using local LLM inference with fallback routing."""
+    """Classifies transactions with the shared homelab-ai model chain."""
 
-    def __init__(self, settings: Settings) -> None:
+    def __init__(
+        self, settings: Settings, task: AITask[ClassificationResult] | None = None
+    ) -> None:
         self.settings = settings
-        self.router = ModelRouter(settings.to_llm_client_config())
-        self.agent: Agent[None, ClassificationResult] = self.router.create_agent(
+        self.task = task or AITask(
+            name="actual-classifier",
             output_type=ClassificationResult,
-            system_prompt=SYSTEM_PROMPT,
+            instructions=SYSTEM_PROMPT,
         )
 
     def classify(self, tx: TransactionInput) -> ClassificationResult:
@@ -94,8 +94,7 @@ class TransactionClassifier:
         )
 
         try:
-            result = self.agent.run_sync(prompt)
-            output = result.output
+            output = self.task.run_sync(prompt)
 
             # Guardrail: Check confidence threshold
             if output.confidence < self.settings.confidence_threshold:
@@ -115,7 +114,7 @@ class TransactionClassifier:
 
             return output
 
-        except Exception as e:
+        except HomelabAIError as e:
             logger.error(f"Inference error classifying '{tx.imported_payee}': {e}")
             # Safe deterministic fallback
             return ClassificationResult(

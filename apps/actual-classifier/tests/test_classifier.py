@@ -1,47 +1,55 @@
 """Unit tests for TransactionClassifier logic, guardrails, and model integration."""
 
+from typing import Any
+
+from pydantic_ai.exceptions import ModelAPIError
 from pydantic_ai.models.test import TestModel
 
 from actual_classifier.classifier import SYSTEM_PROMPT, TransactionClassifier
 from actual_classifier.config import Settings
-from actual_classifier.models import CategoryEnum, TagEnum, TransactionInput
-from homelab_ai import LLMClientConfig, ModelRouter
-from homelab_ai.providers import CustomModelProviderBuilder
+from actual_classifier.models import (
+    CategoryEnum,
+    ClassificationResult,
+    TagEnum,
+    TransactionInput,
+)
+from homelab_ai import AISettings, AITask
 
 
-def test_classifier_success_with_test_model() -> None:
-    """Test successful classification run using injected hermetic model."""
-    mock_model = TestModel(
-        custom_output_args={
-            "category": "Food",
-            "tag": None,
-            "clean_payee": "Apni Mandi",
-            "confidence": 0.95,
-            "reasoning": "Indian grocery market",
-        }
+def make_classifier(model: TestModel, threshold: float = 0.6) -> TransactionClassifier:
+    task = AITask(
+        name="actual-classifier",
+        output_type=ClassificationResult,
+        instructions=SYSTEM_PROMPT,
+        settings=AISettings(_env_file=None, AI_ATTEMPTS=1),
+        models=[model],
     )
+    return TransactionClassifier(Settings(confidence_threshold=threshold), task=task)
 
-    settings = Settings(confidence_threshold=0.6)
-    classifier = TransactionClassifier(settings)
-    # Inject hermetic model
-    classifier.router = ModelRouter(
-        config=LLMClientConfig(primary_provider="local", fallback_provider="none"),
-        custom_primary_builder=CustomModelProviderBuilder(mock_model),
-    )
-    classifier.agent = classifier.router.create_agent(
-        output_type=classifier.agent.output_type,
-        system_prompt=SYSTEM_PROMPT,
-    )
 
-    tx = TransactionInput(
+def tx(payee: str, amount_cents: int = -4500) -> TransactionInput:
+    return TransactionInput(
         id="t-1",
         date="2026-09-20",
-        amount_cents=-4500,
-        imported_payee="APNI MANDI SUNNYVALE CA",
+        amount_cents=amount_cents,
+        imported_payee=payee,
         account_name="[Sudhanva] Amex Gold Card",
     )
 
-    result = classifier.classify(tx)
+
+def output(**overrides: Any) -> TestModel:
+    args = {
+        "category": "Food",
+        "tag": None,
+        "clean_payee": "Apni Mandi",
+        "confidence": 0.95,
+        "reasoning": "Indian grocery market",
+    }
+    return TestModel(custom_output_args={**args, **overrides})
+
+
+def test_classifier_success_with_test_model() -> None:
+    result = make_classifier(output()).classify(tx("APNI MANDI SUNNYVALE CA"))
     assert result.category == CategoryEnum.Food
     assert result.tag is None
     assert result.clean_payee == "Apni Mandi"
@@ -49,37 +57,19 @@ def test_classifier_success_with_test_model() -> None:
 
 
 def test_classifier_low_confidence_guardrail() -> None:
-    """Ensure low-confidence predictions automatically fall back to #Unknown tag."""
-    mock_model = TestModel(
-        custom_output_args={
-            "category": "Shopping",
-            "tag": None,
-            "clean_payee": "Ambiguous Store",
-            "confidence": 0.40,  # Below 0.6 threshold
-            "reasoning": "Uncertain about merchant",
-        }
-    )
-
-    settings = Settings(confidence_threshold=0.6)
-    classifier = TransactionClassifier(settings)
-    classifier.router = ModelRouter(
-        config=LLMClientConfig(primary_provider="local", fallback_provider="none"),
-        custom_primary_builder=CustomModelProviderBuilder(mock_model),
-    )
-    classifier.agent = classifier.router.create_agent(
-        output_type=classifier.agent.output_type,
-        system_prompt=SYSTEM_PROMPT,
-    )
-
-    tx = TransactionInput(
-        id="t-2",
-        date="2026-09-20",
-        amount_cents=-1200,
-        imported_payee="SOMETHING WEIRD 99",
-        account_name="[Maanasa] Apple Card",
-    )
-
-    result = classifier.classify(tx)
+    model = output(category="Shopping", clean_payee="Ambiguous Store", confidence=0.40)
+    result = make_classifier(model).classify(tx("SOMETHING WEIRD 99", -1200))
     assert result.category == CategoryEnum.Shopping
     assert result.tag == TagEnum.Unknown
     assert "Low confidence fallback" in result.reasoning
+
+
+def test_classifier_falls_back_deterministically_when_llm_is_down() -> None:
+    class Down(TestModel):
+        async def request(self, *args: Any, **kwargs: Any) -> Any:
+            raise ModelAPIError(model_name="local", message="connection refused")
+
+    result = make_classifier(Down()).classify(tx("IRONWORKS APARTMENTS ACH DEBIT"))
+    assert result.category == CategoryEnum.Rent
+    assert result.tag == TagEnum.Unknown
+    assert result.confidence == 0.0
