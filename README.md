@@ -1,9 +1,9 @@
 # Homelab
 
-A self-hosted bare-metal Kubernetes cluster on Ubuntu 26.04 LTS (node `legion`). It runs K3s `v1.37.1+k3s1`. Ansible bootstraps the node and ArgoCD, and ArgoCD manages everything else through GitOps.
+A self-hosted bare-metal Kubernetes cluster on Ubuntu 26.04 LTS (node `legion`). It runs K3s `v1.37.1+k3s1`. Ansible bootstraps the node and ArgoCD. ArgoCD manages all other components through GitOps.
 
 - Ansible playbooks configure the bare-metal host after you install Ubuntu, the NVIDIA driver, and Tailscale
-- Tailscale gives secure ingress and Envoy Gateway routes the traffic. Vault and External Secrets keep the credentials
+- Tailscale gives private ingress, and Envoy Gateway routes the traffic. Vault and External Secrets Operator keep the credentials
 - Local SSD storage uses the K3s Local-Path Provisioner on `/home/k3s-storage`
 - The NVIDIA GPU Operator `v26.7.2` gives the NVIDIA GTX 1050 Ti to workloads through the Container Device Interface (CDI)
 - The Rancher System Upgrade Controller upgrades K3s from a `Plan` in Git, without cordoning or draining the node
@@ -27,7 +27,7 @@ A self-hosted bare-metal Kubernetes cluster on Ubuntu 26.04 LTS (node `legion`).
 
 ## Features
 
-- Single-node bare-metal K3s Kubernetes `v1.37.1+k3s1` on node `legion` with Flannel CNI (worker joins are not automated yet)
+- Single-node bare-metal K3s Kubernetes `v1.37.1+k3s1` on node `legion` with Flannel CNI
 - Ansible playbooks for host preparation, runtime configuration, and cluster bootstrap
 - NVIDIA GPU Operator `v26.7.2` with Container Device Interface (CDI) for GTX 1050 Ti transcoding
 - Rancher System Upgrade Controller `v0.20.2` for declarative K3s upgrades
@@ -36,14 +36,14 @@ A self-hosted bare-metal Kubernetes cluster on Ubuntu 26.04 LTS (node `legion`).
 - Vault and External Secrets Operator for central secret management
 - Local SSD storage on `/home/k3s-storage` through the Local-Path Provisioner
 - Prometheus monitoring stack with Alertmanager and Grafana
-- Telegram alerts through @ManassuHomelabBot from Alertmanager, Grafana, and AI assistants
-- Media automation stack (Prowlarr, Sonarr, Radarr, Bazarr, Seerr) sharing `jellyfin-media` storage for instant atomic hardlinks
-- qBittorrent isolated inside a Gluetun WireGuard VPN sidecar with an iptables firewall killswitch and zero-seeding limits
+- Telegram alerts through the bot `@ManassuHomelabBot` from Alertmanager, Grafana, and the AI jobs
+- Media automation stack (Prowlarr, Sonarr, Radarr, Bazarr, Seerr). Sonarr and Radarr make hardlinks on the shared `jellyfin-media` volume
+- qBittorrent in a Pod with a Gluetun WireGuard VPN sidecar, an iptables firewall killswitch, and zero-seeding limits
 - Personal finance tracking with Actual Budget and AI transaction classification
 - Local AI inference with Google Gemma 4 (E2B) on the NVIDIA GTX 1050 Ti through llama.cpp
 - A Gmail classifier that sorts mail each day and sends Telegram summaries
-- A symmetrical Google Drive organizer that classifies documents and copies joint documents to the partner's folder
-- AI jobs call Claude Haiku 5.5 (`anthropic:claude-haiku-5-5`) first, then OpenRouter `google/gemma-4-31b-it`, then the local Gemma 4 E2B model (`packages/homelab-ai/kustomize/kustomization.yaml`). Email, document, and transaction text goes to Anthropic first
+- A Google Drive organizer that files documents into the same folder structure for each person. It copies joint documents to the folder of the spouse
+- AI jobs call Claude Haiku 5.5 (`anthropic:claude-haiku-5-5`) first, then OpenRouter `google/gemma-4-31b-it`, then the local Gemma 4 E2B model (`packages/homelab-ai/kustomize/kustomization.yaml`). Thus, email, document, and transaction text goes to Anthropic first
 - Automatic container image updates with ArgoCD Image Updater
 - Envoy Gateway data plane for the Kubernetes Gateway API
 - Kubescape operator for automatic cluster security scans
@@ -154,7 +154,7 @@ flowchart LR
 
 ### Automated bare metal bring-up
 
-Make sure that the target machine `legion` runs Ubuntu and has SSH and sudo access. Then run this command from your workstation:
+Make sure that the target machine `legion` runs Ubuntu and that you have SSH and sudo access to it. Then run this command from your workstation:
 
 ```bash
 ./scripts/provision.sh
@@ -171,7 +171,7 @@ kubectl get apps -n argocd
 
 ## Documentation
 
-The full documentation website is at [homelab.sudhanva.me](https://homelab.sudhanva.me). The documentation source files are in `docs/` and use Astro Starlight.
+The documentation website is at [homelab.sudhanva.me](https://homelab.sudhanva.me). The source files are in `docs/` and use Astro Starlight.
 
 To build the documentation locally, run these commands:
 
@@ -184,7 +184,7 @@ bun run dev
 Main guides:
 
 - From scratch installation: [Build K3s Cluster from Scratch](https://homelab.sudhanva.me/how-to/from-scratch/)
-- Media automation & VPN: [Media Automation and WireGuard VPN Stack](https://homelab.sudhanva.me/how-to/media-automation/)
+- Media automation and VPN: [Media Automation and WireGuard VPN Stack](https://homelab.sudhanva.me/how-to/media-automation/)
 - Media VPN architecture: [Media VPN and Storage Architecture](https://homelab.sudhanva.me/explanation/media-vpn-architecture/)
 - Secrets management: [HashiCorp Vault Secrets Management](https://homelab.sudhanva.me/how-to/vault/)
 - Persistent storage: [Local-Path Storage Architecture](https://homelab.sudhanva.me/explanation/storage-architecture/)
@@ -225,7 +225,7 @@ docs/             Astro Starlight documentation
 | Home Assistant | Smart home automation platform | `homeassistant.sudhanva.me` |
 | Gemma 4 AI | Local LLM inference on NVIDIA GPU | `ai.sudhanva.me` |
 | Gmail Classifier | Daily email sorting and Telegram summary for each account, plus a weekly mark-read job | CronJobs (01:00 and 01:15 America/Los_Angeles) |
-| Drive Organizer | Symmetrical family document organizer | CronJobs (02:00 and 02:15 America/Los_Angeles) |
+| Drive Organizer | Family document organizer with the same folder structure for each person | CronJobs (02:00 and 02:15 America/Los_Angeles) |
 | Actual Classifier | Daily bank transaction categorization in Actual Budget | CronJob (03:00 America/Los_Angeles) |
 | Alert Summarizer | Alertmanager webhook that summarizes alerts with the AI model chain and posts them to Telegram | Deployment (no HTTPRoute) |
 | ArgoCD | GitOps control plane UI | `argocd.sudhanva.me` |
@@ -236,17 +236,17 @@ docs/             Astro Starlight documentation
 
 ## GitOps model
 
-ArgoCD uses ApplicationSets to apply all items in `infrastructure/` and `apps/`. After the initial bootstrap, avoid manual `kubectl apply`.
+ArgoCD uses ApplicationSets to apply all items in `infrastructure/` and `apps/`. After the bootstrap, do not use `kubectl apply`. Change the manifests in Git.
 
 To add an app, do these steps:
 
-- Step 1: Create `apps/<app>/app.yaml`. This file sets the ArgoCD app name, path, and namespace
+- Step 1: Create `apps/<app>/app.yaml`. This file sets the ArgoCD application name, path, and namespace
 - Step 2: Add the Kubernetes manifests in the same folder
-- Step 3: If you want Image Updater to write overrides, add `kustomization.yaml`
+- Step 3: To let ArgoCD Image Updater write overrides, add `kustomization.yaml`
 
 ## Operations
 
-To do a routine check of the cluster health, run these commands:
+To check the cluster health, run these commands:
 
 ```bash
 export KUBECONFIG=$PWD/k3s.kubeconfig
@@ -255,7 +255,7 @@ kubectl get pods -A
 kubectl get apps -n argocd
 ```
 
-Before you push code changes, run this command:
+Before you push changes, run this command:
 
 ```bash
 pre-commit run --all-files

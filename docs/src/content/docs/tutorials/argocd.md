@@ -1,6 +1,6 @@
 ---
 title: Bootstrap ArgoCD for GitOps Deployment
-description: Manage Kubernetes infrastructure and applications continuously with ArgoCD ApplicationSets and GitOps automation.
+description: Install ArgoCD, apply the root application, and let the ApplicationSets sync the infrastructure and the applications from Git.
 keywords:
   - argocd installation
   - gitops kubernetes
@@ -14,13 +14,13 @@ sidebar:
 
 # ArgoCD and GitOps
 
-ArgoCD is the main declarative engine for the cluster. It continuously syncs the Kubernetes resources with `HEAD` of this repository (the `master` branch). The install is ArgoCD `v3.5.6`, pinned in `bootstrap/argocd/kustomization.yaml`.
+ArgoCD applies the manifests in this repository to the cluster. It syncs the Kubernetes resources with `HEAD` of the repository (the `master` branch). The installed version is ArgoCD `v3.5.6`, pinned in `bootstrap/argocd/kustomization.yaml`.
 
-## Step 1: Automated vs Manual Installation
+## Step 1: Install ArgoCD
 
-When you run `./scripts/provision.sh`, the Ansible role `ansible/roles/argocd` installs ArgoCD. It also applies the root application automatically.
+When you run `./scripts/provision.sh`, the Ansible role `ansible/roles/argocd` installs ArgoCD. The role also applies the root application.
 
-If you must deploy or recover ArgoCD manually, run these commands:
+To install or recover ArgoCD manually, run these commands:
 
 ```bash
 kubectl apply --server-side --force-conflicts -k bootstrap/argocd
@@ -37,13 +37,13 @@ kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath='{.data.pas
 
 ArgoCD is available through the Gateway API at `argocd.sudhanva.me`.
 
-TLS terminates at Envoy Gateway. Thus, `bootstrap/argocd/kustomization.yaml` applies `bootstrap/argocd/cmd-params-patch.yaml`, which sets `server.insecure: "true"` in the `argocd-cmd-params-cm` ConfigMap.
+TLS terminates at Envoy Gateway. Thus, `bootstrap/argocd/kustomization.yaml` applies `bootstrap/argocd/cmd-params-patch.yaml`. This patch sets `server.insecure: "true"` in the `argocd-cmd-params-cm` ConfigMap.
 
 :::
 
-## Step 2: The ApplicationSet pattern
+## Step 2: Learn the ApplicationSet structure
 
-The root Application `bootstrap` syncs `bootstrap/templates/`, which holds two ApplicationSets:
+The root Application `bootstrap` syncs `bootstrap/templates/`. This directory holds two ApplicationSets:
 
 ```mermaid
 flowchart TD
@@ -54,10 +54,10 @@ flowchart TD
   AppsSet --> UserApps["app-* apps (apps/*)"]
 ```
 
-- **`bootstrap/templates/infra-appset.yaml`** (ApplicationSet `infrastructure`): Finds each subdirectory in `infrastructure/` and makes one Application named `infra-<directory>` for it.
-- **`bootstrap/templates/apps-appset.yaml`** (ApplicationSet `apps`): Finds workloads through `apps/*/app.yaml` and makes one Application named `app-<name>` for each. It deploys them into the namespace from `app.yaml`.
+- `bootstrap/templates/infra-appset.yaml` (ApplicationSet `infrastructure`): Finds each subdirectory in `infrastructure/`. It creates one Application named `infra-<directory>` for each subdirectory.
+- `bootstrap/templates/apps-appset.yaml` (ApplicationSet `apps`): Finds workloads through `apps/*/app.yaml`. It creates one Application named `app-<name>` for each workload, in the namespace from `app.yaml`.
 
-Both ApplicationSets turn on automated sync with prune and self-heal.
+Both ApplicationSets use automated sync with prune and self-heal.
 
 ## Step 3: Apply the root bootstrap application
 
@@ -77,4 +77,4 @@ Make sure that all applications show `Synced` and `Healthy`:
 kubectl get applications -n argocd
 ```
 
-To add a new workload or infrastructure component, push your manifests directly to Git. ArgoCD deploys them automatically.
+To add a workload or an infrastructure component, push the manifests to Git. ArgoCD deploys them automatically.

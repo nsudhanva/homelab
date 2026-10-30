@@ -1,6 +1,6 @@
 ---
 title: NVIDIA GPU Support for Kubernetes Workloads
-description: Enable NVIDIA GPU hardware acceleration on bare-metal Ubuntu K3s with the NVIDIA Container Toolkit, CDI, and the GPU Operator.
+description: How the K3s node gives its NVIDIA GPU to pods through the NVIDIA Container Toolkit, CDI, and the GPU Operator.
 keywords:
   - kubernetes gpu
   - nvidia gpu k3s
@@ -13,7 +13,7 @@ sidebar:
 
 # NVIDIA GPU Acceleration
 
-The homelab node `legion` has an NVIDIA GeForce GTX 1050 Ti Mobile GPU (Pascal architecture, 4GB VRAM). Three components expose the GPU to Kubernetes pods: the NVIDIA Container Toolkit, the Container Device Interface (CDI), and the NVIDIA GPU Operator.
+The node `legion` has an NVIDIA GeForce GTX 1050 Ti Mobile GPU (Pascal architecture, 4GB VRAM). Three components give the GPU to Kubernetes pods. They are the NVIDIA Container Toolkit, the Container Device Interface (CDI), and the NVIDIA GPU Operator.
 
 ```mermaid
 flowchart TD
@@ -26,26 +26,26 @@ flowchart TD
 
 ## Host Configuration
 
-The Ansible playbook (`ansible/roles/nvidia/`) installs and configures the host dependencies:
+The Ansible playbook installs and configures the host dependencies:
 
-- NVIDIA driver: Version 580+ is already installed on the host.
-- NVIDIA Container Toolkit: The playbook installs it from the official apt repository.
-- CDI generation: `nvidia-ctk cdi generate --output=/etc/cdi/nvidia.yaml`.
-- Low-level runtime: The playbook installs `runc` and makes a symlink at `/usr/bin/runc`.
-- K3s server: The playbook sets `default-runtime: "nvidia"` in `/etc/rancher/k3s/config.yaml`.
+- NVIDIA driver: The host has driver version 580 or later. The `nvidia` role (`ansible/roles/nvidia/`) does not install the driver. It fails if the driver is not present.
+- NVIDIA Container Toolkit: The `nvidia` role installs the toolkit from the NVIDIA apt repository.
+- CDI generation: The `nvidia` role runs `nvidia-ctk cdi generate --output=/etc/cdi/nvidia.yaml`.
+- Low-level runtime: The `nvidia` role installs `runc` and makes a symlink at `/usr/bin/runc`.
+- K3s server: The `k3s_server` role sets `default-runtime: "nvidia"` in `/etc/rancher/k3s/config.yaml`.
 
 ## Step 1: Deploy the GPU Operator with GitOps
 
-The file `infrastructure/gpu/gpu-operator.yaml` declares the NVIDIA GPU Operator (Helm chart `v26.7.2`) as an ArgoCD Application in the `gpu-operator` namespace. Its values use the driver and toolkit that are already on the host:
+The file `infrastructure/gpu/gpu-operator.yaml` declares the NVIDIA GPU Operator (Helm chart `v26.7.2`) as an ArgoCD Application. The operator runs in the `gpu-operator` namespace. Its values use the driver and the toolkit on the host:
 
-- `driver.enabled: false` (uses the 580 series kernel module that is already on the host).
-- `toolkit.enabled: false` (uses the NVIDIA Container Toolkit that the `nvidia` Ansible role installs).
-- `cdi.enabled: true` and `cdi.default: true` (the operator uses the Container Device Interface to inject devices, and makes CDI the default injection method).
-- `validator.plugin.env`: `DISABLE_CUDA_VALIDATION=true` and `validator.cuda.env`: `WITH_WORKLOAD=false` (the validator skips the CUDA workload test pods on this Pascal GPU).
+- `driver.enabled: false`: The operator uses the 580 series kernel module on the host.
+- `toolkit.enabled: false`: The operator uses the NVIDIA Container Toolkit that the `nvidia` Ansible role installs.
+- `cdi.enabled: true` and `cdi.default: true`: The operator injects devices through CDI, and CDI is the default injection method.
+- `validator.plugin.env` sets `DISABLE_CUDA_VALIDATION=true`, and `validator.cuda.env` sets `WITH_WORKLOAD=false`: The validator skips the CUDA workload test pods on this Pascal GPU.
 
 ## Step 2: Examine the GPU Allocation
 
-Make sure that Kubelet registers the GPU on the node:
+Make sure that the kubelet registers the GPU on the node:
 
 ```bash
 kubectl get node legion -o jsonpath='{.status.allocatable.nvidia\.com/gpu}'
@@ -57,7 +57,7 @@ Expected output:
 1
 ```
 
-Make sure that the node labels show the GPU model and capabilities:
+Make sure that the node labels show the GPU model:
 
 ```bash
 kubectl get node legion -o jsonpath='{.metadata.labels.nvidia\.com/gpu\.product}'
@@ -69,9 +69,9 @@ Expected output:
 NVIDIA-GeForce-GTX-1050-Ti
 ```
 
-## Step 3: Check GPU access from a running pod
+## Step 3: Check GPU Access from a Running Pod
 
-The llama.cpp server holds the only `nvidia.com/gpu` resource, so a new test pod that requests the GPU stays `Pending`. Check GPU access from the running pods instead:
+The llama.cpp server holds the only `nvidia.com/gpu` resource. A new test pod that requests the GPU stays `Pending`. Check GPU access from the running pods:
 
 ```bash
 kubectl -n llama exec deploy/llama-server -c llama-server -- nvidia-smi
@@ -82,7 +82,7 @@ The output shows the GPU model, the driver version, and the processes that use t
 
 ## Step 4: Request GPUs in Workloads
 
-The node has one GPU, and the device plugin advertises it as `nvidia.com/gpu: 1`. Only one pod can request it. In this repo, only the llama.cpp server (`apps/llama/deployment.yaml`) requests it:
+The node has one GPU, and the device plugin advertises it as `nvidia.com/gpu: 1`. Only one pod can request it. In this repository, only the llama.cpp server (`apps/llama/deployment.yaml`) requests it:
 
 ```yaml
 resources:
@@ -90,4 +90,4 @@ resources:
     nvidia.com/gpu: "1"
 ```
 
-Jellyfin (`apps/jellyfin/deployment.yaml`) does not request `nvidia.com/gpu`. It sets `NVIDIA_VISIBLE_DEVICES=all` and `NVIDIA_DRIVER_CAPABILITIES=all`, and the K3s default runtime (`nvidia`) gives the container access to the GPU. Thus Jellyfin can transcode while llama.cpp holds the GPU resource.
+Jellyfin (`apps/jellyfin/deployment.yaml`) does not request `nvidia.com/gpu`. It sets `NVIDIA_VISIBLE_DEVICES=all` and `NVIDIA_DRIVER_CAPABILITIES=all`. The K3s default runtime (`nvidia`) then gives the container access to the GPU. Jellyfin can transcode while llama.cpp holds the GPU resource.

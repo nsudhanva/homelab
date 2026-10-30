@@ -1,6 +1,6 @@
 ---
 title: Deploy Prometheus, Grafana, and Alertmanager
-description: Install the Prometheus monitoring stack with Grafana dashboards and Alertmanager. Configure ServiceMonitors for application metrics and expose the dashboards through Tailscale Gateway.
+description: Install the Prometheus monitoring stack with Grafana and Alertmanager. Configure ServiceMonitors for application metrics and send alerts to Telegram.
 keywords:
   - prometheus kubernetes
   - grafana kubernetes
@@ -16,7 +16,7 @@ sidebar:
 
 # Deploy Prometheus And Grafana
 
-This guide installs the Prometheus stack with Grafana and Alertmanager. It exposes them through the Tailscale Gateway and connects the Headlamp metrics to Prometheus.
+This guide installs the Prometheus stack with Grafana and Alertmanager. The Tailscale Gateway exposes the three web interfaces. Prometheus collects the Headlamp metrics.
 
 ## Step 1: Store Grafana admin credentials in Vault
 
@@ -38,7 +38,7 @@ kubectl -n argocd get applications | rg prometheus
 
 ## Step 3: Access the dashboards
 
-Open these URLs on the tailnet.
+Open these URLs from a tailnet device:
 
 - Grafana: `https://grafana.sudhanva.me`
 - Prometheus: `https://prometheus.sudhanva.me`
@@ -54,24 +54,32 @@ kubectl -n monitoring get servicemonitors
 
 ## Step 5: Telegram Alerting
 
-Alertmanager sends alerts to the `alert-summarizer` Deployment (`apps/alert-summarizer/`). This service uses the shared `homelab-ai` model chain to summarize each alert and posts the summary to Telegram.
+Alertmanager sends alerts to the `alert-summarizer` Deployment (`apps/alert-summarizer/`). This service uses the shared `homelab-ai` model chain to summarize each alert. Then it sends the summary to Telegram.
 
-- Bot: The homelab Telegram bot. Its token is in Vault
-- Target Chat ID: `7341944813` (`ALERT_TELEGRAM_CHAT_ID` in `apps/alert-summarizer/deployment.yaml`)
-- Secret storage: Vault keeps the bot at `kv/telegram/bot` with the properties `token` and `chat_id`
-- GitOps Secret Sync: The ExternalSecret in `infrastructure/prometheus/external-secret-telegram.yaml` creates `alertmanager-telegram` in `monitoring` with the keys `token` and `chat-id`. The `alert-summarizer` Deployment mounts this Secret at `/etc/secrets` and reads `/etc/secrets/token`. The Alertmanager pod also mounts it through `alertmanagerSpec.secrets`
-- Alertmanager route: `prometheus.yaml` groups alerts by `alertname` and `namespace` (`group_wait: 30s`, `group_interval: 5m`, `repeat_interval: 1h`). It sends them to `http://alert-summarizer.monitoring.svc.cluster.local:8000/webhook` with `send_resolved: true`
-- Silenced routes: `Watchdog`, `InfoInhibitor`, `Alertmanager*FailedToSendAlerts`, and `severity=info` go to the `null` receiver
-- Grafana: Git defines no Grafana contact points or notification policies. If you add a Telegram contact point in the Grafana UI, it is stored in the Grafana database and is not managed by ArgoCD
+| Item | Value |
+| --- | --- |
+| Bot | The homelab Telegram bot. Vault keeps its token. |
+| Target chat ID | `7341944813` (`ALERT_TELEGRAM_CHAT_ID` in `apps/alert-summarizer/deployment.yaml`) |
+| Vault path | `kv/telegram/bot`, with the properties `token` and `chat_id` |
+| Kubernetes Secret | `alertmanager-telegram` in `monitoring`, with the keys `token` and `chat-id` |
+| Alertmanager route | `group_by` `alertname` and `namespace`, `group_wait: 30s`, `group_interval: 5m`, `repeat_interval: 1h` |
+| Webhook receiver | `http://alert-summarizer.monitoring.svc.cluster.local:8000/webhook` with `send_resolved: true` |
+| Silenced alerts | `Watchdog`, `InfoInhibitor`, `Alertmanager*FailedToSendAlerts`, and `severity=info` go to the `null` receiver |
+
+The ExternalSecret in `infrastructure/prometheus/external-secret-telegram.yaml` creates the `alertmanager-telegram` Secret. The `alert-summarizer` Deployment mounts this Secret at `/etc/secrets` and reads `/etc/secrets/token`. The Alertmanager pod also mounts it through `alertmanagerSpec.secrets`. The Alertmanager route is in `infrastructure/prometheus/prometheus.yaml`.
+
+Git defines no Grafana contact points or notification policies. Grafana keeps a contact point that you add in the Grafana UI in its database, and ArgoCD does not manage it.
 
 ### Alert summarizer behavior
 
 - The webhook acknowledges Alertmanager immediately. Then it processes the alerts in the background, one at a time.
-- The shared `homelab-ai` model chain writes a summary of each alert with a symptom, a probable cause, and a recommended action. The prompt includes all labels, all annotations, and the start and end times of the alert. If no model answers, the service sends a plain template message.
-- The service ignores a repeated delivery of the same alert state (same fingerprint and status) in the `ALERT_DEDUP_WINDOW_SECONDS` window (default 3000 seconds). This window is shorter than `repeat_interval`. Thus the service still sends hourly reminders for alerts that continue to fire.
-- Argo CD Image Updater deploys new images automatically (digest strategy).
+- The shared `homelab-ai` model chain writes a summary of each alert with a symptom, a probable cause, and a recommended action. The prompt includes all labels, all annotations, and the start and end times of the alert.
+- If no model answers, the service sends a plain template message.
+- The service ignores a repeated delivery of the same alert state (same fingerprint and status) in the `ALERT_DEDUP_WINDOW_SECONDS` window. The default is 3000 seconds.
+- The window is shorter than `repeat_interval`, so the service sends hourly reminders for alerts that continue to fire.
+- ArgoCD Image Updater deploys new images with the `digest` strategy.
 
-To test the alert pipeline, send a test alert payload to Alertmanager. Use `severity: warning`, because Alertmanager sends `severity=info` alerts to the `null` receiver.
+To test the alert pipeline, send a test alert to Alertmanager. Use `severity: warning`, because Alertmanager sends `severity=info` alerts to the `null` receiver.
 
 ```bash
 kubectl exec -n monitoring alertmanager-monitoring-alertmanager-0 -c alertmanager -- \

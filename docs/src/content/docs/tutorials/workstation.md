@@ -1,6 +1,6 @@
 ---
 title: Ubuntu Workstation Container
-description: Run an Ubuntu 26.04 workstation in Apple Containers with Docker, Ansible, and kubectl installed for cluster administration.
+description: Run an Ubuntu 26.04 workstation in Apple Containers with Docker, Ansible, and kubectl for cluster administration.
 keywords:
   - ubuntu workstation container
   - apple containers ubuntu
@@ -13,7 +13,7 @@ sidebar:
 
 # Ubuntu Workstation
 
-The workstation container gives you an Ubuntu 26.04 shell with Docker, Ansible, and kubectl. It runs on macOS hosts that have the Apple `container` CLI (`brew install container`). Use it when a workflow needs Linux tools.
+The workstation container gives you an Ubuntu 26.04 shell with Docker, Ansible, and `kubectl`. It runs on macOS hosts that have the Apple `container` CLI (`brew install container`). Use it when a task needs Linux tools.
 
 ## Step 1: Start the container
 
@@ -21,7 +21,7 @@ The workstation container gives you an Ubuntu 26.04 shell with Docker, Ansible, 
 ./scripts/dev-container.sh up
 ```
 
-The script starts a container named `homelab-dev` from `docker.io/library/ubuntu:26.04` with 4 CPUs and 8G of memory. Set `DEV_CPUS` and `DEV_MEMORY` to change these values. The script then installs `docker.io`, `ansible`, and `kubectl` `v1.37.1`, and starts `dockerd` inside the container.
+The script starts a container named `homelab-dev` from `docker.io/library/ubuntu:26.04` with 4 CPUs and 8G of memory. To change these values, set `DEV_CPUS` and `DEV_MEMORY`. The script then installs `docker.io`, `ansible`, and `kubectl` `v1.37.1`, and starts `dockerd` in the container.
 
 ## Step 2: Open a shell
 
@@ -37,9 +37,9 @@ ansible --version
 kubectl version --client
 ```
 
-## Step 4: Work on the repo from inside
+## Step 4: Work on the repository from inside the container
 
-The container mounts the repo root at `/homelab`, and `shell` opens in that directory. Thus your edits apply directly to your checkout. Run Ansible playbooks and cluster scripts from the mounted path.
+The container mounts the repository root at `/homelab`. The `shell` command opens in that directory. Edits in the container change the checkout on the host. Run Ansible playbooks and cluster scripts from `/homelab`.
 
 ## Step 5: Stop the container
 
@@ -47,4 +47,4 @@ The container mounts the repo root at `/homelab`, and `shell` opens in that dire
 ./scripts/dev-container.sh down
 ```
 
-`down` stops and deletes the container. The tools install again on the next `up`. All state stays in the repo checkout on the host.
+The `down` command stops and deletes the container. The next `up` command installs the tools again. All state stays in the repository checkout on the host.

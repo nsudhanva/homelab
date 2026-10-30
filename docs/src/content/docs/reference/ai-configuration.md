@@ -16,7 +16,7 @@ All AI workloads read the same settings through `homelab_ai.AISettings`. The clu
 
 ## Model specs
 
-A model spec is `<provider>:<model>`. Only the first colon separates the provider, so OpenRouter slugs such as `openrouter:google/gemma-4-31b-it:free` work.
+A model spec is `<provider>:<model>`. The first colon separates the provider from the model. Thus, a model name can contain a colon, for example `openrouter:google/gemma-4-31b-it:free`.
 
 | Provider | Example spec | Credentials | Default timeout | Default HTTP retries |
 |---|---|---|---|---|
@@ -25,14 +25,14 @@ A model spec is `<provider>:<model>`. Only the first colon separates the provide
 | `anthropic` | `anthropic:claude-haiku-5-5` | `ANTHROPIC_API_KEY`, optional `ANTHROPIC_WORKSPACE_ID` | 60 s | 2 |
 | `openai` | `openai:gpt-5` | `OPENAI_API_KEY`, optional `OPENAI_BASE_URL` | 60 s | 2 |
 
-Use `openai` with `OPENAI_BASE_URL` for any other OpenAI-compatible API. To add a provider with its own SDK, call `homelab_ai.register_provider`.
+For a different OpenAI-compatible API, use `openai` with `OPENAI_BASE_URL`. To add a provider with its own SDK, call `homelab_ai.register_provider`.
 
 ## Environment variables
 
 | Variable | Default | Purpose |
 |---|---|---|
 | `AI_MODEL` | `anthropic:claude-haiku-5-5` | Primary model |
-| `AI_FALLBACK_MODELS` | `openrouter:google/gemma-4-31b-it,local:gemma-4-e2b-it` | Comma-separated fallback chain. Set `none` to disable |
+| `AI_FALLBACK_MODELS` | `openrouter:google/gemma-4-31b-it,local:gemma-4-e2b-it` | Comma-separated fallback chain. Set `none` to turn off the fallback |
 | `AI_ATTEMPTS` | `2` | Attempts per call when every model fails with a network, timeout, 429, or 5xx error |
 | `AI_RETRY_BACKOFF_SECONDS` | `5` | Wait before the next attempt, multiplied by the attempt number |
 | `AI_TIMEOUT_SECONDS` | Provider default | Request timeout for every provider |
@@ -49,7 +49,7 @@ Use `openai` with `OPENAI_BASE_URL` for any other OpenAI-compatible API. To add 
 | `OPENAI_API_KEY` | None | Key for the `openai` provider |
 | `OPENAI_BASE_URL` | OpenAI default | URL for the `openai` provider |
 
-A model whose provider has no credentials is skipped and logged. The same chain therefore works on a workstation with only a local model and in the cluster with every key.
+`homelab-ai` skips and logs each model whose provider has no credentials. Thus, the same chain works on a workstation with only a local model and in the cluster with all keys.
 
 ## Vault paths
 
@@ -71,7 +71,7 @@ The `homelab-ai-credentials` ExternalSecret in `packages/homelab-ai/kustomize/ex
 
 ## CLI
 
-The `homelab-ai` command is installed with the package:
+The package installs the `homelab-ai` command.
 
 | Command | Result |
 |---|---|
@@ -79,7 +79,7 @@ The `homelab-ai` command is installed with the package:
 | `homelab-ai ping` | Calls each model in the chain with a small structured prompt and prints the latency |
 | `homelab-ai ping -m anthropic:claude-sonnet-5-5` | Calls only the given model. Repeat `-m` for more models |
 
-In a container image, run `python -m homelab_ai.cli` instead of `homelab-ai`. The images copy the virtual environment from a build stage, so console scripts point to a path that does not exist.
+In a container image, run `python -m homelab_ai.cli`. Do not run `homelab-ai`. The images copy the virtual environment from a build stage, so the console scripts point to a path that does not exist.
 
 ## Workloads
 

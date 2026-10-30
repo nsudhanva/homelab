@@ -1,6 +1,6 @@
 ---
-title: Bare-Metal K3s Homelab - Setup Guide & Architecture
-description: A self-hosted bare-metal Kubernetes cluster on Ubuntu 26.04 LTS (node legion) with K3s v1.37, Flannel CNI, ArgoCD GitOps, Envoy Gateway, Tailscale Gateway API, Vault secrets, native local-path storage, and NVIDIA GPU CDI.
+title: Bare-Metal K3s Homelab
+description: A bare-metal Kubernetes cluster on Ubuntu 26.04 LTS (node legion) with K3s v1.37, Flannel, ArgoCD, Envoy Gateway, the Tailscale Gateway API, Vault, local-path storage, and NVIDIA GPU CDI.
 keywords:
   - k3s homelab
   - bare metal kubernetes
@@ -14,7 +14,7 @@ keywords:
   - system upgrade controller
 template: splash
 hero:
-  tagline: Bare-metal Kubernetes for production use on Ubuntu 26.04 LTS (node legion), with K3s and GitOps. Ansible provisions the node and ArgoCD reconciles the cluster.
+  tagline: A bare-metal K3s cluster on Ubuntu 26.04 LTS (node legion). Ansible provisions the node, and ArgoCD reconciles the cluster from Git.
   actions:
     - text: Start from Scratch
       link: /how-to/from-scratch/
@@ -29,18 +29,18 @@ hero:
 
 import { Aside, Card, CardGrid, LinkCard, Tabs, TabItem } from '@astrojs/starlight/components';
 
-## What You'll Build
+## Services
 
-You build a self-hosted bare-metal Kubernetes cluster on node `legion`. Clients connect to its services over Tailscale through Envoy Gateway:
+The cluster runs on node `legion`. Clients connect to these services over Tailscale through Envoy Gateway.
 
 | Service | Hostname | Port | Purpose |
 |---------|----------|------|---------|
 | ArgoCD | `argocd.sudhanva.me` | 443 | GitOps control plane UI |
-| Vault | `vault.sudhanva.me` | 443 | Central secret management |
+| Vault | `vault.sudhanva.me` | 443 | Secret storage |
 | Grafana | `grafana.sudhanva.me` | 443 | Metrics and dashboards |
 | Prometheus | `prometheus.sudhanva.me` | 443 | Metrics collection |
 | Alertmanager | `alertmanager.sudhanva.me` | 443 | Alert routing |
-| Headlamp | `headlamp.sudhanva.me` | 443 | Kubernetes cluster management UI |
+| Headlamp | `headlamp.sudhanva.me` | 443 | Kubernetes cluster UI |
 | Home | `home.sudhanva.me` | 443 | Homer dashboard with links to the services |
 | Jellyfin | `jellyfin.sudhanva.me` | 443 | Media streaming with NVIDIA GTX 1050 Ti transcoding |
 | Filebrowser | `filebrowser.sudhanva.me` | 443 | File manager for persistent media volumes |
@@ -101,12 +101,12 @@ flowchart TB
 
 <Tabs>
   <TabItem label="Hardware">
-    - Bare-metal machine (node `legion`) with Ubuntu 26.04 LTS installed
-    - Minimum 4 CPU cores, 16GB RAM
-    - Dedicated SSD/NVMe mounted at `/home/k3s-storage`
-    - NVIDIA GeForce GTX 1050 Ti GPU for hardware acceleration
-    - A LAN connection (DHCP works, because K3s uses the Tailscale IP of the node)
-    - Tailscale installed and joined to your tailnet
+    - A bare-metal machine (node `legion`) with Ubuntu 26.04 LTS
+    - A minimum of 4 CPU cores and 16 GB of RAM
+    - A dedicated SSD or NVMe drive, mounted at `/home/k3s-storage`
+    - An NVIDIA GeForce GTX 1050 Ti GPU for hardware acceleration
+    - A LAN connection. DHCP is permitted, because K3s uses the Tailscale IP of the node
+    - Tailscale, installed and joined to your tailnet
   </TabItem>
   <TabItem label="Accounts">
     - A Tailscale account with a Tailnet OAuth client for the Kubernetes operator
@@ -114,35 +114,35 @@ flowchart TB
     - A GitHub repository with an access token for ArgoCD repository access and Image Updater write-back
   </TabItem>
   <TabItem label="Workstation">
-    - macOS or Linux workstation
-    - Ansible, OpenSSH, and `kubectl` installed
+    - A macOS or Linux workstation
+    - Ansible, OpenSSH, and `kubectl`
     - SSH key access to the target node (`sudhanva@legion`) with passwordless sudo
   </TabItem>
 </Tabs>
 
-## What's Included
+## Components
 
 <CardGrid stagger>
   <Card title="GitOps with ArgoCD" icon="github">
-    ApplicationSets reconcile the cluster from declarative manifests. When you push a change to Git, it deploys automatically.
+    ApplicationSets reconcile the cluster from the manifests in Git. ArgoCD deploys each change that you push.
   </Card>
   <Card title="Ubuntu 26.04 & K3s v1.37" icon="rocket">
-    Lightweight Kubernetes with Flannel CNI. Ansible provisions the node after you install Ubuntu, the NVIDIA driver, and Tailscale.
+    K3s runs with the Flannel CNI. Ansible provisions the node after you install Ubuntu, the NVIDIA driver, and Tailscale.
   </Card>
   <Card title="Envoy Gateway & Tailscale" icon="setting">
-    Kubernetes Gateway API with the Tailscale operator, split-horizon DNS, and automatic Let's Encrypt TLS.
+    Envoy Gateway serves the Gateway API routes. The Tailscale operator exposes the gateway on the tailnet. cert-manager gets Let's Encrypt certificates.
   </Card>
   <Card title="Vault & External Secrets" icon="approve-check">
-    HashiCorp Vault keeps the secrets in one location. External Secrets Operator writes them as native Kubernetes secrets.
+    HashiCorp Vault stores all secrets. External Secrets Operator copies them into Kubernetes Secrets.
   </Card>
   <Card title="Local-Path SSD Storage" icon="document">
-    Dynamic hostPath storage on a dedicated SSD at `/home/k3s-storage`, with no distributed storage overhead.
+    The K3s Local-Path Provisioner creates hostPath volumes on a dedicated SSD at `/home/k3s-storage`.
   </Card>
   <Card title="NVIDIA GPU Acceleration" icon="laptop">
-    Hardware acceleration for the GTX 1050 Ti with the NVIDIA GPU Operator and the Container Device Interface (CDI).
+    The NVIDIA GPU Operator and the Container Device Interface (CDI) give workloads access to the GTX 1050 Ti.
   </Card>
   <Card title="Automated Upgrades" icon="seti:pipeline">
-    Rancher System Upgrade Controller upgrades K3s from a `Plan` in Git. The Plan does not cordon or drain the node.
+    The Rancher System Upgrade Controller upgrades K3s from a `Plan` in Git. The Plan does not cordon or drain the node.
   </Card>
 </CardGrid>
 
@@ -165,8 +165,8 @@ flowchart TB
 ## Quick Links
 
 <CardGrid>
-  <LinkCard title="From Scratch" href="/how-to/from-scratch/" description="The full procedure to start a bare-metal cluster" />
+  <LinkCard title="From Scratch" href="/how-to/from-scratch/" description="The full procedure to build the cluster on a bare-metal machine" />
   <LinkCard title="Gateway & Ingress" href="/explanation/gateway-networking/" description="Envoy Gateway and Tailscale integration" />
-  <LinkCard title="Persistent Storage" href="/how-to/storage/" description="Local-Path storage architecture on /home/k3s-storage" />
-  <LinkCard title="Version Matrix" href="/reference/versions/" description="Pinned versions for all cluster components" />
+  <LinkCard title="Persistent Storage" href="/how-to/storage/" description="Local-path storage on /home/k3s-storage" />
+  <LinkCard title="Version Matrix" href="/reference/versions/" description="The pinned version of each cluster component" />
 </CardGrid>

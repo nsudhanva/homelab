@@ -1,6 +1,6 @@
 ---
 title: Validate Kubernetes Cluster Health
-description: Examine cluster health, GitOps sync status, Tailscale ingress, External Secrets, and the split-horizon DNS configuration. Run the validation checks before you push.
+description: Examine cluster health, GitOps sync status, Tailscale ingress, External Secrets, and split-horizon DNS. Run the validation checks before you push.
 keywords:
   - kubernetes cluster validation
   - kubectl get nodes
@@ -15,6 +15,8 @@ sidebar:
 
 # Validation
 
+This guide gives the checks for the cluster, GitOps sync, tailnet ingress, and External Secrets.
+
 ## Step 1: Validate the cluster
 
 ```bash
@@ -28,7 +30,7 @@ kubectl get pods -A
 kubectl get apps -n argocd
 ```
 
-## Step 3: Validate Tailnet ingress
+## Step 3: Validate tailnet ingress
 
 ```bash
 kubectl get gatewayclass
@@ -40,13 +42,13 @@ kubectl get svc -n tailscale-dns
 kubectl get httproute -A
 ```
 
-If a route does not show the Accepted condition, describe the route to see its conditions:
+If a route does not show the `Accepted` condition, describe the route to see its conditions:
 
 ```bash
 kubectl describe httproute <name> -n <namespace>
 ```
 
-After the HTTPRoute syncs, a Tailnet client can open the Homer dashboard at `https://home.sudhanva.me`.
+When the HTTPRoute is synced, a tailnet client can open the Homer dashboard at `https://home.sudhanva.me`.
 
 ### Validate split-horizon DNS
 
@@ -57,14 +59,14 @@ dig +short homelab.sudhanva.me @100.100.100.100
 curl -I https://homelab.sudhanva.me
 ```
 
-If the Gateway exposes other apps, validate one of them also:
+Validate one more app hostname on the Gateway:
 
 ```bash
 dig +short home.sudhanva.me @100.100.100.100
 curl -I https://home.sudhanva.me
 ```
 
-Off the tailnet, the hostname must resolve to Cloudflare:
+On a device that is not on the tailnet, the manual public record returns the same Tailscale Gateway IP. The `curl` command fails, because the device has no route to the tailnet.
 
 ```bash
 dig +short homelab.sudhanva.me @1.1.1.1
@@ -73,7 +75,7 @@ curl -I https://homelab.sudhanva.me
 
 ## Step 4: Validate External Secrets
 
-If `infra-external-secrets` is Degraded, examine the ClusterSecretStore and an ExternalSecret:
+If `infra-external-secrets` is `Degraded`, examine the ClusterSecretStore and an ExternalSecret:
 
 ```bash
 kubectl -n external-secrets get clustersecretstore vault -o yaml

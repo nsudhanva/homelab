@@ -1,6 +1,6 @@
 ---
 title: Deploy and Manage Actual Budget with SimpleFIN Sync
-description: Deploy Actual Budget on Kubernetes with ArgoCD GitOps, keep its state on local-path storage, expose it through Tailscale Gateway HTTPS, and link bank accounts with SimpleFIN Bridge.
+description: Deploy Actual Budget with ArgoCD, keep its data on local-path storage, expose it through the Tailscale Gateway, and connect bank accounts through SimpleFIN Bridge.
 keywords:
   - actual budget kubernetes
   - simplefin actual budget
@@ -14,92 +14,94 @@ sidebar:
 
 # Actual Budget with SimpleFIN
 
-This guide tells how this homelab deploys and secures Actual Budget. It also tells how Actual Budget connects to bank feeds through SimpleFIN Bridge.
+This guide tells how the cluster deploys Actual Budget. It also tells how Actual Budget connects to bank feeds through SimpleFIN Bridge.
 
-## Architecture & Layout
+## Architecture and Layout
 
-Actual Budget runs as a single-replica workload. It keeps its SQLite data on the fast local NVMe storage pool.
+Actual Budget runs as one replica. It keeps its SQLite data on the local NVMe storage.
 
 | Component | Resource | Purpose |
 | --- | --- | --- |
-| Manifest directory | `apps/actual-budget/` | All declarative Kubernetes specifications |
-| ArgoCD application | `app.yaml` | Discovered by the `apps` ApplicationSet |
-| Dedicated namespace | `namespace.yaml` | `actual-budget` with Pod Security Admission `audit` and `warn` at `baseline` (not `enforce`) |
-| Local storage | `pvc.yaml` | 5Gi `local-path` persistent volume claim `actual-budget-data` mounted at `/data` |
-| Core server | `deployment.yaml` | `docker.io/actualbudget/actual-server:26.10.0-alpine` with non-root security |
-| Cluster network | `service.yaml` | Internal ClusterIP exposing port 5006 |
-| Gateway ingress | `httproute.yaml` | Route attached to `tailscale-gateway` at `actual.sudhanva.me` |
+| Manifest directory | `apps/actual-budget/` | The Kubernetes manifests |
+| ArgoCD application | `app.yaml` | The `apps` ApplicationSet finds this file |
+| Namespace | `namespace.yaml` | `actual-budget`, with the Pod Security Admission labels `audit` and `warn` at `baseline` |
+| Local storage | `pvc.yaml` | The 5Gi `local-path` PersistentVolumeClaim `actual-budget-data`, mounted at `/data` |
+| Server | `deployment.yaml` | `docker.io/actualbudget/actual-server:26.10.0-alpine`, run as a non-root user |
+| Cluster network | `service.yaml` | A ClusterIP Service on port 5006 |
+| Gateway route | `httproute.yaml` | A route on `tailscale-gateway` for `actual.sudhanva.me` |
 
 :::note
 
-Actual Budget needs HTTPS and secure origin isolation (`SharedArrayBuffer` with `Cross-Origin-Opener-Policy` and `Cross-Origin-Embedder-Policy`). The Tailscale Gateway does the SSL termination with the wildcard Let's Encrypt certificate. This meets all browser cryptographic requirements.
+Actual Budget needs HTTPS and cross-origin isolation (`SharedArrayBuffer` with `Cross-Origin-Opener-Policy` and `Cross-Origin-Embedder-Policy`). The Tailscale Gateway terminates TLS with the wildcard Let's Encrypt certificate. The browser then gives Actual Budget a secure context.
 
 :::
 
-## Step 1: Understand the Kubernetes Manifests
+## Step 1: Review the Kubernetes Manifests
 
-The deployment follows the GitOps standards.
+The Deployment has these settings:
 
-- Non-root user: The container runs as UID 1001 and GID 1001 (the `actual` user in Alpine)
-- Persistent SQLite access: One replica with `strategy: Recreate` prevents SQLite file locking conflicts during upgrades
-- Native health probes: The liveness, readiness, and startup probes use the built-in `/health` HTTP endpoint
-- Resource limits: The requests are 100m CPU / 256Mi RAM. The limits are 500m CPU / 512Mi RAM
+- Non-root user: The container runs as UID 1001 and GID 1001 (the `actual` user in Alpine).
+- SQLite access: One replica with `strategy: Recreate` prevents SQLite file lock conflicts during upgrades.
+- Health probes: The liveness, readiness, and startup probes use the `/health` HTTP endpoint.
+- Resources: The requests are 100m CPU and 256Mi memory. The limits are 500m CPU and 512Mi memory.
 
-## Step 2: First-Time Initialization and Password Setup
+## Step 2: Set the Server Password
 
-After ArgoCD completes the sync of the application, do these steps.
+Do these steps after ArgoCD syncs the application:
 
-- Open your browser and go to `https://actual.sudhanva.me`
-- The bootstrap wizard opens and asks for a master server password
-- Choose a strong password. Save it in Vault at `kv/actual` (property `password`). The `actual-classifier` ExternalSecret reads this path, and the Bitwarden sync script in Step 5 reads it too
-- Create your primary budget file, or import a budget file that you have
+- Open `https://actual.sudhanva.me` in your browser. The setup wizard asks for a server password.
+- Choose a strong password.
+- Save the password in Vault at `kv/actual` (property `password`). The `actual-classifier` ExternalSecret and the Bitwarden script in Step 6 read this path.
+- Create a budget file, or import a budget file.
 
-## Step 3: Integrate SimpleFIN Bank Sync
+## Step 3: Connect SimpleFIN Bank Sync
 
-Actual Budget has native support for SimpleFIN Bridge. Do these steps to connect your financial institutions.
+Actual Budget has built-in support for SimpleFIN Bridge. Do these steps to connect your banks:
 
-- Step 3.1: Log in to your [SimpleFIN Bridge Dashboard](https://beta-bridge.simplefin.org/)
-- Step 3.2: Make sure that your bank accounts are linked and show recent account balances
-- Step 3.3: In the SimpleFIN dashboard, under Apps or Connections, click **Create Setup Token**
-- Step 3.4: Copy the one-time base64 token string. To keep a copy, store it in Vault at `kv/actual-budget/simplefin` (property `setup_token`)
-- Step 3.5: In the Actual Budget web interface, go to **Settings** &rarr; **Bank Sync**
-- Step 3.6: Under SimpleFIN, select **Set up**. Paste the setup token into the modal
-- Step 3.7: Actual Budget validates the claim URL and claims your permanent access key. It encrypts the key in the server database on the persistent volume
+- Step 3.1: Log in to the [SimpleFIN Bridge Dashboard](https://beta-bridge.simplefin.org/).
+- Step 3.2: Make sure that your bank accounts are linked and show recent balances.
+- Step 3.3: In the SimpleFIN dashboard, under Apps or Connections, click **Create Setup Token**.
+- Step 3.4: Copy the one-time base64 token.
+- Step 3.5: To keep a copy, store the token in Vault at `kv/actual-budget/simplefin` (property `setup_token`).
+- Step 3.6: In Actual Budget, go to **Settings** &rarr; **Bank Sync**.
+- Step 3.7: Under SimpleFIN, select **Set up**. Paste the setup token into the dialog.
+
+Actual Budget validates the claim URL and claims a permanent access key. It encrypts the key in the server database on the persistent volume.
 
 :::tip
 
-SimpleFIN setup tokens are single-use. If a token claim expires or has a network error, make a new setup token in the SimpleFIN Bridge dashboard.
+A SimpleFIN setup token works one time only. If a claim expires or fails because of a network error, create a new setup token in the SimpleFIN Bridge dashboard.
 
 :::
 
-## Step 4: Link Accounts and Synchronize Transactions
+## Step 4: Link Accounts and Sync Transactions
 
-After you configure the SimpleFIN provider, do these steps.
+Do these steps after you configure the SimpleFIN provider:
 
-- Step 4.1: In the Actual Budget sidebar, click **Add Account** or click an account that you have
-- Step 4.2: Select **Link bank account**
-- Step 4.3: Choose **SimpleFIN** from the provider selection
-- Step 4.4: Select the related financial institution and account from the dropdown list
-- Step 4.5: To import transactions, click **Sync** at the top of the account ledger (or pull down to refresh on mobile devices)
+- Step 4.1: In the Actual Budget sidebar, click **Add Account**, or click an existing account.
+- Step 4.2: Select **Link bank account**.
+- Step 4.3: Select **SimpleFIN** as the provider.
+- Step 4.4: Select the bank and the account from the list.
+- Step 4.5: Click **Sync** at the top of the account ledger to import transactions. On a mobile device, pull down to refresh.
 
 :::note
 
-SimpleFIN Bridge gets financial data from banking aggregators one time each day. If you sync many times each day, you get newly settled transactions when SimpleFIN refreshes them.
+SimpleFIN Bridge gets data from the bank aggregators one time each day. A sync gets new transactions only after SimpleFIN refreshes its data.
 
 :::
 
-## Step 5: Backup & Disaster Recovery
+## Step 5: Back Up and Restore the Data
 
-All budget data, transaction history, encryption keys, and SimpleFIN connection secrets are in `/data` on the host.
+The budget data, the transaction history, the encryption keys, and the SimpleFIN connection secrets are in `/data`.
 
-- Path on host: `/home/k3s-storage/pvc-<uid>_actual-budget_actual-budget-data` (`local_storage_path` in `ansible/group_vars/all.yaml`, with the default `local-path` directory pattern)
+- Host path: `/home/k3s-storage/pvc-<uid>_actual-budget_actual-budget-data`. The base directory is `local_storage_path` in `ansible/group_vars/all.yaml`, and the name follows the default `local-path` pattern.
 - Budget files: `/data/user-files/`
-- Server credentials & SQLite db: `/data/server-files/account.sqlite`
-- To restore from a backup, copy the contents of the `/data` directory to the restored persistent volume
+- Server credentials and SQLite database: `/data/server-files/account.sqlite`
+- Restore: Copy the backup of `/data` to the new persistent volume.
 
 ## Step 6: Back Up the Credentials to Bitwarden
 
-The script `scripts/sync-actual-budget-bw.sh` copies the Actual Budget credentials from Vault into Bitwarden. No ExternalSecret or cluster workload runs it. Run it from your workstation when the password or the SimpleFIN token changes.
+The script `scripts/sync-actual-budget-bw.sh` copies the Actual Budget credentials from Vault to Bitwarden. No ExternalSecret or cluster workload runs it. Run it from your workstation when the password or the SimpleFIN token changes.
 
 The script reads these Vault paths through `kubectl -n vault exec vault-0`:
 
@@ -108,14 +110,14 @@ The script reads these Vault paths through `kubectl -n vault exec vault-0`:
 | `kv/actual` | `password` | `VAULT_AUTH_PATH` |
 | `kv/actual-budget/simplefin` | `setup_token` | `VAULT_SIMPLEFIN_PATH` |
 
-It creates two items in the Bitwarden folder set by `BW_FOLDER_ID` (the script has a default folder ID):
+It creates two items in the Bitwarden folder that `BW_FOLDER_ID` sets. The script has a default folder ID.
 
-- A login item named `Actual Budget (Homelab)` with username `admin`, the password from Vault, and the URL `https://actual.sudhanva.me`
-- A secure note named `SimpleFIN Bridge Setup Token (Actual Budget)` with the setup token
+- A login item named `Actual Budget (Homelab)`, with the username `admin`, the password from Vault, and the URL `https://actual.sudhanva.me`
+- A secure note named `SimpleFIN Bridge Setup Token (Actual Budget)`, with the setup token
 
 Step 6.1: Install `kubectl`, `jq`, and the Bitwarden CLI (`bw`). Log in with `bw login`.
 
-Step 6.2: Export a Vault token. If you already unlocked Bitwarden, also export `BW_SESSION`. Otherwise the script runs `bw unlock`.
+Step 6.2: Export a Vault token. If Bitwarden is unlocked, also export `BW_SESSION`. If `BW_SESSION` is not set, the script runs `bw unlock`.
 
 ```bash
 export VAULT_TOKEN="REPLACE_ME"
@@ -124,6 +126,6 @@ export VAULT_TOKEN="REPLACE_ME"
 
 :::caution
 
-The script creates new items on every run. It does not update the items that exist. Delete the old items in Bitwarden after a run so you do not keep duplicates.
+The script creates new items on each run. It does not update existing items. After a run, delete the old items in Bitwarden to prevent duplicates.
 
 :::

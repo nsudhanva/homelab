@@ -1,6 +1,6 @@
 ---
 title: Component Version Matrix
-description: Pinned versions of all components, such as K3s, ArgoCD, Envoy Gateway, and Vault, with the location of each configuration file.
+description: The pinned version of each component, for example K3s, ArgoCD, Envoy Gateway, and Vault, and the file that sets it.
 keywords:
   - k3s version
   - kubernetes version
@@ -14,11 +14,11 @@ sidebar:
 
 # Version Matrix
 
-When you upgrade components, keep these versions aligned.
+Keep these versions aligned when you upgrade a component.
 
 :::note
 
-Check the latest stable release before changing any pinned version.
+Before you change a pinned version, find the latest stable release.
 
 :::
 
@@ -27,8 +27,8 @@ Check the latest stable release before changing any pinned version.
 - kubeconform: `v0.7.0` in `scripts/run-kubeconform.sh` (validates against Kubernetes `1.37.0`)
 - Terraform: `1.17.1` in `.github/workflows/tailscale.yaml` (`>= 1.16.0, < 2.0.0` in `terraform/tailscale/versions.tf`)
 - Tailscale Terraform provider: `0.29.3` in `terraform/tailscale/.terraform.lock.hcl` (`~> 0.29.3`)
-- containerd: bundled with K3s (not pinned in the repo; `kubectl get nodes -o wide` shows the running version)
-- Host OS: Ubuntu 26.04 LTS (the point release is not pinned in the repo; `kubectl get nodes -o wide` shows it)
+- containerd: bundled with K3s. The repository does not pin it. `kubectl get nodes -o wide` shows the running version
+- Host OS: Ubuntu 26.04 LTS. The repository does not pin the point release. `kubectl get nodes -o wide` shows it
 - CNI: Flannel (K3s built-in)
 - Storage: Local-Path Provisioner (data path `/home/k3s-storage`)
 - ArgoCD: `v3.5.6` in `bootstrap/argocd/kustomization.yaml`
@@ -58,7 +58,7 @@ Check the latest stable release before changing any pinned version.
 - Technitium DNS Server: `15.6.2` in `apps/technitium/deployment.yaml`
 - Home Assistant: `2026.10.3` in `apps/home-assistant/deployment.yaml`
 - llama.cpp (Gemma 4): `server-cuda` in `apps/llama/deployment.yaml`
-- Jellyfin: `latest`, pinned by digest in `apps/jellyfin/.argocd-source-app-jellyfin.yaml` (Image Updater). The base manifest `apps/jellyfin/deployment.yaml` says `12.3`, but the override replaces it
+- Jellyfin: `latest`, pinned by digest in `apps/jellyfin/.argocd-source-app-jellyfin.yaml` (ArgoCD Image Updater). This override replaces the `12.3` tag in the base manifest `apps/jellyfin/deployment.yaml`
 - Gluetun: `v3.41.3` in `apps/qbittorrent/deployment.yaml`
 - qBittorrent: `5.3.0` in `apps/qbittorrent/deployment.yaml`
 - Prowlarr: `2.6.5.5623-ls165` in `apps/prowlarr/deployment.yaml`
@@ -67,7 +67,7 @@ Check the latest stable release before changing any pinned version.
 - Bazarr: `v1.6.2-ls369` in `apps/bazarr/deployment.yaml`
 - Seerr: `v3.5.1` in `apps/seerr/deployment.yaml`
 - Filebrowser: `v2.63.23` in `apps/filebrowser/deployment.yaml`
-- Alertmanager and Prometheus: the versions that kube-prometheus-stack `92.11.0` ships (not pinned separately)
+- Alertmanager and Prometheus: the versions that kube-prometheus-stack `92.11.0` ships. The repository does not pin them separately
 - Actual Budget: `26.10.0-alpine` in `apps/actual-budget/deployment.yaml`
 - Gmail Classifier: `0.1.0` in `apps/gmail-classifier/pyproject.toml`
 - Drive Organizer: `0.1.0` in `apps/drive-organizer/pyproject.toml`

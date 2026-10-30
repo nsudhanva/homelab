@@ -1,6 +1,6 @@
 ---
 title: Kubescape Security Scanning for Kubernetes
-description: Enable Kubescape in offline mode to scan Kubernetes configuration and vulnerabilities. See workload security scans and image vulnerability reports.
+description: Run Kubescape in offline mode to scan the Kubernetes configuration and the container images, and read the scan results.
 keywords:
   - kubescape kubernetes
   - kubernetes security scanning
@@ -15,11 +15,11 @@ sidebar:
 
 # Kubescape Security Scanning
 
-This guide shows how to enable Kubescape in offline mode. In this mode, Kubescape does lightweight configuration and vulnerability scans.
+This guide shows how to operate Kubescape in offline mode. In this mode, Kubescape does configuration scans and vulnerability scans in the cluster.
 
 ## Step 1: Sync the Kubescape application
 
-ArgoCD deploys Kubescape from `infrastructure/kubescape/`. Run this command to find the application:
+ArgoCD deploys the `kubescape-operator` chart from `infrastructure/kubescape/`. Run this command to find the application:
 
 ```bash
 kubectl -n argocd get applications | rg kubescape
@@ -47,8 +47,8 @@ To see the image vulnerability scans, run this command:
 kubectl get vulnerabilitymanifests -A
 ```
 
-## Step 4: Tune what gets scanned
+## Step 4: Change the scan scope
 
-To change the capabilities or namespace filters, edit `infrastructure/kubescape/kubescape.yaml`. Then let ArgoCD sync the change.
+To change the capabilities or the namespace filters, edit `infrastructure/kubescape/kubescape.yaml`. Then let ArgoCD sync the change.
 
-By default, admission control and runtime detections are disabled. This prevents interruptions to workloads.
+The values set `admissionController`, `runtimeDetection`, and `runtimeObservability` to `disable`. Kubescape does not block or stop workloads.

@@ -1,27 +1,27 @@
 # AI Alert Summarizer
 
-An Alertmanager webhook relay that sends AI alert summaries to Telegram.
+An Alertmanager webhook relay that sends AI summaries of alerts to Telegram.
 
 ## Overview
 
-The AI Alert Summarizer receives Prometheus Alertmanager webhook payloads. It sends the alert context to the shared `homelab-ai` model chain (Claude Haiku 5.5, then OpenRouter, then the local Gemma 4 model). It then sends short, human-readable summaries directly to Telegram.
+The AI Alert Summarizer receives Prometheus Alertmanager webhook payloads. It sends the alert context to the shared `homelab-ai` model chain: Claude Haiku 5.5, then OpenRouter, then the local Gemma 4 model. It then sends a short summary of each alert to Telegram.
 
 ## Features
 
-- Pydantic AI agent with strongly typed, schema-validated outputs (`AlertSummary`)
-- Automatic LLM retries for self-correction if the output does not match the schema constraints
-- Instructions that include the cluster name and environment
-- The webhook returns at once. A background task then processes the alerts one payload at a time, with FastAPI and one shared HTTPX client
-- Falls back to the local Gemma 4 model in the cluster when the cloud providers are unavailable
-- Automatic fallback: if the LLM is unreachable or times out, the service sends a standard template, so no alert is lost
-- Native HTML formatting for Telegram messages
+- A Pydantic AI agent with typed, schema-validated output (`AlertSummary`)
+- LLM retries when the output does not match the schema
+- Instructions that include the cluster name and the environment
+- An immediate webhook response. A FastAPI background task then processes the alerts one payload at a time, with one shared HTTPX client
+- Fallback to the local Gemma 4 model in the cluster when the cloud providers are not available
+- A standard template message when the full model chain is unreachable or times out, so that each alert gets to Telegram
+- HTML formatting for Telegram messages
 
 ## Deployment
 
-- Runs as a Deployment (not a CronJob) in the `monitoring` namespace. The Service `alert-summarizer` listens on port 8000
-- Alertmanager posts to `http://alert-summarizer.monitoring.svc.cluster.local:8000/webhook` (see `infrastructure/prometheus/prometheus.yaml`)
-- Loads the model chain from the `homelab-ai` ConfigMap and the API keys from the `homelab-ai-credentials` Secret
-- Reads the Telegram bot token from `/etc/secrets/token`, mounted from the `alertmanager-telegram` Secret (Vault `kv/telegram/bot`)
+- The service runs as a Deployment in the `monitoring` namespace. The Service `alert-summarizer` listens on port 8000
+- Alertmanager sends alerts to `http://alert-summarizer.monitoring.svc.cluster.local:8000/webhook` (refer to `infrastructure/prometheus/prometheus.yaml`)
+- The service reads the model chain from the `homelab-ai` ConfigMap and the API keys from the `homelab-ai-credentials` Secret
+- The service reads the Telegram bot token from `/etc/secrets/token`. This file comes from the `alertmanager-telegram` Secret (Vault `kv/telegram/bot`)
 - The Dockerfile `CMD` runs `uvicorn` on `0.0.0.0:8000`
 
 ## Configuration
@@ -33,7 +33,7 @@ All settings use the `ALERT_` prefix:
 | `ALERT_CLUSTER_NAME` | `homelab-k3s` | Cluster name in the instructions |
 | `ALERT_ENVIRONMENT` | `production` | Environment name in the instructions |
 | `ALERT_DEDUP_WINDOW_SECONDS` | `3000` | Ignore a repeat of the same alert fingerprint and status within this window |
-| `ALERT_TELEGRAM_BOT_TOKEN` | None | Bot token. If unset, the service reads the token file |
+| `ALERT_TELEGRAM_BOT_TOKEN` | None | Bot token. If it is not set, the service reads the token file |
 | `ALERT_TELEGRAM_BOT_TOKEN_FILE` | `/etc/secrets/token` | File that holds the bot token |
 | `ALERT_TELEGRAM_CHAT_ID` | `7341944813` | Target chat |
 | `ALERT_TELEGRAM_TIMEOUT_SECONDS` | `5` | Telegram request timeout |
@@ -42,22 +42,22 @@ All settings use the `ALERT_` prefix:
 ## Endpoints
 
 - `GET /healthz`: Liveness probe
-- `GET /readyz`: Readiness probe (examines the configuration and tokens)
+- `GET /readyz`: Readiness probe. It examines the configuration and the tokens
 - `POST /webhook`: Alertmanager v4 webhook receiver
 
-## Development & Quality Standards
+## Development
 
-This project uses an Astral-based toolchain:
+The project uses these tools:
 
-- Package and virtual environment management: `uv`
-- Code formatting and linting: `ruff`
-- Static type checking: `ty`
-- Testing: `pytest`
+- `uv` for packages and virtual environments
+- `ruff` for formatting and linting
+- `ty` for static type checks
+- `pytest` for tests
 
 ### Commands
 
-- Install dependencies: `uv sync --dev`
-- Run linter: `uv run ruff check`
-- Format code: `uv run ruff format`
-- Check types: `uv run ty check`
-- Run test suite: `uv run pytest`
+- Install the dependencies: `uv sync --dev`
+- Run the linter: `uv run ruff check`
+- Format the code: `uv run ruff format`
+- Check the types: `uv run ty check`
+- Run the tests: `uv run pytest`

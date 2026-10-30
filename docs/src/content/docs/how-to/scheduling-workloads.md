@@ -1,6 +1,6 @@
 ---
 title: Kubernetes Pod Scheduling and Node Affinity
-description: Control Kubernetes pod placement with node affinity, taints, and tolerations. Configure rolling updates for zero downtime and avoid common scheduling anti-patterns.
+description: Control Kubernetes pod placement with node labels, node affinity, taints, and tolerations. Configure rolling updates with no downtime.
 keywords:
   - kubernetes node affinity
   - kubernetes taints tolerations
@@ -15,13 +15,13 @@ sidebar:
 
 # Scheduling Workloads
 
-Use Node Affinity, Taints, and Tolerations to control where your pods run in the cluster. The cluster has one node today (`legion`), so these rules matter only after you add more nodes. Refer to [Add a Worker Node](/how-to/add-worker-node/).
+Use node affinity, taints, and tolerations to control the nodes on which your pods run. The cluster has one node, `legion`. These rules have an effect only when the cluster has more than one node. Refer to [Add a Worker Node](/how-to/add-worker-node/).
 
 ## Concepts
 
 ### Node Labels
 
-A node can have labels, which are key-value pairs. Standard labels include:
+A node has labels, which are key-value pairs. Standard labels include:
 
 - `kubernetes.io/arch`: `amd64`, `arm64`
 - `kubernetes.io/os`: `linux`
@@ -36,25 +36,25 @@ The GPU Operator also adds `nvidia.com/gpu.*` labels, such as `nvidia.com/gpu.pr
 
 No node has the label `node-role.kubernetes.io/worker`.
 
-Add node labels through Ansible, not with `kubectl label`. Labels that you add by hand are lost when the node is rebuilt.
+Add node labels through Ansible. Do not use `kubectl label`. A label that you add by hand is lost when you rebuild the node.
 
 ### Node Affinity
 
 Affinity limits the nodes on which the scheduler can put your pod.
 
-- **Required (`requiredDuringSchedulingIgnoredDuringExecution`):** The pod _must_ run on a matching node. If no node matches, the pod stays Pending.
-- **Preferred (`preferredDuringSchedulingIgnoredDuringExecution`):** The scheduler tries to find a matching node. If it finds none, it schedules the pod on any node.
+- `requiredDuringSchedulingIgnoredDuringExecution`: The pod must run on a matching node. If no node matches, the pod stays `Pending`.
+- `preferredDuringSchedulingIgnoredDuringExecution`: The scheduler tries to find a matching node. If it finds no matching node, it puts the pod on a different node.
 
-### Zero Downtime Strategy
+### Rolling Updates with No Downtime
 
-To get zero downtime when you move workloads or update deployments, configure the `RollingUpdate` strategy correctly.
+Configure the `RollingUpdate` strategy with these values to keep a Deployment available during an update:
 
-- **maxUnavailable: 0**: Kubernetes does not stop old pods until the new pods are Ready.
-- **maxSurge: 1**: Kubernetes can create 1 pod more than the desired count during updates.
+- `maxUnavailable: 0`: Kubernetes does not stop the old pods until the new pods are `Ready`.
+- `maxSurge: 1`: Kubernetes can create one pod more than the desired count during an update.
 
-## Example: Preferring a Specific Worker Node
+## Example: Prefer a Specific Worker Node
 
-This example tells the scheduler to prefer a node with the label `node-role.kubernetes.io/worker=worker`. No manifest in this repo uses this rule, and no node has the label today. If you add a worker with this label, a pod with this rule goes there first and can still fall back to the control plane.
+This example tells the scheduler to prefer a node with the label `node-role.kubernetes.io/worker=worker`. No manifest in this repository uses this rule, and no node has this label. On a cluster with a worker node that has this label, the pod goes to the worker first. If the worker is not available, the pod goes to the control plane.
 
 ```yaml
 apiVersion: apps/v1
@@ -87,15 +87,15 @@ spec:
 
 ## Taints and Tolerations
 
-A taint keeps pods off a node. To run on a tainted node, a pod must have a matching `toleration`.
+A taint keeps pods off a node. A pod must have a matching toleration to run on a tainted node.
 
-**Example Taint:**
+Example taint:
 
 ```bash
 kubectl taint nodes <node-name> key=value:NoSchedule
 ```
 
-**Example Toleration:**
+Example toleration:
 
 ```yaml
 tolerations:
@@ -105,26 +105,22 @@ tolerations:
   effect: "NoSchedule"
 ```
 
-## Best Practices: Keep it Flexible
+## Limit Affinity Rules
 
-Do not pin every application to a specific node.
-
-If you add `affinity` or `nodeSelector` to all workloads, you create rigid constraints. These constraints stop Kubernetes from healing itself.
+Do not pin every application to a specific node. When all workloads have `affinity` or `nodeSelector` rules, Kubernetes cannot move pods to a different node when a node fails.
 
 ### When to use Affinity
 
-- **Hardware requirements:** The app needs a specific GPU, USB device, or architecture (ARM64 vs AMD64) that only some nodes have.
-- **Performance/cost:** Move non-critical apps to a cheaper or slower node.
-- **Data gravity:** Kubernetes does this for you. If a pod uses a PVC on a specific node, Kubernetes schedules the pod on that node.
+- Hardware requirements: The app needs a specific GPU, USB device, or CPU architecture (ARM64 or AMD64) that only some nodes have.
+- Performance and cost: The app is not critical and can run on a slower or less expensive node.
+- Data location: Kubernetes handles this case without affinity. When a pod uses a local-path PVC, Kubernetes puts the pod on the node that has the volume.
 
-### The "Filebrowser Lesson" (Anti-Pattern)
+### Shared Volumes and Affinity
 
-Do not force a pod onto a node if it shares dependencies with other pods.
+Do not force a pod onto a node when the pod shares a volume with other pods. This example uses the hypothetical nodes `node-1` and `node-2`.
 
-This example uses hypothetical nodes `node-1` and `node-2`.
-
-- **Scenario:** Filebrowser shares the `jellyfin-media` volume with Jellyfin.
-- **Constraint 1:** Jellyfin _must_ run on `node-1` (GPU).
-- **Constraint 2:** Local-path volumes stay on the node where they were created, so the shared volume is locked to `node-1`.
-- **Error:** An affinity that forces Filebrowser to `node-2` causes a deadlock, because the volume cannot move with the pod.
-- **Fix:** Remove the affinity. Let Kubernetes put the two pods on the same node.
+- Scenario: Filebrowser shares the `jellyfin-media` volume with Jellyfin.
+- Constraint 1: Jellyfin must run on `node-1`, because `node-1` has the GPU.
+- Constraint 2: A local-path volume stays on the node where the provisioner created it, so the shared volume is on `node-1`.
+- Error: An affinity rule that forces Filebrowser to `node-2` causes a deadlock, because the volume cannot move with the pod.
+- Fix: Remove the affinity rule. Kubernetes then puts the two pods on the same node.

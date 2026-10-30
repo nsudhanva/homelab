@@ -1,6 +1,6 @@
 ---
 title: Persistent Storage Architecture with Local-Path Provisioner
-description: How the homelab stores persistent data with the K3s local-path provisioner on fast host SSD storage.
+description: How the homelab stores persistent data with the K3s Local-Path Provisioner on the host SSD.
 keywords:
   - k3s local-path provisioner
   - kubernetes hostpath storage
@@ -13,11 +13,11 @@ sidebar:
 
 # Local-Path Storage Architecture
 
-This document tells why and how the homelab uses the K3s built-in Local-Path Provisioner. The homelab does not use distributed block storage.
+The homelab uses the Local-Path Provisioner that K3s includes. This page tells how the provisioner creates volumes and where the data is on the host.
 
 ## Architecture Overview
 
-All persistent workloads in the homelab cluster use host NVMe/SSD partitions mounted at `/home/k3s-storage`:
+All persistent workloads use host NVMe or SSD storage at `/home/k3s-storage`:
 
 ```mermaid
 flowchart TB
@@ -60,28 +60,28 @@ flowchart TB
   Root --> DirJelly
 ```
 
-## Why Local-Path Over Distributed Storage
+## Design Reasons
 
-In a small bare-metal homelab, distributed block storage (such as Longhorn or Ceph) has these disadvantages:
+The cluster has one node, so a volume does not need replicas on other nodes. Local-path storage has no network layer. The provisioner creates hostPath volumes directly on the dedicated SSD partition.
 
-- **CPU and memory overhead**: Distributed storage engines use much CPU and RAM. They use it for replica synchronization, health heartbeats, and storage engine daemons.
-- **I/O latency**: Synchronous network replication causes more write latency than direct NVMe access.
-- **Complexity**: Corrupted replica state engines and quorum loss during single-node reboots can stop the cluster boot.
+This design gives these properties:
 
-Local-path storage does not use a network layer. It creates hostPath volumes directly on the dedicated SSD partition. This gives the maximum raw I/O throughput and keeps operations simple.
+- Low overhead: The provisioner runs no replication engine, health heartbeats, or storage daemons.
+- Low latency: Each write goes directly to the local NVMe disk, with no network replication.
+- Simple operation: A node reboot has no replica state or quorum to recover.
 
 ## Volume Lifecycle and WaitForFirstConsumer
 
-The default `local-path` StorageClass sets volume binding to `volumeBindingMode: WaitForFirstConsumer`:
+The default `local-path` StorageClass sets `volumeBindingMode: WaitForFirstConsumer`:
 
-- When you apply a PersistentVolumeClaim, it stays in the `Pending` state until the scheduler puts a consumer pod on a node.
-- When the scheduler puts a workload Pod that refers to the PVC on a node, the scheduler assigns that node to the PVC.
-- The `local-path-provisioner` controller starts a temporary helper pod on that node. The helper pod creates the dedicated directory under `/home/k3s-storage/pvc-<uuid>_<namespace>_<pvc-name>/`.
-- Kubernetes binds the PersistentVolume to the PVC and mounts it directly into the container filesystem.
+- A new PersistentVolumeClaim (PVC) stays in the `Pending` state until the scheduler puts a consumer Pod on a node.
+- When the scheduler puts a Pod that refers to the PVC on a node, the scheduler assigns that node to the PVC.
+- The `local-path-provisioner` controller starts a temporary helper Pod on that node. The helper Pod creates the directory `/home/k3s-storage/pvc-<uuid>_<namespace>_<pvc-name>/`.
+- Kubernetes binds the PersistentVolume to the PVC and mounts it into the container filesystem.
 
 ## Host Directory Structure
 
-All persistent volume data has a fixed, predictable structure on the node. The Vault chart (`dataStorage` in `infrastructure/vault/vault.yaml`) creates the PVC `data-vault-0`. The Prometheus Operator names the Prometheus PVC after the StatefulSet. To see the real names, run `kubectl get pvc -A`:
+Each volume directory name has the PVC UUID, the namespace, and the PVC name. The Vault chart (`dataStorage` in `infrastructure/vault/vault.yaml`) creates the PVC `data-vault-0`. The Prometheus Operator names the Prometheus PVC after the StatefulSet. To see the real names, run `kubectl get pvc -A`.
 
 ```text
 /home/k3s-storage/
@@ -90,9 +90,11 @@ All persistent volume data has a fixed, predictable structure on the node. The V
 └── pvc-<uuid>_vault_data-vault-0/
 ```
 
-## Backup and Disaster Recovery Strategy
+## Backups
 
-The data is in standard Linux directories on the host filesystem. This gives these advantages:
+The volume data is in standard Linux directories on the host filesystem. This has these effects:
 
-- **Deduplicated snapshots**: Host-level tools (such as Restic or Borg) can make snapshots of `/home/k3s-storage/` without cluster-level storage locks.
-- **Node-level portability**: You can restore backups to any replacement hardware. You do not need complex procedures to attach CSI volumes again.
+- Snapshots: Host-level tools, for example Restic or Borg, can make snapshots of `/home/k3s-storage/` without cluster-level storage locks.
+- Portability: You can restore a backup to replacement hardware without a procedure to attach CSI volumes.
+
+The repository has no automated backup job. For a manual backup command, refer to [Cluster Maintenance](/how-to/maintenance/).

@@ -1,6 +1,6 @@
 ---
 title: Build K3s Cluster from Scratch
-description: Provision a bare-metal Kubernetes cluster on Ubuntu 26.04 with K3s, automated Ansible provisioning, ArgoCD GitOps, and Vault secrets management.
+description: Provision a bare-metal K3s cluster on Ubuntu 26.04 with Ansible, then bootstrap ArgoCD and configure Vault.
 keywords:
   - k3s from scratch
   - build kubernetes cluster
@@ -14,9 +14,9 @@ sidebar:
 
 # From Scratch
 
-Use this guide to provision a bare-metal Kubernetes cluster on Ubuntu 26.04 with Ansible and K3s. This repo is the single source of truth. One command changes a machine from a base OS to a running cluster that GitOps manages.
+Use this guide to provision a bare-metal Kubernetes cluster on Ubuntu 26.04 with Ansible and K3s. This repository is the single source of truth. One command changes a machine with a base OS into a running cluster that ArgoCD manages.
 
-## Step 1: Configure Inventory
+## Step 1: Configure the Inventory
 
 Examine the target host in `ansible/inventory/hosts.yaml` and the cluster settings in `ansible/group_vars/all.yaml`. Make sure that you have SSH access and sudo privileges on the target machine.
 
@@ -35,26 +35,26 @@ all:
               k3s_external_ip: "100.66.139.118"
 ```
 
-## Step 2: Run Automated Provisioning
+## Step 2: Run the Provisioning Script
 
-Run the automated provisioning script from the repository root.
+Run the provisioning script from the repository root:
 
 ```bash
 ./scripts/provision.sh
 ```
 
-The script runs the Ansible playbook `ansible/site.yaml`. The playbook does these tasks:
+The script runs the Ansible playbook `ansible/site.yaml`. The playbook runs these roles and tasks:
 
-- Host prerequisites (`common`): It installs base packages, loads the kernel modules (`overlay`, `br_netfilter`), sets the sysctls, and creates the storage path on the dedicated SSD (`/home/k3s-storage`).
-- NVIDIA integration (`nvidia`): It makes sure that `nvidia-smi` runs, installs the NVIDIA Container Toolkit and `runc`, and generates the CDI specification at `/etc/cdi/nvidia.yaml`.
-- Tailscale (`tailscale`): It fails if Tailscale is not installed. It disables Tailscale DNS on the node, so the host uses its upstream network resolvers. It waits until `tailscale0` has the node IP.
-- K3s Server (`k3s_server`): It writes `/etc/rancher/k3s/config.yaml`, which disables Traefik, ServiceLB, and the bundled metrics-server, sets `default-runtime: nvidia`, uses the Tailscale IP as the node IP, and reserves CPU and memory for the system. It sets K3s to start after `tailscaled`. It installs K3s `v1.37.1+k3s1` only if the `k3s` binary is not on the host yet, then starts the systemd service.
-- Kubeconfig: It gets the cluster credentials and configures the Tailscale endpoint.
-- GitOps bootstrap (`argocd`): It deploys ArgoCD with server-side apply and applies the root Application (`bootstrap/root.yaml`).
+- Host prerequisites (`common`): The role installs the base packages and loads the kernel modules (`overlay`, `br_netfilter`). It sets the sysctls and creates the storage path on the dedicated SSD (`/home/k3s-storage`).
+- NVIDIA integration (`nvidia`): The role makes sure that `nvidia-smi` runs and installs the NVIDIA Container Toolkit and `runc`. It generates the CDI specification at `/etc/cdi/nvidia.yaml`.
+- Tailscale (`tailscale`): The role fails if Tailscale is not installed. It disables Tailscale DNS on the node, so the host uses its upstream network resolvers. It waits until `tailscale0` has the node IP.
+- K3s server (`k3s_server`): The role writes `/etc/rancher/k3s/config.yaml`. This file disables Traefik, ServiceLB, and the bundled metrics-server, and sets `default-runtime: nvidia`. It also sets the Tailscale IP as the node IP and reserves CPU and memory for the system. The role starts K3s after `tailscaled`. If the `k3s` binary is not on the host, the role installs K3s `v1.37.1+k3s1`. Then it starts the systemd service.
+- Kubeconfig: The playbook gets the cluster credentials and sets the Tailscale endpoint in the kubeconfig.
+- GitOps bootstrap (`argocd`): The role deploys ArgoCD with server-side apply and applies the root Application (`bootstrap/root.yaml`).
 
 ## Step 3: Validate the Cluster
 
-Make sure that the node is ready and that the pods run.
+Make sure that the node is `Ready` and that the pods run:
 
 ```bash
 export KUBECONFIG="./k3s.kubeconfig"
@@ -65,4 +65,4 @@ kubectl get apps -n argocd
 
 ## Step 4: Configure Vault and External Secrets
 
-Follow [Vault](/how-to/vault/) to initialize and unseal Vault, enable KV v2 at `kv/`, and configure the Kubernetes auth role for External Secrets. Then write the secrets that the ExternalSecrets read. The first ones are for ExternalDNS, cert-manager, the Tailscale operator, and the ArgoCD repository. Until Vault has these values, the components that need them stay degraded.
+Follow [Vault](/how-to/vault/) to initialize and unseal Vault, enable KV v2 at `kv/`, and configure the Kubernetes auth role for External Secrets. Then write the secrets that the ExternalSecrets read. Write the secrets for ExternalDNS, cert-manager, the Tailscale operator, and the ArgoCD repository first. The components that need these secrets stay degraded until Vault has the values.

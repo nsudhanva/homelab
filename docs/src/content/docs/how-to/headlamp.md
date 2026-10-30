@@ -1,6 +1,6 @@
 ---
 title: Deploy Headlamp Kubernetes Dashboard
-description: How Headlamp runs in this cluster. It signs in with a ServiceAccount token, is exposed through the Tailscale Gateway, and exports metrics to Prometheus.
+description: How Headlamp runs in this cluster. It signs in with a ServiceAccount token, the Tailscale Gateway exposes it, and Prometheus scrapes its metrics.
 keywords:
   - headlamp kubernetes
   - kubernetes dashboard
@@ -16,7 +16,7 @@ sidebar:
 
 Headlamp is a Kubernetes UI. ArgoCD deploys it from `apps/headlamp/` as `app-headlamp`. The Tailscale Gateway exposes it at `headlamp.sudhanva.me`.
 
-## Step 1: Review the app manifests
+## Step 1: Review the App Manifests
 
 The app has one manifest for each resource:
 
@@ -48,11 +48,11 @@ args:
 - -plugins-dir=/headlamp/plugins
 ```
 
-The container listens on port 4466. The Service `headlamp` maps port 80 to 4466. ArgoCD Image Updater tracks semver tags for the image.
+The container listens on port 4466. The Service `headlamp` maps port 80 to port 4466. ArgoCD Image Updater tracks the semver tags of the image.
 
 ## Step 2: Review the HTTPRoute
 
-The HTTPRoute has the ExternalDNS expose annotation and two rules. The first rule sends any path under `/oidc` back to `/` with a `302` redirect. The second rule sends all other requests to the Service:
+The HTTPRoute has the ExternalDNS expose annotation and two rules. The first rule redirects each path under `/oidc` to `/` with a `302` status. The second rule sends all other requests to the Service:
 
 ```yaml
 apiVersion: gateway.networking.k8s.io/v1
@@ -90,23 +90,21 @@ spec:
 
 ## Step 3: Access Headlamp
 
-Open `https://headlamp.sudhanva.me` from a tailnet device. Headlamp runs with `-in-cluster -unsafe-use-service-account-token`. It signs in automatically with the token of the `headlamp` ServiceAccount, which has `cluster-admin` privileges. Anyone who can reach the URL on the tailnet has cluster-admin access.
+Open `https://headlamp.sudhanva.me` from a tailnet device. Headlamp runs with `-in-cluster -unsafe-use-service-account-token`. It signs in automatically with the token of the `headlamp` ServiceAccount. This ServiceAccount has `cluster-admin` privileges, so each user who can reach the URL on the tailnet has cluster-admin access.
 
-`apps/headlamp/secret-token.yaml` declares the Secret `headlamp-token` of type `kubernetes.io/service-account-token` for the `headlamp` ServiceAccount. Kubernetes fills it with a long-lived token. If the UI asks for a token, read it from that Secret:
+`apps/headlamp/secret-token.yaml` declares the Secret `headlamp-token` of type `kubernetes.io/service-account-token` for the `headlamp` ServiceAccount. Kubernetes writes a long-lived token to this Secret. If the UI asks for a token, read it from the Secret:
 
 ```bash
 kubectl -n headlamp get secret headlamp-token -o jsonpath='{.data.token}' | base64 -d; echo
 ```
 
-## Step 4: Cluster role permissions
+## Step 4: Review the Cluster Role Permissions
 
-The file `apps/headlamp/clusterrolebinding.yaml` binds the `headlamp` ServiceAccount to `cluster-admin`. If you want read-only access, change the `roleRef` to the built-in `view` ClusterRole in Git.
+The file `apps/headlamp/clusterrolebinding.yaml` binds the `headlamp` ServiceAccount to `cluster-admin`. For read-only access, change the `roleRef` to the built-in `view` ClusterRole in Git.
 
-## OIDC is not deployed
+## Authentication Scope
 
-Headlamp does not use OIDC in this cluster. There is no `kv/headlamp/oidc` Vault path, no `headlamp-oidc` ExternalSecret, and no OIDC flags on the K3s API server. The only OIDC-related item is the `/oidc` redirect rule in the HTTPRoute.
-
-To add OIDC later, add the provider, an ExternalSecret for the client credentials, the Headlamp OIDC arguments, and the `kube-apiserver-arg` OIDC flags in the `k3s_server` Ansible role. Then remove `-unsafe-use-service-account-token`.
+Headlamp signs in only with the ServiceAccount token. The cluster has no OIDC provider for Headlamp or for the K3s API server.
 
 ## Prometheus Metrics
 

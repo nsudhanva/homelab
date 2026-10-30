@@ -1,6 +1,6 @@
 ---
 title: CI/CD Pipeline with GitHub Actions
-description: How GitHub Actions runs pre-commit, kubeconform, secret scans, Python tests, and image builds, and how ArgoCD handles deployment.
+description: How GitHub Actions runs pre-commit, kubeconform, secret scans, Python tests, and image builds, and how ArgoCD deploys the changes.
 keywords:
   - github actions kubernetes
   - kubeconform validation
@@ -15,15 +15,15 @@ sidebar:
 
 # CI And CD With GitHub Actions
 
-This guide shows how CI runs in GitHub Actions. It also shows how CD goes through ArgoCD.
+This guide tells how GitHub Actions runs CI and how ArgoCD runs CD.
 
-## Step 1: Review the workflows
+## Step 1: Review the Workflows
 
-There are two workflows in `.github/workflows/`.
+`.github/workflows/` has three workflows.
 
 ### `ci.yaml` (CI)
 
-`ci.yaml` runs on pull requests and on pushes to `master`. It ignores changes that touch only `apps/**/.argocd-source-*.yaml`, which are the Image Updater write-back commits. It has these jobs:
+`ci.yaml` runs on pull requests and on pushes to `master`. It does not run for changes that touch only `apps/**/.argocd-source-*.yaml`. These files are the Image Updater write-back commits. The workflow has these jobs:
 
 | Job | What it does | When it runs |
 | --- | --- | --- |
@@ -35,19 +35,19 @@ There are two workflows in `.github/workflows/`.
 | `test (<project>)` | Runs `uv run ruff check`, `uv run ruff format --check`, `uv run ty check`, and `uv run pytest` for each selected project | When `python-changes` selects a project |
 | `push (<app>)` | Builds the image of each selected project that has a `Dockerfile`, with the repo root as the build context, and pushes `ghcr.io/nsudhanva/homelab-<name>` with the tags `latest` and the short SHA | Pushes to `master`, after the tests pass |
 
-kubeconform runs only inside the `pre-commit` job. The local hook calls `scripts/run-kubeconform.sh`. The script downloads kubeconform `v0.7.0`, checks its checksum, and validates every YAML file under `apps/`, `infrastructure/`, and `bootstrap/` against Kubernetes `1.37.0`. It skips `app.yaml`, `apps/accounts.yaml`, and the `.argocd-source-*.yaml` files.
+kubeconform runs only in the `pre-commit` job. The local hook calls `scripts/run-kubeconform.sh`. The script downloads kubeconform `v0.7.0` and checks its checksum. It validates each YAML file under `apps/`, `infrastructure/`, and `bootstrap/` against Kubernetes `1.37.0`. It skips `app.yaml`, `apps/accounts.yaml`, and the `.argocd-source-*.yaml` files.
 
-The image jobs build with the repo root as the context, so the root `.dockerignore` controls what goes into every image.
+The image jobs use the repository root as the build context, so the root `.dockerignore` controls the contents of each image.
 
 ### `provision.yaml` (Ansible Provision)
 
-`provision.yaml` runs on pushes to `master` that change `ansible/**` or the workflow file, and on manual runs (`workflow_dispatch`). It joins the tailnet as `tag:ci`, connects to `legion` over SSH, and runs `ansible-playbook -i ansible/inventory/hosts.yaml ansible/site.yaml`. Refer to [GitOps Automation](/how-to/gitops-automation/).
+`provision.yaml` runs on pushes to `master` that change `ansible/**` or the workflow file. It also runs on manual runs (`workflow_dispatch`). It joins the tailnet as `tag:ci`, connects to `legion` over SSH, and runs `ansible-playbook -i ansible/inventory/hosts.yaml ansible/site.yaml`. Refer to [GitOps Automation](/how-to/gitops-automation/).
 
 ### `tailscale.yaml` (Tailscale)
 
-`tailscale.yaml` runs Terraform in `terraform/tailscale/`. It plans on pull requests and pushes that change `terraform/tailscale/**`, and every Monday to detect drift. It applies only when you run it by hand with **Apply the plan to the tailnet**. Refer to [Manage Tailscale with Terraform](/how-to/tailscale-terraform/).
+`tailscale.yaml` runs Terraform in `terraform/tailscale/`. It runs a plan on pull requests and pushes that change `terraform/tailscale/**`. It also runs a plan each Monday to find drift. It applies the plan only on a manual run with **Apply the plan to the tailnet**. Refer to [Manage Tailscale with Terraform](/how-to/tailscale-terraform/).
 
-## Step 2: Configure GitHub secrets
+## Step 2: Configure the GitHub Secrets
 
 `ci.yaml` uses only the built-in `GITHUB_TOKEN` to push images to GHCR. `provision.yaml` needs these repository secrets:
 
@@ -57,7 +57,7 @@ The image jobs build with the repo root as the context, so the root `.dockerigno
 
 `tailscale.yaml` needs `TAILSCALE_TF_OAUTH_CLIENT_ID`, `TAILSCALE_TF_OAUTH_CLIENT_SECRET`, `TF_STATE_R2_ACCESS_KEY_ID`, `TF_STATE_R2_SECRET_ACCESS_KEY`, and `TF_STATE_R2_ENDPOINT`. `scripts/tailscale-terraform.sh github-secrets` sets them from Vault.
 
-## Step 3: Run the same checks locally
+## Step 3: Run the Same Checks Locally
 
 Before you push, run the hooks that CI runs:
 
@@ -74,6 +74,6 @@ uv run ty check
 uv run pytest
 ```
 
-## Step 4: Rely on ArgoCD for CD
+## Step 4: Let ArgoCD Deploy the Changes
 
-ArgoCD watches this repo and applies changes through ApplicationSets. GitHub Actions validates and builds artifacts. ArgoCD does the deployment and reconciliation in the cluster. Image Updater rolls out new `latest` digests for the `docs` and `alert-summarizer` images through Git commits. The CronJob apps pull `latest` on each run. Refer to [Automated Image Updates](/how-to/image-updates/).
+GitHub Actions validates the changes and builds the images. ArgoCD watches this repository and applies the changes through the ApplicationSets. ArgoCD Image Updater writes new `latest` digests of the `docs` and `alert-summarizer` images to Git. The CronJob apps pull `latest` on each run. Refer to [Automated Image Updates](/how-to/image-updates/).

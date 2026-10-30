@@ -1,6 +1,6 @@
 ---
 title: HashiCorp Vault Secrets Management
-description: Deploy HashiCorp Vault to keep secrets in one location. Initialize and unseal Vault, configure External Secrets Operator, and sync secrets to Kubernetes workloads.
+description: Deploy HashiCorp Vault, initialize and unseal it, configure External Secrets Operator, and sync the secrets to Kubernetes workloads.
 keywords:
   - hashicorp vault kubernetes
   - vault secrets management
@@ -16,7 +16,7 @@ sidebar:
 
 # Vault Secrets
 
-Move the cluster secrets into Vault. Then use External Secrets Operator to sync them into Kubernetes.
+Vault keeps all cluster secrets. External Secrets Operator syncs them into Kubernetes Secrets.
 
 ```mermaid
 flowchart LR
@@ -55,7 +55,7 @@ kubectl -n vault get pvc
 
 ## Step 2: Initialize and unseal Vault
 
-Keep the unseal keys and the root token offline, for example in a password manager. If you lose them, the only recovery is to wipe the Vault PVC and initialize Vault again. This deletes all stored secrets.
+Keep the unseal keys and the root token offline, for example in a password manager. If you lose them, you must delete the data on the Vault PVC and initialize Vault again. This deletes all stored secrets.
 
 Initialize Vault. The `vault operator init` command prints five unseal keys with a threshold of three. Save the unseal keys and the root token in a safe location.
 
@@ -63,7 +63,7 @@ Initialize Vault. The `vault operator init` command prints five unseal keys with
 kubectl -n vault exec -it vault-0 -- vault operator init
 ```
 
-Unseal Vault with the necessary number of keys:
+Unseal Vault with three of the five keys. Run this command one time for each key:
 
 ```bash
 kubectl -n vault exec -it vault-0 -- vault operator unseal
@@ -77,7 +77,7 @@ kubectl -n vault exec -it vault-0 -- vault login
 
 ## Step 3: Enable the KV v2 secrets engine
 
-Enable KV v2 at `kv/`. This path agrees with the ExternalSecret store configuration:
+Enable KV v2 at `kv/`. The ClusterSecretStore reads from this path.
 
 ```bash
 kubectl -n vault exec -it vault-0 -- vault secrets enable -path=kv kv-v2
@@ -85,7 +85,7 @@ kubectl -n vault exec -it vault-0 -- vault secrets enable -path=kv kv-v2
 
 ## Step 4: Create secrets in Vault
 
-Write the secrets that Kubernetes uses now:
+Write the secrets for ExternalDNS, cert-manager, and the Tailscale Operator:
 
 ```bash
 kubectl -n vault exec -it vault-0 -- vault kv put kv/external-dns/cloudflare api-token="REPLACE_ME"
@@ -101,7 +101,7 @@ Generate a bcrypt hash of the password:
 htpasswd -bnBC 12 filebrowser "REPLACE_ME" | cut -d ':' -f2
 ```
 
-Store the username, plaintext password, and bcrypt hash:
+Store the username, the plaintext password, and the bcrypt hash:
 
 ```bash
 kubectl -n vault exec -it vault-0 -- vault kv put kv/filebrowser/auth \
@@ -112,7 +112,7 @@ kubectl -n vault exec -it vault-0 -- vault kv put kv/filebrowser/auth \
 
 ### Step 4b: ArgoCD Image Updater credentials
 
-Store registry and Git credentials for ArgoCD Image Updater:
+Store the registry and Git credentials for ArgoCD Image Updater:
 
 ```bash
 kubectl -n vault exec -it vault-0 -- vault kv put kv/argocd-image-updater/ghcr \
@@ -124,7 +124,7 @@ kubectl -n vault exec -it vault-0 -- vault kv put kv/argocd/repo-creds \
 
 ## Step 5: Configure Kubernetes auth for External Secrets Operator
 
-External Secrets Operator logs in to Vault with its own ServiceAccount. Vault issues a short-lived token for each login, so no static token expires.
+External Secrets Operator logs in to Vault with its own ServiceAccount. Vault issues a short-lived token for each login. There is no static token.
 
 Write a read-only policy for `kv/`:
 
@@ -140,7 +140,7 @@ EOF'
 kubectl -n vault exec -it vault-0 -- vault policy write eso-policy /tmp/eso-policy.hcl
 ```
 
-Enable the Kubernetes auth method. Vault runs in the cluster, so it uses its own ServiceAccount and CA to review tokens:
+Enable the Kubernetes auth method. Vault runs in the cluster, so it uses its own ServiceAccount and CA to review tokens.
 
 ```bash
 kubectl -n vault exec -it vault-0 -- vault auth enable kubernetes
@@ -148,7 +148,7 @@ kubectl -n vault exec -it vault-0 -- vault write auth/kubernetes/config \
   kubernetes_host="https://kubernetes.default.svc:443"
 ```
 
-Bind the `external-secrets` ServiceAccount to the policy. The role accepts only tokens with the `vault` audience:
+Bind the `external-secrets` ServiceAccount to the policy. The role accepts only tokens with the `vault` audience.
 
 ```bash
 kubectl -n vault exec -it vault-0 -- vault write auth/kubernetes/role/external-secrets \
@@ -159,7 +159,7 @@ kubectl -n vault exec -it vault-0 -- vault write auth/kubernetes/role/external-s
   ttl=1h
 ```
 
-The ClusterSecretStore in `infrastructure/external-secrets/clustersecretstore.yaml` refers to this role. ArgoCD syncs it.
+The ClusterSecretStore `vault` in `infrastructure/external-secrets/clustersecretstore.yaml` uses this role. ArgoCD syncs the ClusterSecretStore.
 
 ## Step 6: Add new secrets and ExternalSecret resources
 
@@ -171,7 +171,7 @@ Example Vault write:
 kubectl -n vault exec -it vault-0 -- vault kv put kv/my-app/api token="REPLACE_ME"
 ```
 
-Example ExternalSecret manifest. Save it as a separate YAML file, such as `apps/my-app/externalsecret.yaml` or `infrastructure/<component>/external-secret.yaml`:
+Example ExternalSecret manifest. Save it as a separate YAML file, for example `apps/my-app/externalsecret.yaml` or `infrastructure/<component>/external-secret.yaml`.
 
 ```yaml
 apiVersion: external-secrets.io/v1
@@ -198,7 +198,7 @@ Commit the new manifest. ArgoCD syncs it.
 
 ## Step 7: Validate ExternalSecret sync
 
-Verify that External Secrets Operator created or updated the target secrets:
+Make sure that External Secrets Operator created or updated the target Secrets:
 
 ```bash
 kubectl -n external-dns get secret cloudflare-api-token
@@ -210,7 +210,7 @@ Every Secret that comes from Vault has `creationPolicy: Owner`, so External Secr
 
 ## Vault paths and the ExternalSecrets that read them
 
-This table lists every ExternalSecret in the repo. All paths are under the KV v2 mount `kv/`. The `homelab-ai-credentials` ExternalSecret comes from the kustomize Component `packages/homelab-ai/kustomize/`, so each app that includes the Component gets its own copy in its namespace.
+This table lists every ExternalSecret in the repository. All paths are under the KV v2 mount `kv/`. The `homelab-ai-credentials` ExternalSecret comes from the kustomize Component `packages/homelab-ai/kustomize/`. Each app that includes the Component gets its own copy in its namespace.
 
 | Vault path | Properties read | ExternalSecret (namespace/name) | Manifest |
 | --- | --- | --- | --- |
@@ -235,14 +235,14 @@ This table lists every ExternalSecret in the repo. All paths are under the KV v2
 | `kv/openrouter` | `api_key` | `<namespace>/homelab-ai-credentials` in `actual-classifier`, `monitoring`, `drive-organizer`, and `gmail-classifier` | `packages/homelab-ai/kustomize/externalsecret.yaml` |
 | `kv/anthropic` | `api_key`, `workspace_id` | `<namespace>/homelab-ai-credentials` in `actual-classifier`, `monitoring`, `drive-organizer`, and `gmail-classifier` | `packages/homelab-ai/kustomize/externalsecret.yaml` |
 
-Terraform also reads two paths. No ExternalSecret syncs them into the cluster. `scripts/tailscale-terraform.sh` reads them at run time and copies them to GitHub Actions secrets:
+Terraform also reads two paths. No ExternalSecret syncs them into the cluster. The script `scripts/tailscale-terraform.sh` reads them at run time and copies them to GitHub Actions secrets.
 
 | Vault path | Properties | Used by |
 | --- | --- | --- |
 | `kv/tailscale/terraform` | `client_id`, `client_secret` | `terraform/tailscale/` (Tailscale OAuth client) |
 | `kv/terraform/state` | `access_key_id`, `secret_access_key`, `endpoint` | Terraform state in the R2 bucket `homelab-terraform-state` |
 
-Vault can also hold paths that no manifest reads, for example the plaintext `password` property in `kv/filebrowser/auth`, or logins for the media apps that you keep for yourself. The cluster does not use these values. To find the readers of a path, search the repo:
+Vault also holds values that no manifest reads. Examples are the plaintext `password` property in `kv/filebrowser/auth` and the logins for the media apps. The cluster does not use these values. To find the readers of a path, search the repository:
 
 ```bash
 git grep -n "key: <path>" -- apps infrastructure packages
@@ -256,23 +256,23 @@ Vault is available at `https://vault.sudhanva.me` through the Tailscale Gateway.
 
 Back up all cluster secrets and Vault keys to Bitwarden for disaster recovery.
 
-Store all entries in the dedicated Bitwarden `Homelab` folder (`b4bcc38c-4296-41a4-b9b3-b4c50047ce37`).
-
-Use the consistent naming format `Homelab - <Component> <Role>`.
-
-Add custom field `tag: homelab` to every entry.
+- Store all entries in the Bitwarden `Homelab` folder (`b4bcc38c-4296-41a4-b9b3-b4c50047ce37`).
+- Use the name format `Homelab - <Component> <Role>`.
+- Add the custom field `tag: homelab` to every entry.
 
 ### Required Bitwarden Backup Items
 
-- **`Homelab - HashiCorp Vault Master Keys`**: Stores the five unseal keys, unseal threshold (3), and root token.
-- **`Homelab - HashiCorp Vault Keys Raw JSON Backup`**: Stores the raw JSON initialization response.
-- **`Homelab - ArgoCD Admin`**: Stores the ArgoCD admin password.
-- **`Homelab - ArgoCD GitHub & GHCR Token`**: Stores the GitHub personal access token for git repository and container registry access.
-- **`Homelab - Cloudflare API Token`**: Stores the DNS-01 API token for cert-manager and external-dns.
-- **`Homelab - Tailscale Operator OAuth`**: Stores the Tailscale operator OAuth client ID and secret.
-- **`Homelab - qBittorrent WireGuard VPN`**: Stores the WireGuard private key, public key, and endpoint parameters.
+| Item | Contents |
+| --- | --- |
+| `Homelab - HashiCorp Vault Master Keys` | The five unseal keys, the unseal threshold (3), and the root token |
+| `Homelab - HashiCorp Vault Keys Raw JSON Backup` | The raw JSON response from `vault operator init` |
+| `Homelab - ArgoCD Admin` | The ArgoCD admin password |
+| `Homelab - ArgoCD GitHub & GHCR Token` | The GitHub personal access token for the Git repository and the container registry |
+| `Homelab - Cloudflare API Token` | The DNS-01 API token for cert-manager and ExternalDNS |
+| `Homelab - Tailscale Operator OAuth` | The Tailscale Operator OAuth client ID and secret |
+| `Homelab - qBittorrent WireGuard VPN` | The WireGuard private key, public key, and endpoint parameters |
 
-Run this command with the Bitwarden CLI to verify the synchronized items:
+Run this command with the Bitwarden CLI to list the items in the folder:
 
 ```bash
 bw list items --folderid b4bcc38c-4296-41a4-b9b3-b4c50047ce37
@@ -284,7 +284,7 @@ bw list items --folderid b4bcc38c-4296-41a4-b9b3-b4c50047ce37
 
 Large UI bundles can time out through the Gateway. If the Vault UI shows a blank page in the browser but `curl` works, examine the Envoy Gateway logs. Look for `response_timeout` entries on `/ui/assets/...`.
 
-Update the Vault HTTPRoute to increase the request timeout:
+The Vault HTTPRoute in `infrastructure/gateway/vault-httproute.yaml` sets these timeouts. If the errors continue, increase the values:
 
 ```yaml
 apiVersion: gateway.networking.k8s.io/v1
@@ -299,7 +299,7 @@ spec:
       backendRequest: 60s
 ```
 
-Commit the change. ArgoCD syncs `infrastructure/gateway/vault-httproute.yaml`.
+Commit the change. ArgoCD syncs the HTTPRoute.
 
 ### ClusterSecretStore not ready
 
@@ -313,11 +313,11 @@ kubectl -n external-secrets logs deploy/external-secrets | grep -i vault
 
 The ClusterSecretStore becomes Ready only when Vault is unsealed and the `external-secrets` role exists.
 
-### ExternalSecrets still failing after Vault recovery
+### ExternalSecrets fail after Vault recovery
 
-If you initialized Vault again, or added secrets after External Secrets failed, force a resync.
+If you initialize Vault again, or add secrets after an ExternalSecret fails, force a resync.
 
-Step 1: Request a reconcile for all ExternalSecrets.
+Step 1: Request a reconcile for all ExternalSecrets:
 
 ```bash
 kubectl get externalsecrets -A -o jsonpath='{range .items[*]}{.metadata.namespace}{" "}{.metadata.name}{"\n"}{end}' | while read -r ns name; do
@@ -325,7 +325,7 @@ kubectl get externalsecrets -A -o jsonpath='{range .items[*]}{.metadata.namespac
 done
 ```
 
-Step 2: Examine the sync status.
+Step 2: Examine the sync status:
 
 ```bash
 kubectl get externalsecrets -A

@@ -11,7 +11,7 @@ sidebar:
 
 # Tailscale Terraform Reference
 
-`terraform/tailscale/` manages the tailnet with the [Tailscale Terraform provider](https://registry.terraform.io/providers/tailscale/tailscale/latest/docs). To make changes, refer to [Manage Tailscale with Terraform](/how-to/tailscale-terraform/).
+`terraform/tailscale/` manages the tailnet with the [Tailscale Terraform provider](https://registry.terraform.io/providers/tailscale/tailscale/latest/docs). For the change procedure, refer to [Manage Tailscale with Terraform](/how-to/tailscale-terraform/).
 
 ## Files
 
@@ -24,8 +24,8 @@ sidebar:
 | `dns.tf` | `tailscale_dns_configuration`: nameservers, split DNS, MagicDNS |
 | `settings.tf` | `tailscale_tailnet_settings` |
 | `devices.tf` | Device lookups and `tailscale_device_tags` |
-| `imports.tf` | `import` blocks that adopted the settings that existed before Terraform |
-| `.terraform.lock.hcl` | Provider checksums for macOS and Linux. Commit it |
+| `imports.tf` | `import` blocks for the policy, DNS, and settings resources |
+| `.terraform.lock.hcl` | Provider checksums for macOS and Linux. Keep it in Git |
 
 ## Managed resources
 
@@ -36,9 +36,9 @@ sidebar:
 | `tailscale_tailnet_settings.this` | Key expiry (180 days), device and user approval, auto updates, HTTPS, flow logging, external policy management |
 | `tailscale_device_tags.legion` | `tag:server` on `legion` |
 
-`dns.tf` looks up the Tailscale IPs of `technitium-dns` and `tailscale-dns` by hostname, so the IPs are not hardcoded. If the operator recreates one of these proxies, the next plan updates DNS.
+`dns.tf` gets the Tailscale IPs of `technitium-dns` and `tailscale-dns` from their hostnames. If the operator recreates one of these proxies, the next plan updates the DNS configuration.
 
-These three resources have `prevent_destroy`. Terraform refuses a plan that deletes the policy, DNS, or settings.
+The policy, DNS, and settings resources have `prevent_destroy`. Terraform refuses a plan that deletes one of them.
 
 ## Not managed
 
@@ -49,7 +49,7 @@ These three resources have `prevent_destroy`. Terraform refuses a plan that dele
 | User devices | Each user owns them | Tailscale clients |
 | Device options such as Tailscale SSH and `--accept-dns` | They are set on the device, not through the API | `ansible/roles/tailscale/` or `tailscale set` on the device |
 | Contacts | They hold personal email addresses, and this repository is public | Admin console |
-| Log streaming | The plan does not include it | Not used |
+| Log streaming | The Tailscale plan does not include it | Not used |
 
 ## Tags
 
@@ -87,12 +87,12 @@ The `Tailscale` workflow (`.github/workflows/tailscale.yaml`) runs `terraform fm
 
 | Trigger | Result |
 | --- | --- |
-| Pull request that changes `terraform/tailscale/**` | Plan. Pull requests from forks are skipped because they cannot read secrets |
+| Pull request that changes `terraform/tailscale/**` | Plan. The workflow skips pull requests from forks, because they cannot read secrets |
 | Push to `master` | Plan |
 | Monday 14:17 UTC | Plan. The job fails when the tailnet differs from the code (drift) |
 | Manual run with **Apply the plan to the tailnet** | Plan, then apply that plan |
 
-The workflow does not upload plan files, and it never applies without the manual input.
+The workflow does not upload plan files. It applies a plan only when a manual run sets the apply input.
 
 ## Versions
 

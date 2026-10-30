@@ -1,6 +1,6 @@
 ---
 title: Operations Checklist Reference
-description: Checklists for routine Kubernetes cluster operations. They include health checks, checks before a push, and checks after a reboot.
+description: Checklists for routine cluster operations, which include health checks, checks before a push, and checks after a reboot.
 keywords:
   - kubernetes operations
   - kubectl commands
@@ -14,7 +14,7 @@ sidebar:
 
 # Operations Checklist
 
-Use these checklists for clusters that run for a long time.
+Use these checklists to monitor the cluster and to examine it after a change or a reboot.
 
 ## Routine checks
 
@@ -35,7 +35,7 @@ kubectl get applications -n argocd
 
 ## After a node reboot
 
-Vault starts sealed after every restart. Check its status, and unseal it if `Sealed` is `true`. Refer to [Vault Unseal Keys](/how-to/maintenance/#vault-unseal-keys).
+Vault starts sealed after each restart. Examine the Vault status. If `Sealed` is `true`, unseal Vault. Refer to [Vault Unseal Keys](/how-to/maintenance/#vault-unseal-keys).
 
 ```bash
 kubectl get nodes

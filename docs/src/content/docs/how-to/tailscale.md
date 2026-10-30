@@ -1,6 +1,6 @@
 ---
 title: Tailscale Ingress and Split-Horizon DNS
-description: Configure the Tailscale Gateway API for Kubernetes ingress. Configure split-horizon DNS, ExternalDNS, and cert-manager wildcard certificates for custom domains.
+description: Configure Tailscale on the node, the Tailscale Gateway API for Kubernetes ingress, split-horizon DNS, ExternalDNS, and cert-manager wildcard certificates.
 keywords:
   - tailscale kubernetes
   - tailscale gateway api
@@ -16,11 +16,13 @@ sidebar:
 
 # Tailscale
 
+This guide configures Tailscale on the node and exposes the cluster services to the tailnet through the Tailscale Gateway.
+
 ## Step 1: Set up Tailscale
 
 ### Install Tailscale Client
 
-Install Tailscale on each node with the official install script, and join the node to your tailnet:
+Install Tailscale on each node with the official install script. Then join the node to your tailnet:
 
 ```bash
 curl -fsSL https://tailscale.com/install.sh | sh
@@ -28,21 +30,25 @@ sudo tailscale up
 tailscale ip -4
 ```
 
-The `tailscale` Ansible role fails if Tailscale is not installed. It does not install Tailscale for you.
+The `tailscale` Ansible role does not install Tailscale. The role fails if `/usr/bin/tailscale` is not on the node.
 
 ### Tag owners
 
-The operator and every proxy that it creates use `tag:k8s`. `operatorConfig.defaultTags` in `infrastructure/tailscale/tailscale-operator.yaml` sets the operator tag, and the `tailscale.com/tags: tag:k8s` annotations on the Envoy proxy and the `tailscale-dns` Service set the proxy tags. The tailnet policy in `terraform/tailscale/policy.hujson` makes `tag:k8s-operator` the owner of `tag:k8s`. Change tag owners there, not in the admin console. Refer to [Manage Tailscale with Terraform](/how-to/tailscale-terraform/).
+The operator and every proxy that it creates use `tag:k8s`. The `operatorConfig.defaultTags` value in `infrastructure/tailscale/tailscale-operator.yaml` sets the operator tag. The `tailscale.com/tags: tag:k8s` annotations on the Envoy proxy and the `tailscale-dns` Service set the proxy tags.
+
+The tailnet policy in `terraform/tailscale/policy.hujson` makes `tag:k8s-operator` the owner of `tag:k8s`. Change tag owners in this file. Do not change them in the admin console. Refer to [Manage Tailscale with Terraform](/how-to/tailscale-terraform/).
 
 ### Store the OAuth credentials in Vault
 
-Create an OAuth client at `https://login.tailscale.com/admin/settings/oauth`. Give it write access to devices and auth keys, and the tag `tag:k8s`. Then put the credentials in Vault:
+Create an OAuth client at `https://login.tailscale.com/admin/settings/oauth`. Give it write access to devices and auth keys, and give it the tag `tag:k8s`. Then write the credentials to Vault:
 
 ```bash
 kubectl -n vault exec -it vault-0 -- vault kv put kv/tailscale/operator-oauth client_id=YOUR_CLIENT_ID client_secret=YOUR_CLIENT_SECRET
 ```
 
-The ExternalSecret `infrastructure/external-secrets/external-secret-tailscale-operator.yaml` creates the `operator-oauth` Secret in the `tailscale` namespace from `kv/tailscale/operator-oauth` (properties `client_id` and `client_secret`). The operator chart reads that Secret. Do not create the Secret with `kubectl`. Until Vault has the values, the Tailscale Operator cannot start, and the Gateway gets no Tailscale address. Set up Vault first with the [Vault guide](/how-to/vault/).
+The ExternalSecret `infrastructure/external-secrets/external-secret-tailscale-operator.yaml` creates the `operator-oauth` Secret in the `tailscale` namespace. It reads `kv/tailscale/operator-oauth` (properties `client_id` and `client_secret`). The operator chart reads that Secret. Do not create the Secret with `kubectl`.
+
+The Tailscale Operator cannot start until Vault has the values. Without the operator, the Gateway gets no Tailscale address. Set up Vault first with the [Vault guide](/how-to/vault/).
 
 ### Enable SSH for Remote Access
 
@@ -53,18 +59,18 @@ sudo systemctl enable --now ssh
 
 ### Remote kubectl Access
 
-The provisioning playbook writes the kubeconfig to `k3s.kubeconfig` in the repo root on your workstation. It sets the server address to `https://<ansible_host>:6443`, which is the Tailscale IP of `legion`. Any tailnet device with a copy of that file can run kubectl:
+The provisioning playbook writes the kubeconfig to `k3s.kubeconfig` in the repository root on your workstation. It sets the server address to `https://<ansible_host>:6443`, which is the Tailscale IP of `legion`. Any tailnet device with a copy of that file can run `kubectl`:
 
 ```bash
 export KUBECONFIG=$PWD/k3s.kubeconfig
 kubectl get pods -A
 ```
 
-The API server certificate covers the names in `tls_sans` in `ansible/group_vars/all.yaml`, so you can also use `legion` or its MagicDNS name as the server address.
+The API server certificate covers the names in `tls_sans` in `ansible/group_vars/all.yaml`. You can also use `legion` or its MagicDNS name as the server address.
 
 ### Node DNS
 
-Cluster nodes do not use Tailscale DNS. The `tailscale` Ansible role runs `tailscale set --accept-dns=false` on each node. Thus, the host resolves names through its uplink resolvers. Image pulls and other node DNS lookups do not depend on DNS services in the cluster. Refer to [Node Networking and DNS](/explanation/node-networking/).
+Cluster nodes do not use Tailscale DNS. The `tailscale` Ansible role runs `tailscale set --accept-dns=false` on each node, so the host resolves names through its uplink resolvers. Image pulls and other node DNS lookups do not depend on DNS services in the cluster. Refer to [Node Networking and DNS](/explanation/node-networking/).
 
 ### Tailnet nameservers
 
@@ -74,15 +80,15 @@ Cluster nodes do not use Tailscale DNS. The `tailscale` Ansible role runs `tails
 - Split DNS: `sudhanva.me` to the Tailscale IP of `tailscale-dns` (refer to [Split DNS resolver IP](#split-dns-resolver-ip))
 - MagicDNS on, and local DNS settings overridden
 
-There is no fallback nameserver, so tailnet DNS stops when the cluster is down. To add one, refer to [Add a fallback nameserver](/how-to/tailscale-terraform/#add-a-fallback-nameserver).
+Technitium is the only global nameserver. When the cluster is down, tailnet clients cannot resolve names. To add a fallback, refer to [Add a fallback nameserver](/how-to/tailscale-terraform/#add-a-fallback-nameserver).
 
 ## Step 2: Enable custom domains with Gateway API
 
-This repo uses Envoy Gateway, ExternalDNS, and cert-manager with the Tailscale Gateway API. Subdomains such as `homelab.sudhanva.me` resolve to the Tailscale Gateway. A different system manages the apex `sudhanva.me`.
+The cluster uses Envoy Gateway, ExternalDNS, and cert-manager with the Tailscale Gateway API. Subdomains such as `homelab.sudhanva.me` resolve to the Tailscale Gateway. A different system manages the apex `sudhanva.me`.
 
 :::note
 
-ExternalDNS creates only the subdomain records that you annotate. These records point to the Tailscale hostname. Thus, only tailnet clients can reach them.
+ExternalDNS creates only the subdomain records that you annotate. These records point to the Tailscale Gateway, so only tailnet clients can reach them.
 
 :::
 
@@ -105,7 +111,7 @@ Do not create these Secrets with `kubectl`.
 
 :::note
 
-If your cluster uses split-horizon DNS for `*.sudhanva.me`, configure cert-manager to use public recursive resolvers. This repo sets these flags in `infrastructure/cert-manager/cert-manager.yaml`:
+The cluster uses split-horizon DNS for `*.sudhanva.me`, so cert-manager must use public recursive resolvers for the DNS-01 checks. These flags are in `infrastructure/cert-manager/cert-manager.yaml`:
 
 ```bash
 --dns01-recursive-nameservers=1.1.1.1:53,1.0.0.1:53
@@ -120,13 +126,15 @@ Before you sync, set your email in `infrastructure/cert-manager-issuer/cluster-i
 
 ### Set the Tailscale Gateway target
 
-The `external-dns.alpha.kubernetes.io/target` annotation in `infrastructure/gateway/gateway.yaml` sets the CNAME target for ExternalDNS records. The repo value is `gateway-envoy-1.ainu-herring.ts.net`, the MagicDNS name of the Envoy proxy device in the tailnet. The `tailscale.com/hostname: gateway-envoy` annotation in `infrastructure/gateway/envoyproxy.yaml` requests the hostname. Tailscale adds the `-1` suffix when the name is already taken. If you rebuild the tailnet device, compare the device name in the Tailscale admin console with this annotation and update it in Git.
+The `external-dns.alpha.kubernetes.io/target` annotation in `infrastructure/gateway/gateway.yaml` is `gateway-envoy.ainu-herring.ts.net`. The value must be the MagicDNS name of the Envoy proxy device in the tailnet. ExternalDNS publishes public A records with the Tailscale IP of the Gateway, and the TXT ownership records have the owner `homelab`.
+
+The `tailscale.com/hostname: gateway-envoy` annotation in `infrastructure/gateway/envoyproxy.yaml` requests the device hostname. When the name is already in use, Tailscale adds a suffix such as `-1`. After you rebuild the tailnet device, compare its name in the Tailscale admin console with the target annotation. If they are different, update the annotation in Git.
 
 ### Split DNS resolver IP
 
-The split DNS resolver for `sudhanva.me` must point to the `tailscale-dns` service IP. Do not point it to the Gateway IP. The `tailscale-dns` resolver answers HTTPRoute hostnames with the Gateway IP. If split DNS points directly to the Gateway IP, queries time out.
+The split DNS resolver for `sudhanva.me` must be the Tailscale IP of the `tailscale-dns` Service. Do not use the Gateway IP. The Gateway does not answer DNS queries, so queries to the Gateway IP time out. The `tailscale-dns` resolver answers HTTPRoute hostnames with the Gateway IP.
 
-The resolver runs in the `tailscale-dns` namespace. It does not run in the `tailscale` namespace.
+The resolver runs in the `tailscale-dns` namespace.
 
 To get the resolver IP, run:
 
@@ -134,7 +142,7 @@ To get the resolver IP, run:
 kubectl -n tailscale-dns get svc tailscale-dns -o wide
 ```
 
-To examine the answer from the resolver, get the Gateway IP:
+To examine the answer from the resolver, get the Gateway IP first:
 
 ```bash
 kubectl get gateway -n tailscale tailscale-gateway -o jsonpath='{.status.addresses[*].value}' && echo
@@ -144,9 +152,9 @@ Compare the `IPAddress` value with the output of `dig +short <name> @100.100.100
 
 ### Hosts outside the homelab
 
-The `tailscale-dns` resolver answers with the Gateway IP only for hostnames that an HTTPRoute serves. Every other `sudhanva.me` name, such as the apex, `www`, `google` or `lakshmi.k8s`, goes to public DNS, so sites hosted elsewhere stay reachable from the tailnet.
+The `tailscale-dns` resolver answers with the Gateway IP only for hostnames that an HTTPRoute serves. It forwards every other `sudhanva.me` name to public DNS, for example the apex, `www`, `google`, and `lakshmi.k8s`. Tailnet clients can reach sites that other systems host.
 
-The `tailscale-dns-updater` CronJob builds that list every 10 minutes. It reads the HTTPRoute hostnames and writes them into the `match` regex of the `template` block:
+The `tailscale-dns-updater` CronJob builds the hostname list every 10 minutes. It reads the HTTPRoute hostnames and writes them into the `match` regex of the `template` block:
 
 ```text
 template IN A {
@@ -156,7 +164,7 @@ template IN A {
 }
 ```
 
-A new HTTPRoute resolves on the tailnet within 10 minutes. To apply it at once, start a Job from the CronJob:
+A new HTTPRoute resolves on the tailnet in 10 minutes or less. To apply it immediately, start a Job from the CronJob:
 
 ```bash
 kubectl -n tailscale-dns create job --from=cronjob/tailscale-dns-updater tailscale-dns-updater-now
@@ -164,13 +172,15 @@ kubectl -n tailscale-dns create job --from=cronjob/tailscale-dns-updater tailsca
 
 ## Split-horizon DNS for homelab.sudhanva.me
 
-The docs hostnames `homelab.sudhanva.me` and `docs.sudhanva.me` have manual public A records that point to the Tailscale Gateway IP. ExternalDNS does not manage them, because their HTTPRoute has no `external-dns.alpha.kubernetes.io/expose` annotation. Tailnet clients reach the cluster through the Tailscale Gateway. Clients off the tailnet cannot reach these hostnames. They can use the Cloudflare Pages copy at `homelab-68o.pages.dev`.
+The docs hostnames `homelab.sudhanva.me` and `docs.sudhanva.me` have manual public A records that point to the Tailscale Gateway IP. ExternalDNS does not manage these records, because their HTTPRoute has no `external-dns.alpha.kubernetes.io/expose` annotation.
 
-Keep the manual public records. The split-DNS resolver below answers the same hostnames for tailnet clients.
+Tailnet clients reach the docs through the Tailscale Gateway. Clients that are not on the tailnet cannot reach these hostnames. They can use the Cloudflare Pages copy at `homelab-68o.pages.dev`.
+
+Keep the manual public records. The split-DNS resolver answers the same hostnames for tailnet clients.
 
 ### Deploy the split-DNS resolver
 
-This repo has a CoreDNS deployment that answers HTTPRoute hostnames with the Tailscale Gateway IP. It forwards all other `sudhanva.me` names to public DNS. A CronJob keeps the IP and the hostname list the same as the cluster. Refer to [Hosts outside the homelab](#hosts-outside-the-homelab).
+The `tailscale-dns` CoreDNS Deployment answers HTTPRoute hostnames with the Tailscale Gateway IP. It forwards all other `sudhanva.me` names to public DNS. A CronJob keeps the IP and the hostname list the same as the cluster. Refer to [Hosts outside the homelab](#hosts-outside-the-homelab).
 
 Sync the `infrastructure/tailscale-dns/` component. Then get the Tailscale IP of the resolver:
 
@@ -182,15 +192,15 @@ To examine the updater, look at the `tailscale-dns-updater` CronJob and the logs
 
 ### Configure Cloudflare (public)
 
-In the `sudhanva.me` zone, set `homelab.sudhanva.me` to the public hostname.
+In the `sudhanva.me` Cloudflare zone, keep the DNS-only A records for `homelab.sudhanva.me` and `docs.sudhanva.me`. Their value is the Tailscale Gateway IP.
 
 ### Tailscale DNS (tailnet)
 
-The `split_dns` block in `terraform/tailscale/dns.tf` sends `sudhanva.me` to the Tailscale IP of `tailscale-dns`, not the Gateway IP.
+The `split_dns` block in `terraform/tailscale/dns.tf` sends `sudhanva.me` queries to the Tailscale IP of `tailscale-dns`.
 
 ### macOS resolver fallback
 
-If `dig` works but browsers or CLI tools cannot resolve `*.sudhanva.me`, add a resolver file. This file makes macOS send `sudhanva.me` queries to Tailscale:
+If `dig` resolves `*.sudhanva.me` but browsers or CLI tools cannot, add a resolver file. This file makes macOS send `sudhanva.me` queries to Tailscale:
 
 ```bash
 sudo mkdir -p /etc/resolver
@@ -201,7 +211,7 @@ sudo killall -HUP mDNSResponder
 
 ### Keep ExternalDNS from overriding public DNS
 
-The docs HTTPRoute does not have the ExternalDNS expose annotation. Thus, ExternalDNS does not overwrite the public record.
+The docs HTTPRoute does not have the ExternalDNS expose annotation, so ExternalDNS does not change the manual public records.
 
 ### Verify split-horizon behavior
 
@@ -215,7 +225,7 @@ curl -I https://homelab.sudhanva.me
 Expected results:
 
 - DNS resolves to the Tailscale Gateway IP (the `status.addresses` value of `tailscale-gateway`).
-- The response headers do not include Cloudflare headers such as `cf-ray`.
+- The `curl` command gets an HTTP response from the Envoy Gateway.
 
 On a device that is not on the tailnet, run:
 
@@ -226,12 +236,12 @@ curl -I https://homelab.sudhanva.me
 
 Expected results:
 
-- DNS resolves to Cloudflare IPs.
-- The response headers include `server: cloudflare`.
+- DNS resolves to the same Tailscale Gateway IP from the manual public record.
+- The `curl` command fails, because the device has no route to the tailnet.
 
-### Troubleshooting
+### Troubleshoot split DNS
 
-If tailnet queries continue to go to Cloudflare, do these steps:
+If a tailnet device does not get the Gateway IP from `100.100.100.100`, do these steps:
 
 - Turn Tailscale off and then on again to refresh the DNS settings.
 - Flush the macOS DNS cache:
@@ -245,19 +255,19 @@ sudo killall -HUP mDNSResponder
 
 ### Connections to subdomains time out
 
-If `tailscale ping <gateway-ip>` works but `curl https://subdomain.sudhanva.me` times out, examine the Tailscale ingress proxy pod. Make sure that it is running and healthy:
+If `tailscale ping <gateway-ip>` works but `curl https://subdomain.sudhanva.me` times out, examine the Tailscale ingress proxy pod. Make sure that it is running and ready:
 
 ```bash
 kubectl get pods -n tailscale -l tailscale.com/parent-resource-type=svc
 ```
 
-If the proxy pod needs a refresh, restart it:
+If the proxy pod is not ready, restart it:
 
 ```bash
 kubectl delete pod -n tailscale -l tailscale.com/parent-resource-type=svc
 ```
 
-Make sure that the Envoy Gateway data plane pod is running and accepts traffic on port 10443:
+Make sure that the Envoy Gateway data plane pod is running. It accepts traffic on port 10443.
 
 ```bash
 kubectl get pods -n envoy-gateway
@@ -267,17 +277,17 @@ kubectl get pods -n envoy-gateway
 
 This error in the Envoy logs means that the TLS connection has no Server Name Indication (SNI). Make sure that:
 
-- Clients connect with the hostname (for example, `homelab.sudhanva.me`), not an IP address
-- The hostname matches a configured HTTPRoute
-- The certificate covers the requested hostname (examine it with `kubectl get certificate -n tailscale`)
+- Clients connect with the hostname, for example `homelab.sudhanva.me`. Clients must not connect with an IP address.
+- The hostname matches a configured HTTPRoute.
+- The certificate covers the requested hostname. Examine it with `kubectl get certificate -n tailscale`.
 
 ### DNS not resolving
 
-If subdomains do not resolve, examine these items:
+If a subdomain does not resolve, examine these items:
 
 - ExternalDNS logs: `kubectl logs -n external-dns -l app.kubernetes.io/instance=external-dns`
-- The Cloudflare API token has DNS edit permissions
-- The HTTPRoute has the `external-dns.alpha.kubernetes.io/expose: "true"` annotation
+- The Cloudflare API token has DNS edit permissions.
+- The HTTPRoute has the `external-dns.alpha.kubernetes.io/expose: "true"` annotation.
 
 ### Verify the traffic flow
 

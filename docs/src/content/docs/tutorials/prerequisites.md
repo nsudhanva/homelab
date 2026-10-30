@@ -1,6 +1,6 @@
 ---
 title: Prerequisites for Bare-Metal K3s Homelab
-description: Install Ansible, kubectl, and pre-commit on your operator workstation. Prepare SSH access and accounts for the bare-metal K3s cluster.
+description: Install Ansible, kubectl, and pre-commit on the operator workstation. Prepare SSH access and the accounts for the bare-metal K3s cluster.
 keywords:
   - k3s prerequisites
   - ansible installation
@@ -13,11 +13,11 @@ sidebar:
 
 # Prerequisites
 
-Before you provision the bare-metal K3s cluster, prepare your local operator workstation. Then make sure that you can connect to the target node.
+Prepare the operator workstation before you provision the cluster. Then make sure that the workstation can connect to the target node.
 
 ## Step 1: Install workstation tooling
 
-Install the automation and Kubernetes management tools on your local workstation:
+Install Ansible, `kubectl`, and `pre-commit` on the workstation.
 
 ### macOS (Homebrew)
 
@@ -27,7 +27,7 @@ brew install ansible kubectl pre-commit
 
 ### Linux (APT)
 
-The Ubuntu archive does not ship `kubectl`. Install the other tools with APT, then download `kubectl` from `dl.k8s.io`:
+The Ubuntu archive does not contain `kubectl`. Install the other tools with APT. Then download `kubectl` from `dl.k8s.io`.
 
 ```bash
 sudo apt-get update && sudo apt-get install -y curl git ansible pre-commit
@@ -35,11 +35,11 @@ curl -sSLo kubectl "https://dl.k8s.io/release/v1.37.1/bin/linux/amd64/kubectl"
 sudo install -m 0755 kubectl /usr/local/bin/kubectl
 ```
 
-ArgoCD installs every Helm chart in this repo. You do not need Helm on the workstation.
+ArgoCD installs every Helm chart in this repository. The workstation does not need Helm.
 
 ### Dev Container Workstation
 
-Alternatively, use the containerized workstation environment in the repo:
+You can also use the workstation container in this repository. Refer to [Ubuntu Workstation](/tutorials/workstation/).
 
 ```bash
 ./scripts/dev-container.sh up
@@ -48,19 +48,19 @@ Alternatively, use the containerized workstation environment in the repo:
 
 ## Step 2: Configure SSH access to the host
 
-Ansible manages bare-metal nodes over SSH. If you do not have an SSH key pair, make one:
+Ansible connects to the node over SSH. If you do not have an SSH key pair, create one.
 
 ```bash
 ssh-keygen -t ed25519 -C "homelab-admin"
 ```
 
-Copy your public key to the target node `legion` (`100.66.139.118` or your LAN IP):
+Copy your public key to the node `legion`. Use the Tailscale IP `100.66.139.118` or the LAN IP.
 
 ```bash
 ssh-copy-id sudhanva@100.66.139.118
 ```
 
-On the target host, add the user to `sudoers` to get passwordless sudo:
+On the node, add the user to the `sudo` group. Then give the user passwordless sudo.
 
 ```bash
 sudo usermod -aG sudo sudhanva
@@ -69,17 +69,17 @@ echo "sudhanva ALL=(ALL) NOPASSWD:ALL" | sudo tee /etc/sudoers.d/sudhanva
 
 ## Step 3: Gather account credentials
 
-Get these credentials before you start the platform integration:
+Get these credentials before you continue:
 
-- Tailscale: An OAuth client secret with permissions to manage Tailscale devices and Kubernetes operator resources.
-- Cloudflare: An API token with Zone.DNS edit permissions for your managed domain (`sudhanva.me`).
-- GitHub: A personal access token for ArgoCD repository access and ArgoCD Image Updater write-back (Vault `kv/argocd/repo-creds`).
-- Container registry: A GHCR read token, which ArgoCD Image Updater uses to check tags (Vault `kv/argocd-image-updater/ghcr`). Docker Hub is read anonymously.
+- Tailscale: an OAuth client secret with permission to manage Tailscale devices and the Kubernetes operator resources.
+- Cloudflare: an API token with Zone.DNS edit permission for the managed domain (`sudhanva.me`).
+- GitHub: a personal access token for ArgoCD repository access and ArgoCD Image Updater write-back (Vault `kv/argocd/repo-creds`).
+- Container registry: a GHCR read token. ArgoCD Image Updater uses it to check tags (Vault `kv/argocd-image-updater/ghcr`). Image Updater reads Docker Hub anonymously.
 
 ## Step 4: Next steps
 
-When your workstation tools and SSH access to the target host operate correctly, go to these pages:
+When the workstation tools and the SSH access operate correctly, continue with these tutorials:
 
 - Prepare the bare-metal machine in [Host Preparation](/tutorials/system-prep/).
-- Configure Ansible variables in [Ansible Configuration](/tutorials/containerd/).
+- Configure the Ansible variables in [Ansible Configuration](/tutorials/containerd/).
 - Bootstrap the cluster in [K3s Bootstrap](/tutorials/kubernetes/).

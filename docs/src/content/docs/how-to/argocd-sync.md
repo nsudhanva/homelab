@@ -1,6 +1,6 @@
 ---
 title: Sync and Manage ArgoCD Applications
-description: Force sync, refresh status, and recover from drift in ArgoCD applications. Manage ApplicationSets and troubleshoot sync issues.
+description: Refresh, sync, and repair drift in ArgoCD applications, and sync all Applications of one ApplicationSet.
 keywords:
   - argocd sync
   - argocd refresh
@@ -14,7 +14,7 @@ sidebar:
 
 # Sync ArgoCD Applications
 
-Use this guide to force a sync, refresh the status, or recover from drift. The ApplicationSets have auto-sync on by default. A manual sync helps during troubleshooting.
+Use this guide to refresh the status of an application, start a sync, or repair drift. The `apps` and `infrastructure` ApplicationSets enable automated sync on each Application. Use a manual sync during troubleshooting.
 
 ## Step 1: Check application status
 
@@ -30,7 +30,7 @@ argocd app get <app-name> --refresh
 
 :::note
 
-If you do not have the ArgoCD CLI, use the UI to refresh and sync.
+If you do not have the ArgoCD CLI, use the ArgoCD UI to refresh and sync.
 
 :::
 
@@ -43,7 +43,7 @@ argocd app wait <app-name> --health
 
 ## Step 4: Sync all apps from one ApplicationSet
 
-The ApplicationSets do not set labels on the Applications that they create. Select the Applications by name prefix instead. The `apps` ApplicationSet names its Applications `app-<name>`, and the `infrastructure` ApplicationSet names its Applications `infra-<directory>`:
+The ApplicationSets set no labels on their Applications, so select the Applications by name prefix. The `apps` ApplicationSet names its Applications `app-<name>`. The `infrastructure` ApplicationSet names its Applications `infra-<directory>`.
 
 ```bash
 argocd app list -o name | grep '/app-' | xargs -n1 argocd app sync
@@ -52,7 +52,7 @@ argocd app list -o name | grep '/infra-' | xargs -n1 argocd app sync
 
 ## Step 5: Reconcile drift
 
-If the app continues to drift, examine the diff. Then repair the source manifest in Git.
+If an application continues to drift, examine the diff. Then repair the source manifest in Git.
 
 ```bash
 argocd app diff <app-name>
