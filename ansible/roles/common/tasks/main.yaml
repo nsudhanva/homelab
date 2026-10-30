@@ -7,6 +7,7 @@
       - jq
       - nfs-common
       - iptables
+      - power-profiles-daemon
     state: present
     update_cache: true
 
@@ -44,6 +45,23 @@
   ansible.builtin.file:
     path: "{{ local_storage_path }}"
     state: directory
-    mode: "0777"
+    mode: "0700"
     owner: root
     group: root
+
+- name: Ensure power-profiles-daemon is running
+  ansible.builtin.systemd:
+    name: power-profiles-daemon
+    enabled: true
+    state: started
+
+- name: Read the current power profile
+  ansible.builtin.command: powerprofilesctl get
+  register: current_power_profile
+  changed_when: false
+  check_mode: false
+
+- name: Set the power profile
+  ansible.builtin.command: powerprofilesctl set {{ power_profile }}
+  when: current_power_profile.stdout | trim != power_profile
+  changed_when: true

@@ -31,7 +31,7 @@ Format the partition with `ext4` or `xfs`. Then mount it at `/home/k3s-storage`:
 
 ```bash
 sudo mkdir -p /home/k3s-storage
-sudo chmod 0777 /home/k3s-storage
+sudo chmod 0700 /home/k3s-storage
 ```
 
 To keep the mount after a reboot, add it to `/etc/fstab`:
