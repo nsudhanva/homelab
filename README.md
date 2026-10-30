@@ -190,6 +190,7 @@ Main guides:
 - Persistent storage: [Local-Path Storage Architecture](https://homelab.sudhanva.me/explanation/storage-architecture/)
 - Version matrix: [Component Version Matrix](https://homelab.sudhanva.me/reference/versions/)
 - Applications catalog: [Applications Catalog Reference](https://homelab.sudhanva.me/reference/applications/)
+- Tailnet as code: [Manage Tailscale with Terraform](https://homelab.sudhanva.me/how-to/tailscale-terraform/)
 
 ## Repository layout
 
@@ -199,6 +200,7 @@ bootstrap/        ArgoCD bootstrap and ApplicationSet definitions
 infrastructure/   Platform components managed by ArgoCD
 apps/             User workloads managed by ArgoCD
 packages/         Shared monorepo libraries (e.g. homelab-ai)
+terraform/        Terraform for the Tailscale tailnet (policy, DNS, settings, device tags)
 scripts/          Automation and verification scripts
 docs/             Astro Starlight documentation
 ```

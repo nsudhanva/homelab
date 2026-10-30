@@ -235,6 +235,13 @@ This table lists every ExternalSecret in the repo. All paths are under the KV v2
 | `kv/openrouter` | `api_key` | `<namespace>/homelab-ai-credentials` in `actual-classifier`, `monitoring`, `drive-organizer`, and `gmail-classifier` | `packages/homelab-ai/kustomize/externalsecret.yaml` |
 | `kv/anthropic` | `api_key`, `workspace_id` | `<namespace>/homelab-ai-credentials` in `actual-classifier`, `monitoring`, `drive-organizer`, and `gmail-classifier` | `packages/homelab-ai/kustomize/externalsecret.yaml` |
 
+Terraform also reads two paths. No ExternalSecret syncs them into the cluster. `scripts/tailscale-terraform.sh` reads them at run time and copies them to GitHub Actions secrets:
+
+| Vault path | Properties | Used by |
+| --- | --- | --- |
+| `kv/tailscale/terraform` | `client_id`, `client_secret` | `terraform/tailscale/` (Tailscale OAuth client) |
+| `kv/terraform/state` | `access_key_id`, `secret_access_key`, `endpoint` | Terraform state in the R2 bucket `homelab-terraform-state` |
+
 Vault can also hold paths that no manifest reads, for example the plaintext `password` property in `kv/filebrowser/auth`, or logins for the media apps that you keep for yourself. The cluster does not use these values. To find the readers of a path, search the repo:
 
 ```bash

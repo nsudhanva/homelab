@@ -39,24 +39,9 @@ When changes to `ansible/**` or `.github/workflows/provision.yaml` are pushed to
 
 The workflow (`.github/workflows/provision.yaml`) uses `tailscale/github-action` with a Tailscale OAuth client. The runner joins the tailnet as an ephemeral `tag:ci` node and connects to `legion` (`100.66.139.118`) through SSH.
 
-The tailnet policy must let the OAuth client assign `tag:ci`. It must also let `tag:ci` reach the node on port 22:
+`legion` runs Tailscale SSH, and Tailscale SSH lets a tagged device connect only to tagged devices. The policy in `terraform/tailscale/policy.hujson` therefore defines `tag:ci` and `tag:server`, tags `legion` with `tag:server`, and has an SSH rule that accepts `tag:ci` to `tag:server` as `sudhanva`. An `sshTests` entry checks this rule on every policy change. Refer to [Manage Tailscale with Terraform](/how-to/tailscale-terraform/).
 
-```json
-{
-  "tagOwners": {
-    "tag:ci": ["autogroup:admin"]
-  },
-  "grants": [
-    {
-      "src": ["tag:ci"],
-      "dst": ["100.66.139.118"],
-      "ip": ["tcp:22"]
-    }
-  ]
-}
-```
-
-Create the OAuth client at `https://login.tailscale.com/admin/settings/oauth` with the `auth_keys` write scope and the `tag:ci` tag.
+The OAuth client in the `TS_OAUTH_CLIENT_ID` and `TS_OAUTH_SECRET` secrets must be able to create auth keys with `tag:ci` (the `auth_keys` scope).
 
 ### Step 2: Repository Secrets
 

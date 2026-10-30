@@ -65,7 +65,6 @@ flowchart TB
 
     Client -->|"global nameserver"| Technitium
     Client -->|"sudhanva.me"| SplitDNS
-    Client -.->|"secondary nameserver"| Public
     Resolved --> Upstream
     CoreDNS -->|"forward ."| Resolved
     Technitium -->|"DoH forwarders"| Public
@@ -87,16 +86,16 @@ The configuration of CoreDNS in `kube-system` is in `infrastructure/coredns/conf
 
 ### Tailnet layer
 
-Tailnet clients get their DNS configuration from the Tailscale admin console:
+Tailnet clients get their DNS configuration from Tailscale. Terraform sets it in `terraform/tailscale/dns.tf`:
 
-| Admin console setting | Value |
+| Setting | Value |
 | --- | --- |
 | Global nameserver | Tailscale IP of the `technitium-tailscale` Service in namespace `technitium` (Tailscale hostname `technitium-dns`). Technitium provides ad blocking and DNSSEC validation (`apps/technitium/`) |
-| Secondary global nameserver | A public resolver such as `1.1.1.1`, used when Technitium is unreachable |
 | Split DNS for `sudhanva.me` | `tailscale-dns` Tailscale IP (`infrastructure/tailscale-dns/`) |
 | MagicDNS | Enabled |
+| Override local DNS | Enabled |
 
-Technitium and the `sudhanva.me` resolver both run in the cluster. Tailnet clients use Technitium for general internet resolution. During cluster maintenance, the secondary public nameserver keeps this resolution available.
+Technitium and the `sudhanva.me` resolver both run in the cluster, and there is no fallback nameserver. When the cluster is down, tailnet clients cannot resolve names. Cluster nodes are not affected, because they run with `--accept-dns=false`. To add a public fallback, refer to [Add a fallback nameserver](/how-to/tailscale-terraform/#add-a-fallback-nameserver).
 
 ## Resource reservations
 

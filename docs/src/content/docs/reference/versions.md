@@ -25,6 +25,8 @@ Check the latest stable release before changing any pinned version.
 - K3s: `v1.37.1+k3s1` in `ansible/group_vars/all.yaml`
 - Kubernetes: `v1.37.1` from K3s
 - kubeconform: `v0.7.0` in `scripts/run-kubeconform.sh` (validates against Kubernetes `1.37.0`)
+- Terraform: `1.17.1` in `.github/workflows/tailscale.yaml` (`>= 1.16.0, < 2.0.0` in `terraform/tailscale/versions.tf`)
+- Tailscale Terraform provider: `0.29.3` in `terraform/tailscale/.terraform.lock.hcl` (`~> 0.29.3`)
 - containerd: bundled with K3s (not pinned in the repo; `kubectl get nodes -o wide` shows the running version)
 - Host OS: Ubuntu 26.04 LTS (the point release is not pinned in the repo; `kubectl get nodes -o wide` shows it)
 - CNI: Flannel (K3s built-in)

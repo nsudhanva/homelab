@@ -43,6 +43,10 @@ The image jobs build with the repo root as the context, so the root `.dockerigno
 
 `provision.yaml` runs on pushes to `master` that change `ansible/**` or the workflow file, and on manual runs (`workflow_dispatch`). It joins the tailnet as `tag:ci`, connects to `legion` over SSH, and runs `ansible-playbook -i ansible/inventory/hosts.yaml ansible/site.yaml`. Refer to [GitOps Automation](/how-to/gitops-automation/).
 
+### `tailscale.yaml` (Tailscale)
+
+`tailscale.yaml` runs Terraform in `terraform/tailscale/`. It plans on pull requests and pushes that change `terraform/tailscale/**`, and every Monday to detect drift. It applies only when you run it by hand with **Apply the plan to the tailnet**. Refer to [Manage Tailscale with Terraform](/how-to/tailscale-terraform/).
+
 ## Step 2: Configure GitHub secrets
 
 `ci.yaml` uses only the built-in `GITHUB_TOKEN` to push images to GHCR. `provision.yaml` needs these repository secrets:
@@ -50,6 +54,8 @@ The image jobs build with the repo root as the context, so the root `.dockerigno
 - `TS_OAUTH_CLIENT_ID`
 - `TS_OAUTH_SECRET`
 - `SSH_PRIVATE_KEY`
+
+`tailscale.yaml` needs `TAILSCALE_TF_OAUTH_CLIENT_ID`, `TAILSCALE_TF_OAUTH_CLIENT_SECRET`, `TF_STATE_R2_ACCESS_KEY_ID`, `TF_STATE_R2_SECRET_ACCESS_KEY`, and `TF_STATE_R2_ENDPOINT`. `scripts/tailscale-terraform.sh github-secrets` sets them from Vault.
 
 ## Step 3: Run the same checks locally
 

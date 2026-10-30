@@ -30,17 +30,9 @@ tailscale ip -4
 
 The `tailscale` Ansible role fails if Tailscale is not installed. It does not install Tailscale for you.
 
-### Update ACL tag owners
+### Tag owners
 
-The operator and every proxy that it creates use `tag:k8s`. `operatorConfig.defaultTags` in `infrastructure/tailscale/tailscale-operator.yaml` sets the operator tag, and the `tailscale.com/tags: tag:k8s` annotations on the Envoy proxy and the `tailscale-dns` Service set the proxy tags. The repo does not use `tag:k8s-operator`. Make sure that the tailnet policy has an owner for `tag:k8s`:
-
-```json
-{
-  "tagOwners": {
-    "tag:k8s": ["autogroup:admin"]
-  }
-}
-```
+The operator and every proxy that it creates use `tag:k8s`. `operatorConfig.defaultTags` in `infrastructure/tailscale/tailscale-operator.yaml` sets the operator tag, and the `tailscale.com/tags: tag:k8s` annotations on the Envoy proxy and the `tailscale-dns` Service set the proxy tags. The tailnet policy in `terraform/tailscale/policy.hujson` makes `tag:k8s-operator` the owner of `tag:k8s`. Change tag owners there, not in the admin console. Refer to [Manage Tailscale with Terraform](/how-to/tailscale-terraform/).
 
 ### Store the OAuth credentials in Vault
 
@@ -74,13 +66,15 @@ The API server certificate covers the names in `tls_sans` in `ansible/group_vars
 
 Cluster nodes do not use Tailscale DNS. The `tailscale` Ansible role runs `tailscale set --accept-dns=false` on each node. Thus, the host resolves names through its uplink resolvers. Image pulls and other node DNS lookups do not depend on DNS services in the cluster. Refer to [Node Networking and DNS](/explanation/node-networking/).
 
-### Configure tailnet nameservers
+### Tailnet nameservers
 
-In the Tailscale admin console, go to **DNS** and set these values:
+`terraform/tailscale/dns.tf` sets the tailnet DNS. It looks up the Tailscale IPs of the operator proxies by hostname:
 
-- Global nameserver: the Tailscale IP of `technitium-dns` (`kubectl -n technitium get svc technitium-tailscale -o wide`)
-- Secondary global nameserver: a public resolver such as `1.1.1.1`. Tailnet clients then continue to resolve names when Technitium is not available.
-- Split DNS: `sudhanva.me` to the `tailscale-dns` Tailscale IP (refer to [Split DNS resolver IP](#split-dns-resolver-ip))
+- Global nameserver: the Tailscale IP of `technitium-dns`
+- Split DNS: `sudhanva.me` to the Tailscale IP of `tailscale-dns` (refer to [Split DNS resolver IP](#split-dns-resolver-ip))
+- MagicDNS on, and local DNS settings overridden
+
+There is no fallback nameserver, so tailnet DNS stops when the cluster is down. To add one, refer to [Add a fallback nameserver](/how-to/tailscale-terraform/#add-a-fallback-nameserver).
 
 ## Step 2: Enable custom domains with Gateway API
 
@@ -190,12 +184,9 @@ To examine the updater, look at the `tailscale-dns-updater` CronJob and the logs
 
 In the `sudhanva.me` zone, set `homelab.sudhanva.me` to the public hostname.
 
-### Configure Tailscale DNS (tailnet)
+### Tailscale DNS (tailnet)
 
-In the Tailscale admin console, add a nameserver and restrict it to `sudhanva.me`:
-
-- Nameserver: the Tailscale IP from `tailscale-dns` (not the Gateway IP)
-- Restrict to domain: `sudhanva.me`
+The `split_dns` block in `terraform/tailscale/dns.tf` sends `sudhanva.me` to the Tailscale IP of `tailscale-dns`, not the Gateway IP.
 
 ### macOS resolver fallback
 

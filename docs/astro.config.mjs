@@ -164,6 +164,7 @@ export default defineConfig({
               collapsed: true,
               items: [
                 { label: 'Tailscale Ingress', slug: 'how-to/tailscale' },
+                { label: 'Manage Tailscale with Terraform', slug: 'how-to/tailscale-terraform' },
               ],
             },
             {
@@ -214,6 +215,7 @@ export default defineConfig({
             { label: 'Infrastructure Components', slug: 'reference/infrastructure-components' },
             { label: 'Applications Catalog', slug: 'reference/applications' },
             { label: 'AI Configuration', slug: 'reference/ai-configuration' },
+            { label: 'Tailscale Terraform', slug: 'reference/tailscale-terraform' },
             { label: 'Version Matrix', slug: 'reference/versions' },
             { label: 'Operations Checklist', slug: 'reference/operations-checklist' },
             { label: 'Documentation Structure', slug: 'reference/docs-structure' },

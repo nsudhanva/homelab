@@ -12,6 +12,7 @@ A multi-node bare-metal Kubernetes cluster on Ubuntu 26.04 LTS. It uses K3s. Arg
 - Always use Vault to keep sensitive information or secrets. Every Kubernetes Secret must come from an `ExternalSecret` that reads a Vault path. Write the value to Vault first, then refer to it
 - Make every cluster change through Git and let ArgoCD apply it. Use imperative `kubectl` only for read-only inspection, logs, and to start a Job from an existing CronJob
 - Make every node-level change (K3s config, systemd units, Tailscale settings, sysctls) through the Ansible roles in `ansible/`. Preview each change with `--check --diff`
+- Make every tailnet change (policy file, DNS, tailnet settings, device tags) in `terraform/tailscale/`. Review the plan from the `Tailscale` workflow, then apply it with a manual run of that workflow
 - Set explicit CPU and memory requests and limits on every Deployment, Job, and CronJob. Keep the total requests within node allocatable
 - Declare explicitly the fields that you depend on (for example `suspend: false` on CronJobs). Then ArgoCD can find and revert drift
 - Use ArgoCD ApplicationSets to deploy infrastructure and apps
@@ -42,6 +43,8 @@ A multi-node bare-metal Kubernetes cluster on Ubuntu 26.04 LTS. It uses K3s. Arg
 - Do not put credentials in scripts. Scripts read them from Vault or environment variables at runtime
 - Do not create, patch, or delete Secrets, CronJobs, Deployments, or ArgoCD Applications with `kubectl`. Change the manifests in Git instead
 - Do not change Tailscale DNS, node IPs, or node networking outside the `tailscale` and `k3s_server` Ansible roles. Nodes use their Tailscale IP as `node-ip` and run with Tailscale DNS disabled
+- Do not change the tailnet policy, DNS, settings, or device tags in the Tailscale admin console. Change `terraform/tailscale/` instead
+- Do not commit Terraform state, plan files, or `.tfvars` files, and do not manage OAuth clients or auth keys in Terraform, because their secrets would be stored in state
 - Do not run long batch workloads that need more than node allocatable. Schedule them through CronJobs with resource limits
 
 ## Repository Structure
@@ -55,6 +58,7 @@ homelab/
 ├── apps/                    # User workloads
 ├── packages/                # Shared monorepo libraries (e.g. homelab-ai)
 ├── ansible/                # Ansible automation playbooks, roles, and inventory
+├── terraform/               # Terraform for services outside the cluster (tailscale/)
 ├── scripts/                # Setup scripts (referenced by README)
 └── README.md                # Single source of truth for setup
 ```

@@ -21,6 +21,7 @@ This repository uses 100% infrastructure-as-code and GitOps automation. Each lay
 - **ArgoCD GitOps Engine (`bootstrap/`, `infrastructure/`, `apps/`)**: Continuously reconciles all cluster infrastructure and user applications against git HEAD.
 - **Rancher System Upgrade Controller (`infrastructure/system-upgrade-controller/`)**: Upgrades K3s declaratively through a `Plan` custom resource.
 - **ArgoCD Image Updater (`infrastructure/argocd-image-updater/`)**: Scans container registries and commits updated image tags or digests back to Git.
+- **Terraform (`terraform/tailscale/`)**: Manages the Tailscale tailnet: the policy file, DNS, tailnet settings, and device tags. CI plans every change and checks for drift each week. A manual workflow run applies the plan.
 
 ```mermaid
 flowchart TB
@@ -92,3 +93,14 @@ syncPolicy:
 
 - **System Upgrade Controller**: Removes the need for manual K3s upgrades. When you set a new K3s version in `k3s-upgrade-plan.yaml`, the controller runs a `rancher/k3s-upgrade` Job on the control-plane node. The Plan sets `cordon: false` and has no `drain` block, so the Job replaces the binary and restarts the `k3s` service without cordoning or draining the node.
 - **Image Updater**: Monitors semver tags or `latest` digests. It reads GHCR with the credentials in the `argocd-image-updater-registries` Secret and Docker Hub anonymously, and pushes Git commits back to `master`.
+
+## Layer 4: Tailnet Configuration (Terraform)
+
+The tailnet is outside the cluster, so ArgoCD cannot manage it. Terraform manages it instead:
+
+- **Code**: `terraform/tailscale/` holds the policy file (`policy.hujson`), DNS, tailnet settings, and device tags.
+- **State**: The state is in the private R2 bucket `homelab-terraform-state`, with a lock file, so the public repository holds no state.
+- **Control loop**: The `Tailscale` workflow plans on every change and every Monday. A drift plan fails the scheduled run. Apply is a manual workflow run, because a bad policy can lock you out of the tailnet.
+- **Boundaries**: The Tailscale Kubernetes operator manages its own devices, and OAuth clients and auth keys stay out of Terraform so that their secrets never reach state.
+
+Refer to [Manage Tailscale with Terraform](/how-to/tailscale-terraform/).
