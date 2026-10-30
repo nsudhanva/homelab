@@ -232,6 +232,7 @@ This table lists every ExternalSecret in the repository. All paths are under the
 | `kv/filebrowser/auth` | `username`, `password_hash` | `media/filebrowser-auth` | `apps/filebrowser/external-secret-auth.yaml` |
 | `kv/qbittorrent/vpn` | `private_key`, `public_key`, `endpoint_ip`, `endpoint_port`, `addresses` | `media/qbittorrent-vpn` | `apps/qbittorrent/external-secret-vpn.yaml` |
 | `kv/technitium/admin` | `admin-user`, `admin-password` | `technitium/technitium-admin` | `apps/technitium/external-secret.yaml` |
+| `kv/sarvam` | `api_key` | `home-assistant/sarvam-api` | `apps/home-assistant/external-secret-sarvam.yaml` |
 | `kv/openrouter` | `api_key` | `<namespace>/homelab-ai-credentials` in `actual-classifier`, `monitoring`, `drive-organizer`, and `gmail-classifier` | `packages/homelab-ai/kustomize/externalsecret.yaml` |
 | `kv/anthropic` | `api_key`, `workspace_id` | `<namespace>/homelab-ai-credentials` in `actual-classifier`, `monitoring`, `drive-organizer`, and `gmail-classifier` | `packages/homelab-ai/kustomize/externalsecret.yaml` |
 

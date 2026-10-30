@@ -135,6 +135,7 @@ export default defineConfig({
                 { label: 'Deploy Apps', slug: 'how-to/deploy-apps' },
                 { label: 'Media Automation & VPN', slug: 'how-to/media-automation' },
                 { label: 'Actual Budget', slug: 'how-to/actual-budget' },
+                { label: 'Sarvam TTS (Kannada)', slug: 'how-to/sarvam-tts' },
                 { label: 'Sync ArgoCD Apps', slug: 'how-to/argocd-sync' },
                 { label: 'Connect Repo to ArgoCD', slug: 'how-to/argocd-repo' },
                 { label: 'Automated Image Updates', slug: 'how-to/image-updates' },

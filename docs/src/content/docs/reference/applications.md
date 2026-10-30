@@ -185,6 +185,8 @@ These apps share the `jellyfin-media` volume:
 | External URL | `https://homeassistant.sudhanva.me` | Tailscale Gateway HTTPS route |
 | Storage | `home-assistant-config` (5Gi) | `local-path` volume |
 | Vault Path | `kv/home-assistant/admin` | Manual. Administrator password |
+| Vault Path | `kv/sarvam` | `api_key` for the Sarvam TTS integration, synced to the Secret `sarvam-api` |
+| Custom Integration | `sarvam_tts` | Kannada text-to-speech. Refer to [Speak Kannada with Sarvam TTS](/how-to/sarvam-tts/) |
 | Bitwarden Item | `Homelab - Home Assistant Admin` | Admin credentials and Muse agent token |
 
 ### Actual Budget
