@@ -145,25 +145,33 @@ jobs:
     steps:
     - name: Checkout
       uses: actions/checkout@v7
-    - name: Build path filters from the project list
-      id: filters
+    - name: Discover Python projects
+      id: discover
       run: |
+        projects=$(for file in apps/*/pyproject.toml packages/*/pyproject.toml; do
+          dir=$(dirname "$file")
+          jq -n --arg name "$(basename "$dir")" --arg path "$dir" \
+            --argjson image "$([ -f "$dir/Dockerfile" ] && echo true || echo false)" \
+            '{name: $name, path: $path, image: $image}'
+        done | jq -sc .)
+        echo "projects=$projects" >> "$GITHUB_OUTPUT"
         {
           echo "filters<<EOF"
-          jq -r '.[] | "\(.name):\n  - \"\(.path)/**\"\n  - \"packages/homelab-ai/**\"\n  - \".github/workflows/ci.yaml\"\n  - \".github/python-projects.json\""' .github/python-projects.json
+          jq -r '.[] | "\(.name):\n  - \"\(.path)/**\"\n  - \"packages/homelab-ai/**\"\n  - \".github/workflows/ci.yaml\""' <<< "$projects"
           echo "EOF"
         } >> "$GITHUB_OUTPUT"
     - name: Detect changed projects
       id: changes
       uses: dorny/paths-filter@v4
       with:
-        filters: ${{ steps.filters.outputs.filters }}
+        filters: ${{ steps.discover.outputs.filters }}
     - name: Select changed projects
       id: select
       env:
         CHANGED: ${{ steps.changes.outputs.changes }}
+        PROJECTS: ${{ steps.discover.outputs.projects }}
       run: |
-        projects=$(jq -c --argjson changed "$CHANGED" '[.[] | select(.name as $n | $changed | index($n))]' .github/python-projects.json)
+        projects=$(jq -c --argjson changed "$CHANGED" '[.[] | select(.name as $n | $changed | index($n))]' <<< "$PROJECTS")
         echo "projects=$projects" >> "$GITHUB_OUTPUT"
         echo "images=$(jq -c '[.[] | select(.image)]' <<< "$projects")" >> "$GITHUB_OUTPUT"
 

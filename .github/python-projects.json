@@ -1,7 +1,0 @@
-[
-  {"name": "homelab-ai", "path": "packages/homelab-ai", "image": false},
-  {"name": "actual-classifier", "path": "apps/actual-classifier", "image": true},
-  {"name": "alert-summarizer", "path": "apps/alert-summarizer", "image": true},
-  {"name": "drive-organizer", "path": "apps/drive-organizer", "image": true},
-  {"name": "gmail-classifier", "path": "apps/gmail-classifier", "image": true}
-]

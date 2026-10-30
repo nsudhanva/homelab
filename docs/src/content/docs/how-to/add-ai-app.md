@@ -133,11 +133,7 @@ env:
 
 Build from the repository root so the image can copy `packages/homelab-ai`. Copy `apps/gmail-classifier/Dockerfile` and change the app name.
 
-Add one line to `.github/python-projects.json`:
-
-```json
-{"name": "receipt-reader", "path": "apps/receipt-reader", "image": true}
-```
+CI finds the app without changes to the workflow. Every `apps/*/pyproject.toml` and `packages/*/pyproject.toml` is a Python project, and a `Dockerfile` next to it means that CI builds an image.
 
 CI then lints, type-checks, and tests the app when the app or `homelab-ai` changes. On `master`, CI also pushes `ghcr.io/nsudhanva/homelab-receipt-reader`.
 
