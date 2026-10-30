@@ -74,7 +74,7 @@ Get these credentials before you start the platform integration:
 - Tailscale: An OAuth client secret with permissions to manage Tailscale devices and Kubernetes operator resources.
 - Cloudflare: An API token with Zone.DNS edit permissions for your managed domain (`sudhanva.me`).
 - GitHub: A personal access token for ArgoCD repository access and ArgoCD Image Updater write-back (Vault `kv/argocd/repo-creds`).
-- Container registries: Read tokens for GHCR and Docker Hub, which ArgoCD Image Updater uses to check tags (Vault `kv/argocd-image-updater/ghcr` and `kv/argocd-image-updater/dockerhub`).
+- Container registry: A GHCR read token, which ArgoCD Image Updater uses to check tags (Vault `kv/argocd-image-updater/ghcr`). Docker Hub is read anonymously.
 
 ## Step 4: Next steps
 

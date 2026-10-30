@@ -7,7 +7,6 @@ keywords:
   - container image versioning
   - gitops image automation
   - ghcr credentials
-  - dockerhub credentials
   - kustomization image override
 sidebar:
   order: 6
@@ -19,13 +18,10 @@ This guide configures ArgoCD Image Updater. Image Updater tracks container image
 
 ## Step 1: Store registry credentials in Vault
 
-Create these Vault secrets:
+Create this Vault secret for GHCR. Image Updater reads Docker Hub anonymously, so Docker Hub needs no secret:
 
 ```bash
 kubectl -n vault exec -it vault-0 -- vault kv put kv/argocd-image-updater/ghcr \
-  username="REPLACE_ME" token="REPLACE_ME"
-
-kubectl -n vault exec -it vault-0 -- vault kv put kv/argocd-image-updater/dockerhub \
   username="REPLACE_ME" token="REPLACE_ME"
 ```
 
@@ -42,10 +38,10 @@ kubectl -n vault exec -it vault-0 -- vault kv put kv/argocd/repo-creds \
 
 ArgoCD installs ArgoCD Image Updater (chart `1.3.2`) from `infrastructure/argocd-image-updater/`. External Secrets creates two Secrets in the `argocd` namespace:
 
-- `argocd-image-updater-registries`, from `infrastructure/external-secrets/external-secret-argocd-image-updater-registries.yaml`. It reads `kv/argocd-image-updater/ghcr` and `kv/argocd-image-updater/dockerhub` (properties `username` and `token`). It writes the keys `ghcr` and `dockerhub`, each as `<username>:<token>`.
+- `argocd-image-updater-registries`, from `infrastructure/external-secrets/external-secret-argocd-image-updater-registries.yaml`. It reads `kv/argocd-image-updater/ghcr` (properties `username` and `token`) and writes the key `ghcr` as `<username>:<token>`.
 - `repo-homelab`, the ArgoCD repository Secret from `kv/argocd/repo-creds`. Image Updater uses it to push write-back commits.
 
-`infrastructure/argocd-image-updater/values.image-updater` points GHCR at its key. Docker Hub has no `credentials` entry, so Image Updater reads Docker Hub anonymously. The `dockerhub` key is synced but not used, because the token in `kv/argocd-image-updater/dockerhub` fails Docker Hub authentication. To use it, store a valid Docker Hub access token and add `credentials: secret:argocd/argocd-image-updater-registries#dockerhub` to the Docker Hub entry:
+`infrastructure/argocd-image-updater/values.image-updater` points GHCR at its key. Docker Hub has no `credentials` entry, so Image Updater reads Docker Hub anonymously:
 
 ```yaml
 config:
