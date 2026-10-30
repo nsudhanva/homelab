@@ -1,12 +1,17 @@
 import os
+from typing import Any
 from unittest.mock import AsyncMock
 
 import pytest
+from homelab_ai import AISettings, AITask
+from pydantic_ai.exceptions import ModelAPIError
 from pydantic_ai.messages import ModelResponse, ToolCallPart
+from pydantic_ai.models import Model
 from pydantic_ai.models.function import FunctionModel
 from pydantic_ai.models.test import TestModel
 
 from alert_summarizer.clients import AlertAgentClient, TelegramClient
+from alert_summarizer.clients.agent import alert_instructions
 from alert_summarizer.models import Alert, AlertmanagerPayload, AlertSummary
 from alert_summarizer.service import AlertDeduplicator, AlertSummarizerService
 
@@ -70,13 +75,29 @@ def test_format_fallback_message_resolved(sample_resolved_alert: Alert):
     assert "🟢 <b>[RESOLVED] KubePodCrashLooping</b>" in msg
 
 
+def agent_with(model: Model) -> AlertAgentClient:
+    task = AITask(
+        name="alert-summarizer",
+        output_type=AlertSummary,
+        instructions=alert_instructions("homelab-k3s", "production"),
+        settings=AISettings(_env_file=None, AI_ATTEMPTS=1),
+        models=[model],
+    )
+    return AlertAgentClient(task=task)
+
+
+@pytest.mark.asyncio
+async def test_summarize_returns_none_when_every_model_fails():
+    class Down(TestModel):
+        async def request(self, *args: Any, **kwargs: Any) -> Any:
+            raise ModelAPIError(model_name="local", message="connection refused")
+
+    assert await agent_with(Down()).summarize_alert("context", is_resolved=False) is None
+
+
 @pytest.mark.asyncio
 async def test_pydantic_ai_agent_direct_test_model():
-    client = AlertAgentClient(
-        base_url="http://localhost:8080/v1",
-        model_name="gemma-4-e2b-it",
-        custom_model=TestModel(),
-    )
+    client = agent_with(TestModel())
     summary = await client.summarize_alert("Pod crash looping context", is_resolved=False)
     assert summary is not None
     assert isinstance(summary, AlertSummary)
@@ -101,11 +122,7 @@ async def test_process_alert_with_pydantic_ai_success(sample_alert: Alert):
             ]
         )
 
-    agent_client = AlertAgentClient(
-        base_url="http://localhost:8080/v1",
-        model_name="gemma-4-e2b-it",
-        custom_model=FunctionModel(structured_model),
-    )
+    agent_client = agent_with(FunctionModel(structured_model))
     mock_tg = AsyncMock(spec=TelegramClient)
     mock_tg.send_message.return_value = True
 

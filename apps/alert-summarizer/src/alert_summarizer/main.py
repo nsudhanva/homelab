@@ -1,6 +1,5 @@
 import asyncio
 import logging
-import os
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from typing import Any
@@ -21,16 +20,17 @@ logger = logging.getLogger("alert_summarizer")
 settings = Settings()
 http_client: httpx.AsyncClient | None = None
 deduplicator = AlertDeduplicator(window_seconds=settings.dedup_window_seconds)
+agent_client = AlertAgentClient(
+    cluster_name=settings.cluster_name, environment=settings.environment
+)
 processing_lock = asyncio.Lock()
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     global http_client
-    if settings.pydantic_ai_no_banner:
-        os.environ["PYDANTIC_AI_NO_BANNER"] = "1"
     http_client = httpx.AsyncClient(timeout=10.0)
-    logger.info("Alert Summarizer microservice started (powered by Pydantic AI)")
+    logger.info(f"Alert Summarizer started (models: {agent_client.task.describe()})")
     yield
     if http_client and not http_client.is_closed:
         await http_client.aclose()
@@ -39,7 +39,7 @@ async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
 
 app = FastAPI(
     title="AI Alert Summarizer",
-    description="Alertmanager Webhook Relay powered by Pydantic AI, local Gemma 4, and Telegram",
+    description="Alertmanager webhook relay that summarizes alerts with homelab-ai",
     version="0.2.0",
     lifespan=lifespan,
 )
@@ -47,16 +47,6 @@ app = FastAPI(
 
 def get_service() -> AlertSummarizerService:
     token = settings.get_telegram_token()
-    agent = AlertAgentClient(
-        base_url=settings.llm_base_url,
-        model_name=settings.llm_model,
-        retries=settings.llm_retries,
-        cluster_name=settings.cluster_name,
-        environment=settings.environment,
-        timeout_seconds=settings.llm_timeout_seconds,
-        max_tokens=settings.llm_max_tokens,
-        temperature=settings.llm_temperature,
-    )
     telegram = TelegramClient(
         bot_token=token,
         chat_id=settings.telegram_chat_id,
@@ -65,7 +55,7 @@ def get_service() -> AlertSummarizerService:
         client=http_client,
     )
     return AlertSummarizerService(
-        agent_client=agent, telegram_client=telegram, deduplicator=deduplicator
+        agent_client=agent_client, telegram_client=telegram, deduplicator=deduplicator
     )
 
 

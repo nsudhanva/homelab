@@ -37,15 +37,16 @@ spec:
             capabilities:
               drop:
                 - ALL
+          envFrom:
+            - configMapRef:
+                name: homelab-ai
+            - secretRef:
+                name: homelab-ai-credentials
           env:
-            - name: ALERT_LLM_BASE_URL
-              value: "http://llama-server.llama.svc.cluster.local:8080/v1"
-            - name: ALERT_LLM_MODEL
-              value: "gemma-4-e2b-it"
-            - name: ALERT_LLM_TIMEOUT_SECONDS
-              value: "60.0"
-            - name: ALERT_LLM_MAX_TOKENS
+            - name: AI_MAX_TOKENS
               value: "1024"
+            - name: AI_TEMPERATURE
+              value: "0.2"
             - name: ALERT_TELEGRAM_CHAT_ID
               value: "7341944813"
             - name: ALERT_TELEGRAM_BOT_TOKEN_FILE

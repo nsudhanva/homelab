@@ -11,15 +11,7 @@ class Settings(BaseSettings):
     cluster_name: str = "homelab-k3s"
     environment: str = "production"
 
-    # LLM & Pydantic AI Settings
-    llm_base_url: str = "http://llama-server.llama.svc.cluster.local:8080/v1"
-    llm_model: str = "gemma-4-e2b-it"
-    llm_timeout_seconds: float = 60.0
-    llm_max_tokens: int = 1024
-    llm_temperature: float = 0.2
-    llm_retries: int = 1
     dedup_window_seconds: float = 3000.0
-    pydantic_ai_no_banner: bool = True
 
     # Telegram Settings
     telegram_bot_token: SecretStr | None = None

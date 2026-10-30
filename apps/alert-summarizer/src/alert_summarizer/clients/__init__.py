@@ -1,4 +1,4 @@
-from .agent import AlertAgentClient, SummarizerDeps
+from .agent import AlertAgentClient
 from .telegram import TelegramClient
 
-__all__ = ["AlertAgentClient", "SummarizerDeps", "TelegramClient"]
+__all__ = ["AlertAgentClient", "TelegramClient"]
