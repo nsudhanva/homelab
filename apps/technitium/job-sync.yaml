@@ -13,6 +13,13 @@ spec:
       containers:
         - name: sync
           image: curlimages/curl:8.23.0
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              cpu: 200m
+              memory: 128Mi
           envFrom:
             - configMapRef:
                 name: technitium-config

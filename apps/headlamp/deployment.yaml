@@ -18,16 +18,6 @@ spec:
       labels:
         app: headlamp
     spec:
-      affinity:
-        nodeAffinity:
-          preferredDuringSchedulingIgnoredDuringExecution:
-          - weight: 100
-            preference:
-              matchExpressions:
-              - key: node-role.kubernetes.io/worker
-                operator: In
-                values:
-                - worker
       serviceAccountName: headlamp
       securityContext:
         seccompProfile:

@@ -20,16 +20,6 @@ spec:
       labels:
         app: docs
     spec:
-      affinity:
-        nodeAffinity:
-          preferredDuringSchedulingIgnoredDuringExecution:
-          - weight: 100
-            preference:
-              matchExpressions:
-              - key: node-role.kubernetes.io/worker
-                operator: In
-                values:
-                - worker
       automountServiceAccountToken: false
       securityContext:
         seccompProfile:

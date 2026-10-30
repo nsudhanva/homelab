@@ -24,6 +24,7 @@ metadata:
   namespace: gmail-classifier
 spec:
   schedule: "{schedule}"
+  timeZone: America/Los_Angeles
   suspend: false
   concurrencyPolicy: Forbid
   successfulJobsHistoryLimit: 3
@@ -107,6 +108,7 @@ metadata:
   namespace: gmail-classifier
 spec:
   schedule: "{schedule}"
+  timeZone: America/Los_Angeles
   suspend: false
   concurrencyPolicy: Forbid
   successfulJobsHistoryLimit: 3
@@ -185,18 +187,6 @@ spec:
     name: gmail-credentials-{account_id}
     creationPolicy: Owner
   data:
-    - secretKey: client_id
-      remoteRef:
-        key: {vault_path}
-        property: client_id
-    - secretKey: client_secret
-      remoteRef:
-        key: {vault_path}
-        property: client_secret
-    - secretKey: refresh_token
-      remoteRef:
-        key: {vault_path}
-        property: refresh_token
     - secretKey: GMAIL_CLIENT_ID
       remoteRef:
         key: {vault_path}
@@ -224,6 +214,7 @@ metadata:
   namespace: drive-organizer
 spec:
   schedule: "{schedule}"
+  timeZone: America/Los_Angeles
   suspend: false
   concurrencyPolicy: Forbid
   successfulJobsHistoryLimit: 3
@@ -354,7 +345,7 @@ def main() -> None:
         data = yaml.safe_load(f)
 
     accounts = data.get("accounts", [])
-    account_ids = [acc.get("nickname") or acc.get("id") for acc in accounts]
+    account_ids = [acc["nickname"] for acc in accounts]
 
     targets = [
         {
@@ -390,7 +381,7 @@ def main() -> None:
         expected_files: dict[Path, str] = {}
 
         for acc in accounts:
-            aid = acc.get("nickname") or acc.get("id")
+            aid = acc["nickname"]
             sched = acc["schedule"][sched_key]
             vpath = acc["vault_path"]
 
@@ -408,12 +399,7 @@ def main() -> None:
             namespace, account_ids, extra_cronjobs=bool(extra_key)
         )
 
-        # Clean up legacy un-suffixed files, and orphaned account files
-        legacy_files = [
-            p
-            for p in [app_dir / "cronjob.yaml", app_dir / "secret.yaml"]
-            if p not in expected_files
-        ]
+        # Clean up files of removed accounts
         orphaned_files = [
             p
             for p in list(app_dir.glob("cronjob-*.yaml"))
@@ -422,7 +408,7 @@ def main() -> None:
         ]
 
         if args.check:
-            for l_file in legacy_files + orphaned_files:
+            for l_file in orphaned_files:
                 if l_file.exists():
                     print(f"[DRIFT] Obsolete/orphaned file exists: {l_file}")
                     dirty = True
@@ -434,7 +420,7 @@ def main() -> None:
                     print(f"[DRIFT] Content mismatch: {file_path}")
                     dirty = True
         else:
-            for l_file in legacy_files + orphaned_files:
+            for l_file in orphaned_files:
                 if l_file.exists():
                     print(f"Removing obsolete/orphaned file: {l_file}")
                     l_file.unlink()

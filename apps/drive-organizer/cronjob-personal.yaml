@@ -5,6 +5,7 @@ metadata:
   namespace: drive-organizer
 spec:
   schedule: "0 2 * * *"
+  timeZone: America/Los_Angeles
   suspend: false
   concurrencyPolicy: Forbid
   successfulJobsHistoryLimit: 3

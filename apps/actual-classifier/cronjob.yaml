@@ -5,6 +5,7 @@ metadata:
   namespace: actual-classifier
 spec:
   schedule: "0 3 * * *"
+  timeZone: America/Los_Angeles
   suspend: false
   concurrencyPolicy: Forbid
   successfulJobsHistoryLimit: 3
