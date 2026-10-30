@@ -1,0 +1,92 @@
+name: Tailscale
+
+on:
+  pull_request:
+    paths:
+      - terraform/tailscale/**
+      - .github/workflows/tailscale.yaml
+  push:
+    branches:
+      - master
+    paths:
+      - terraform/tailscale/**
+      - .github/workflows/tailscale.yaml
+  schedule:
+    - cron: "17 14 * * 1"
+  workflow_dispatch:
+    inputs:
+      apply:
+        description: Apply the plan to the tailnet
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tailscale-terraform
+  cancel-in-progress: false
+
+env:
+  TF_IN_AUTOMATION: "true"
+  TF_INPUT: "false"
+
+jobs:
+  terraform:
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: terraform/tailscale
+    env:
+      TAILSCALE_OAUTH_CLIENT_ID: ${{ secrets.TAILSCALE_TF_OAUTH_CLIENT_ID }}
+      TAILSCALE_OAUTH_CLIENT_SECRET: ${{ secrets.TAILSCALE_TF_OAUTH_CLIENT_SECRET }}
+      AWS_ACCESS_KEY_ID: ${{ secrets.TF_STATE_R2_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.TF_STATE_R2_SECRET_ACCESS_KEY }}
+      R2_ENDPOINT: ${{ secrets.TF_STATE_R2_ENDPOINT }}
+    steps:
+      - name: Check credentials
+        id: creds
+        working-directory: .
+        run: |
+          if [ -z "$TAILSCALE_OAUTH_CLIENT_ID" ] || [ -z "$AWS_ACCESS_KEY_ID" ] || [ -z "$R2_ENDPOINT" ]; then
+            echo "::warning::Tailscale Terraform secrets are not set. Run scripts/tailscale-terraform.sh github-secrets."
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Checkout
+        if: steps.creds.outputs.ready == 'true'
+        uses: actions/checkout@v7
+      - name: Set up Terraform
+        if: steps.creds.outputs.ready == 'true'
+        uses: hashicorp/setup-terraform@v4
+        with:
+          terraform_version: 1.17.1
+          terraform_wrapper: false
+      - name: Check formatting
+        if: steps.creds.outputs.ready == 'true'
+        run: terraform fmt -check -recursive
+      - name: Init
+        if: steps.creds.outputs.ready == 'true'
+        run: terraform init -backend-config="endpoints={s3=\"${R2_ENDPOINT}\"}"
+      - name: Validate
+        if: steps.creds.outputs.ready == 'true'
+        run: terraform validate
+      - name: Plan
+        if: steps.creds.outputs.ready == 'true'
+        run: |
+          set +e
+          terraform plan -lock-timeout=5m -detailed-exitcode -out=tfplan
+          code=$?
+          set -e
+          if [ "$code" -eq 1 ]; then
+            exit 1
+          fi
+          if [ "$code" -eq 2 ] && [ "${{ github.event_name }}" = "schedule" ]; then
+            echo "::error::The tailnet has drifted from terraform/tailscale. Review the plan above."
+            exit 1
+          fi
+      - name: Apply
+        if: steps.creds.outputs.ready == 'true' && github.event_name == 'workflow_dispatch' && inputs.apply
+        run: terraform apply -lock-timeout=5m tfplan
