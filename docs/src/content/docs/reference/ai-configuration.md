@@ -78,6 +78,8 @@ The `homelab-ai` command is installed with the package:
 | `homelab-ai ping` | Calls each model in the chain with a small structured prompt and prints the latency |
 | `homelab-ai ping -m anthropic:claude-sonnet-5-5` | Calls only the given model. Repeat `-m` for more models |
 
+In a container image, run `python -m homelab_ai.cli` instead of `homelab-ai`. The images copy the virtual environment from a build stage, so console scripts point to a path that does not exist.
+
 ## Workloads
 
 | Workload | Tasks |
