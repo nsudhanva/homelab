@@ -80,42 +80,20 @@ kubectl -n drive-organizer run drive-dry-run \
 
 The organizer uses the Pydantic AI `FallbackModel` to keep inference available across local and cloud providers.
 
-- **Primary Model**: The default is the local Google Gemma 4 E2B model (`http://llama-server.llama.svc.cluster.local:8080/v1`).
-- **Fallback Model**: If the local server has connection drops, timeouts, or OOM errors, the organizer sends requests to OpenRouter Google Gemma 4 31B (`google/gemma-4-31b-it`).
-- **Zero-Secret Vault Integration**: HashiCorp Vault keeps the OpenRouter API key at `kv/openrouter` (`api_key`). A Kubernetes `ExternalSecret` syncs the key into `openrouter-credentials`.
+- **Model chain**: The organizer uses the shared `homelab-ai` chain. The default is the local `gemma-4-e2b-it` model, then OpenRouter `google/gemma-4-31b-it`, then Anthropic `claude-haiku-5-5`.
+- **Secrets**: The `homelab-ai-credentials` ExternalSecret reads the OpenRouter and Anthropic keys from Vault (`kv/openrouter`, `kv/anthropic`).
 
-### Add the OpenRouter Key to Vault
+### Change the model
 
-Before you enable the OpenRouter fallback in a new cluster environment, write the API key to Vault.
-
-```bash
-vault kv put kv/openrouter api_key="sk-or-v1-xxxxxxxxxxxxxxxx"
-```
-
-### Change the Default Model
-
-To change between local inference and OpenRouter without a container rebuild, change `PRIMARY_LLM_PROVIDER` and `FALLBACK_LLM_PROVIDER` in `apps/drive-organizer/cronjob.yaml`.
+Change models in Git, not with `kubectl`. To change the model for every AI workload, edit `packages/homelab-ai/kustomize/kustomization.yaml`. To change it for the organizer only, add an `env` entry to `apps/drive-organizer/cronjob-personal.yaml` and `apps/drive-organizer/cronjob-family.yaml`:
 
 ```yaml
             env:
-            - name: PRIMARY_LLM_PROVIDER
-              value: "openrouter"
-            - name: FALLBACK_LLM_PROVIDER
-              value: "local"
+            - name: AI_MODEL
+              value: "anthropic:claude-haiku-5-5"
 ```
 
-You can also change the provider at runtime with `kubectl`.
-
-```bash
-# Make OpenRouter Gemma 4 31B primary
-kubectl -n drive-organizer set env cronjob/drive-organizer PRIMARY_LLM_PROVIDER=openrouter FALLBACK_LLM_PROVIDER=local
-
-# Revert to local SLM as primary
-kubectl -n drive-organizer set env cronjob/drive-organizer PRIMARY_LLM_PROVIDER=local FALLBACK_LLM_PROVIDER=openrouter
-
-# Disable fallback entirely (offline mode)
-kubectl -n drive-organizer set env cronjob/drive-organizer FALLBACK_LLM_PROVIDER=none
-```
+For all settings, see [AI Configuration Reference](/reference/ai-configuration/).
 
 ## Step 6: Review Quarantined Files
 

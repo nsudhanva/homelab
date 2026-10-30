@@ -1,77 +1,55 @@
 ---
-title: High-Availability AI Model Routing and Fallback Architecture
-description: The shared homelab-ai framework, Pydantic AI FallbackModel routing, and the Vault GitOps flow that keeps secrets out of Git.
+title: AI Model Routing and Fallback Architecture
+description: Why every homelab AI workload shares one model chain, how fallback and retries work, and how secrets reach the workloads.
 keywords:
   - homelab-ai
   - pydantic-ai fallback
-  - openrouter gemma 4
+  - anthropic claude
   - llama-server kubernetes
   - gitops ai architecture
 sidebar:
   order: 50
 ---
 
-# High-Availability AI Model Routing and Fallback Architecture
+# AI Model Routing and Fallback Architecture
 
-In this bare-metal Kubernetes homelab, workloads use local GPU-accelerated small language models (SLMs). These models run on bare-metal inference servers (`llama-server` with Google Gemma 4 E2B). GPU servers can have hardware stalls, out-of-memory (OOM) events, or high queue latency during batch jobs.
+The homelab runs a small language model (`gemma-4-e2b-it`) on a GTX 1050 Ti through `llama-server`. The local model is free and private, but it is slow, and it can stall or run out of memory during batch jobs. Cloud models are fast and accurate, but they cost money. The AI workloads use both through one shared package, `packages/homelab-ai`.
 
-To keep the AI applications available when these failures occur, all of them share one architecture: `packages/homelab-ai`.
+## One chain for every workload
 
----
+Before `homelab-ai` 0.2, each app declared its own LLM settings with different names, and each app had its own retry loop. Now the model chain is one setting:
 
-## Architectural Principles
-
-The AI routing architecture follows these principles:
-
-- Single Responsibility Principle (SRP): Model provider builders create specific clients. Configuration classes validate environment schemas. The router controls the failover policies.
-- Open-Closed Principle (OCP): You can register new inference providers (for example, Anthropic, Google Gemini, Ollama, vLLM) in the runtime registry. You do not have to change the consumer microservices.
-- Dependency Inversion Principle (DIP): Workloads depend on the abstract `ModelRouter` and the Pydantic AI `Model` interface. They do not depend on low-level HTTP clients.
-- GitOps with no secret exposure: Cloud API keys are never in Git repositories, container layers, or unencrypted ConfigMaps. All secrets are in HashiCorp Vault.
-
----
-
-## Core Components
-
-### Provider Strategy
-
-Provider builders implement `BaseProviderBuilder`. Each builder makes a configured Pydantic AI `Model` instance:
-
-- `LocalOpenAIProviderBuilder`: Targets the bare-metal K3s `llama-server` (`gemma-4-e2b-it`).
-- `OpenRouterProviderBuilder`: Targets the OpenRouter cloud gateway (`google/gemma-4-31b-it`). It adds the standard attribution headers (`HTTP-Referer`, `X-Title`).
-- `CustomModelProviderBuilder`: Adds mock or test models for hermetic unit tests.
-
-### ModelRouter and Pydantic AI FallbackModel
-
-The `ModelRouter` reads the active provider configuration:
-
-- If `fallback_provider` is `openrouter` and credentials exist, the router makes this model:
-  `FallbackModel(primary_model, fallback_model, fallback_on=(ModelAPIError,))`
-- The `ModelAPIError` condition catches network timeouts, dropped connections, and the HTTP status codes `429`, `500`, `502`, `503`, and `504`.
-- If the primary endpoint fails, Pydantic AI sends the inference to the fallback model on the first request attempt. Jobs do not restart and pipelines do not crash.
-
-### Symmetrical Model Toggling
-
-In each application, the operator can change the model with standard environment variables:
-
-- `PRIMARY_LLM_PROVIDER`: Set to `local` (default) or `openrouter`.
-- `FALLBACK_LLM_PROVIDER`: Set to `openrouter` (default), `local`, or `none`.
-
-To move primary inference to the cloud during local maintenance, change one variable:
-
-```bash
-kubectl -n gmail-classifier set env cronjob/gmail-classifier PRIMARY_LLM_PROVIDER=openrouter FALLBACK_LLM_PROVIDER=local
+```text
+AI_MODEL=local:gemma-4-e2b-it
+AI_FALLBACK_MODELS=openrouter:google/gemma-4-31b-it,anthropic:claude-haiku-5-5
 ```
 
----
+The kustomize component in `packages/homelab-ai/kustomize` puts these values in a ConfigMap in each AI namespace. A change to the component changes every workload. The ConfigMap name has a content hash, so a change also restarts Deployments such as `alert-summarizer`. CronJobs use the new values on their next run.
 
-## HashiCorp Vault Secret Flow
+## Task, model, and provider
 
-The secret is in HashiCorp Vault at `kv/openrouter`, in the `api_key` field. You write it there one time.
+The package has three layers:
 
-The External Secrets Operator (ESO) syncs this secret to all AI namespaces. It uses a shared `ClusterSecretStore`:
+- `AITask`: One structured LLM call with a name, an output model, and instructions. Apps use only this layer.
+- Model chain: `build_routed_model` turns the specs into Pydantic AI models and wraps them in a `FallbackModel`.
+- Providers: A registry maps a provider name (`local`, `openrouter`, `anthropic`, `openai`) to a builder and to a credential check.
 
-- `drive-organizer` $\rightarrow$ `openrouter-credentials`
-- `gmail-classifier` $\rightarrow$ `openrouter-credentials`
-- `monitoring` $\rightarrow$ `openrouter-credentials`
+Apps do not import provider SDKs, read API keys, or know which models exist. To add a provider, register a builder. You do not have to change the apps.
 
-Each workload mounts `openrouter-credentials` with `optional: true`. If Vault is sealed or the key is not present, the applications continue to run on the local SLM. Pod initialization does not fail.
+## Failure handling
+
+Failures go through three levels:
+
+- In one request, the `FallbackModel` tries the next model in the chain when a model returns an API error, or when its output fails validation. A small local model that returns bad JSON is therefore rescued by a larger cloud model.
+- If every model fails with a network error, a timeout, a 429, or a 5xx status, `AITask` waits and tries again, up to `AI_ATTEMPTS` times.
+- Then `AITask` raises `LLMConnectionError` for infrastructure failures, or `LLMOutputError` for answers that are not valid. Apps decide what to do. The Gmail classifier stops the batch on `LLMConnectionError` and sends the email to review on `LLMOutputError`.
+
+`AITask` decides whether a failure is transient from the exception type and the HTTP status. It does not search error messages for words.
+
+## Thread safety
+
+Provider HTTP clients bind to the event loop that first uses them. `run_sync` runs one event loop for each worker thread. `AITask` therefore makes one agent for each thread, so the Gmail and Drive worker pools can share one task.
+
+## Secrets
+
+API keys are only in HashiCorp Vault. The component contains an ExternalSecret that syncs `kv/openrouter` and `kv/anthropic` into a `homelab-ai-credentials` Secret in each AI namespace. If a key is missing, `homelab-ai` skips that provider and logs a message. The workload continues with the models that remain.

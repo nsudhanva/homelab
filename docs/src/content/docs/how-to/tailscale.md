@@ -193,7 +193,7 @@ The `tailscale-dns` resolver answers with the Gateway IP only for hostnames that
 
 The `tailscale-dns-updater` CronJob builds that list every 10 minutes. It reads the HTTPRoute hostnames and writes them into the `match` regex of the `template` block:
 
-```
+```text
 template IN A {
     match "^(grafana|argocd|...)[.]sudhanva[.]me[.]$"
     answer "{{ .Name }} 60 IN A <gateway IP>"

@@ -22,6 +22,7 @@ This guide shows how CI runs in GitHub Actions. It also shows how CD goes throug
 These workflows are in `.github/workflows/`:
 
 - `ci.yaml` runs pre-commit, kubeconform validation, and a docs build check. When files under `docs/` change, it also pushes the docs image.
+- `ci.yaml` also tests the Python projects listed in `.github/python-projects.json`. A project runs ruff, ty, and pytest when its directory or `packages/homelab-ai` changes. On `master`, CI then pushes the image of each changed project to `ghcr.io/nsudhanva/homelab-<name>`.
 - `cluster-smoke.yaml` is a manual and scheduled workflow. It connects to the tailnet and runs `kubectl get nodes` and `kubectl get pods -A`.
 
 ## Step 2: Configure GitHub secrets
@@ -44,6 +45,7 @@ CI validation examines the Kubernetes and GitOps manifests in this repo.
 | `infrastructure/` | YAML lint, schema validation | `ci.yaml` |
 | `bootstrap/` | YAML lint, schema validation | `ci.yaml` |
 | `docs/` | Astro Starlight build and container image push | `ci.yaml` |
+| Python projects | ruff, ty, pytest, and container image push | `ci.yaml` |
 
 ## Step 4: Trigger a cluster smoke test
 

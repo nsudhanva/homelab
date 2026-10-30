@@ -26,7 +26,7 @@ The classifier gives each imported bank transaction a category and a single-word
 - **Confidence threshold**: If a prediction is below the configured confidence threshold (default `0.60`), the classifier tags it `#Unknown`. This prevents incorrect classification of ambiguous charges. If no tag applies (for example, groceries and general shopping), the note stays clean.
 - **Scope**: The classifier processes only on-budget transactions that have no category or that have an `#Unknown` note. It skips transfers between accounts, off-budget tracking accounts (brokerage and retirement), split parents, and starting balances.
 - **Amount sign**: A negative amount is an outflow and a positive amount is an inflow. If a positive amount comes from a merchant, the classifier records it as a refund in the category of that merchant.
-- **Schedule**: A Kubernetes CronJob runs the classifier every day at 03:00 (`0 3 * * *`), after the Gmail (01:00) and Drive (02:00) jobs. The CronJob has concurrency control, and each pod is ephemeral and stops after the run. The `actual-classifier-push` CI job builds the image and publishes it to `ghcr.io/nsudhanva/homelab-actual-classifier`.
+- **Schedule**: A Kubernetes CronJob runs the classifier every day at 03:00 (`0 3 * * *`), after the Gmail (01:00) and Drive (02:00) jobs. The CronJob has concurrency control, and each pod is ephemeral and stops after the run. The `push (actual-classifier)` CI job builds the image and publishes it to `ghcr.io/nsudhanva/homelab-actual-classifier`.
 
 ## Step 1: Review Configuration and Secrets
 
@@ -35,27 +35,15 @@ The classifier gets connection parameters from environment variables. It gets cr
 ```yaml
 ACTUAL_SERVER_URL: "http://actual-budget.actual-budget.svc.cluster.local:5006"
 ACTUAL_BUDGET_NAME: "My Finances"
-PRIMARY_LLM_PROVIDER: "local"
-FALLBACK_LLM_PROVIDER: "openrouter"
-LLM_BASE_URL: "http://llama-server.llama.svc.cluster.local:8080/v1"
-LLM_MODEL: "gemma-4-e2b-it"
-OPENROUTER_MODEL_NAME: "google/gemma-4-31b-it"
 CONFIDENCE_THRESHOLD: "0.6"
 BATCH_SIZE: "50"
 ```
 
-The `actual-classifier-secrets` ExternalSecret reads `ACTUAL_PASSWORD` from Vault `kv/actual` (`password`) and `OPENROUTER_API_KEY` from `kv/openrouter` (`api_key`).
+The `actual-classifier-secrets` ExternalSecret reads `ACTUAL_PASSWORD` from Vault `kv/actual` (`password`).
 
 ### Switch models or providers
 
-Environment variables in `apps/actual-classifier/cronjob.yaml` control all provider routing. To switch, change one line in Git. ArgoCD applies the change on the next sync.
-
-- To use OpenRouter as the primary model, set `PRIMARY_LLM_PROVIDER` to `openrouter` and `FALLBACK_LLM_PROVIDER` to `local`.
-- To change the OpenRouter model, set `OPENROUTER_MODEL_NAME` to an OpenRouter model slug that supports structured output.
-- To change the local model, set `LLM_MODEL` to the alias that `llama-server` serves.
-- To disable the fallback, set `FALLBACK_LLM_PROVIDER` to `none`.
-
-The classifier does not retry the local endpoint at the HTTP level (`LLM_MAX_RETRIES`, default `0`). Thus, a timeout sends the request to the fallback provider immediately. OpenRouter requests retry transient errors (`OPENROUTER_MAX_RETRIES`, default `2`).
+The classifier uses the shared `homelab-ai` model chain from the `homelab-ai` ConfigMap and the `homelab-ai-credentials` Secret. To use another model for this job only, add an `AI_MODEL` entry to `env` in `apps/actual-classifier/cronjob.yaml`. For the variables and the providers, see [AI Configuration Reference](/reference/ai-configuration/).
 
 Make sure that the ExternalSecret is synced in the namespace:
 

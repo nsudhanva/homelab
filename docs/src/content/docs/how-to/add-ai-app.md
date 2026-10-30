@@ -1,34 +1,27 @@
 ---
-title: How to Build and Extend AI Applications with Automatic Fallback
-description: How to build or extend a homelab microservice with the shared homelab-ai routing and OpenRouter failover.
+title: How to Add an AI Job with homelab-ai
+description: Add a new AI CronJob or service that uses the shared homelab-ai model chain, with local, OpenRouter, and Anthropic models and automatic fallback.
 keywords:
   - add ai application
   - homelab-ai guide
   - pydantic-ai fallback
-  - monorepo ai package
+  - anthropic claude kubernetes
 sidebar:
   order: 25
 ---
 
-# How to Build and Extend AI Applications with Automatic Fallback
+# How to Add an AI Job with homelab-ai
 
-This guide shows how to build a new AI microservice or extend an existing application. The `packages/homelab-ai` package gives automatic fallback from the local model to a cloud model.
+This guide adds a new AI workload, for example `apps/receipt-reader`. The workload uses `packages/homelab-ai`, so it gets the shared model chain, provider credentials, fallback, and retries without extra code. For the list of settings, see [AI Configuration Reference](/reference/ai-configuration/).
 
----
+## Step 1: Add the dependency
 
-## Step 1: Declare the homelab-ai Dependency
-
-In the application directory (`apps/{your-app}/pyproject.toml`), add `homelab-ai` to the dependencies. Then configure `[tool.uv.sources]`:
+In `apps/receipt-reader/pyproject.toml`, add `homelab-ai` as a path dependency:
 
 ```toml
 [project]
-name = "my-new-app"
-version = "0.1.0"
-requires-python = ">=3.12"
 dependencies = [
-    "pydantic>=2.9.0",
-    "pydantic-ai>=2.43.0",
-    "pydantic-settings>=2.5.0",
+    "pydantic-ai>=2.63.0",
     "homelab-ai",
 ]
 
@@ -36,245 +29,126 @@ dependencies = [
 homelab-ai = { path = "../../packages/homelab-ai", editable = true }
 ```
 
-Lock the dependencies with `uv`:
+Then run `uv lock && uv sync` in the app directory.
 
-```bash
-cd apps/{your-app}
-uv lock
-uv sync
-```
+## Step 2: Define the task
 
----
-
-## Step 2: Configure Settings and the ModelRouter
-
-In the `config.py` file of the application, import the standard provider types from `homelab_ai`:
+An `AITask` is one structured LLM call. Give it a name, an output model, and instructions. Do not add model, URL, or API key settings to the app. `AITask` reads them from the environment.
 
 ```python
-from homelab_ai import FallbackProviderType, LLMClientConfig, LLMProviderType
-from pydantic import Field
-from pydantic_settings import BaseSettings
-
-
-class Settings(BaseSettings):
-    primary_llm_provider: LLMProviderType = Field(
-        default="local",
-        validation_alias="PRIMARY_LLM_PROVIDER",
-    )
-    fallback_llm_provider: FallbackProviderType = Field(
-        default="openrouter",
-        validation_alias="FALLBACK_LLM_PROVIDER",
-    )
-    llm_base_url: str = Field(
-        default="http://llama-server.llama.svc.cluster.local:8080/v1",
-        validation_alias="LLM_BASE_URL",
-    )
-    llm_model: str = Field(
-        default="gemma-4-e2b-it",
-        validation_alias="LLM_MODEL",
-    )
-    llm_timeout_seconds: float = Field(
-        default=120.0,
-        validation_alias="LLM_TIMEOUT_SECONDS",
-    )
-    openrouter_api_key: str = Field(
-        default="",
-        validation_alias="OPENROUTER_API_KEY",
-    )
-    openrouter_model_name: str = Field(
-        default="google/gemma-4-31b-it",
-        validation_alias="OPENROUTER_MODEL_NAME",
-    )
-
-    def to_llm_client_config(self) -> LLMClientConfig:
-        return LLMClientConfig(
-            primary_provider=self.primary_llm_provider,
-            fallback_provider=self.fallback_llm_provider,
-            llm_base_url=self.llm_base_url,
-            llm_model_name=self.llm_model,
-            llm_timeout_seconds=self.llm_timeout_seconds,
-            openrouter_api_key=self.openrouter_api_key,
-            openrouter_model_name=self.openrouter_model_name,
-            app_name="homelab-my-new-app",
-        )
-```
-
-In the application service or worker, make an instance of the router and create the agent:
-
-```python
-from homelab_ai import ModelRouter
+from homelab_ai import AITask, HomelabAIError, LLMConnectionError
 from pydantic import BaseModel
 
 
-class AnalysisOutput(BaseModel):
-    summary: str
-    action_required: bool
+class Receipt(BaseModel):
+    merchant: str
+    total: float
+    confidence: float
 
 
-class MyService:
-    def __init__(self, settings: Settings) -> None:
-        self.router = ModelRouter(settings.to_llm_client_config())
-        self.agent = self.router.create_agent(
-            output_type=AnalysisOutput,
-            system_prompt="Analyze the input and return structured recommendations.",
+class ReceiptReader:
+    def __init__(self, task: AITask[Receipt] | None = None) -> None:
+        self.task = task or AITask(
+            name="receipt-reader",
+            output_type=Receipt,
+            instructions="Extract the merchant and the total from the receipt text.",
         )
 
-    def run_sync(self, text: str) -> AnalysisOutput:
-        result = self.agent.run_sync(text)
-        return result.output
+    def read(self, text: str) -> Receipt | None:
+        try:
+            return self.task.run_sync(text)
+        except HomelabAIError:
+            return None
 ```
 
----
+`run_sync` raises one of two errors when it cannot get a valid answer:
 
-## Step 3: Write Hermetic Fallback Unit Tests
+- `LLMConnectionError`: Every model was unreachable, timed out, or rate limited. Batch jobs can stop and let Kubernetes retry later.
+- `LLMOutputError`: A model answered, but the answer did not match the output model. Send the item to manual review.
 
-Use `CustomModelProviderBuilder` to inject mock models. Then make sure that fallback works when the local LLM fails:
+Use `await task.run(text)` in async code such as FastAPI handlers.
+
+## Step 3: Test with injected models
+
+Pass `models` to inject Pydantic AI test models. Tests then run offline:
 
 ```python
-from homelab_ai import LLMClientConfig, ModelRouter
-from homelab_ai.providers import CustomModelProviderBuilder
-from pydantic_ai.exceptions import ModelAPIError
+from homelab_ai import AISettings, AITask
 from pydantic_ai.models.test import TestModel
 
 
-def test_service_failover_to_openrouter() -> None:
-    class FailingLocalModel(TestModel):
-        async def request(self, *args, **kwargs):
-            raise ModelAPIError(
-                model_name="gemma-4-e2b-it", message="Local LLM crashed"
+def test_reads_receipt() -> None:
+    task = AITask(
+        name="receipt-reader",
+        output_type=Receipt,
+        instructions="",
+        settings=AISettings(_env_file=None, AI_ATTEMPTS=1),
+        models=[
+            TestModel(
+                custom_output_args={
+                    "merchant": "Safeway",
+                    "total": 12.5,
+                    "confidence": 0.9,
+                }
             )
-
-    fallback_model = TestModel(
-        custom_output_args={"summary": "Rescued by cloud", "action_required": True}
+        ],
     )
-
-    router = ModelRouter(
-        config=LLMClientConfig(
-            primary_provider="local",
-            fallback_provider="openrouter",
-            openrouter_api_key="test-key",
-        ),
-        custom_primary_builder=CustomModelProviderBuilder(FailingLocalModel()),
-        custom_fallback_builder=CustomModelProviderBuilder(fallback_model),
-    )
-
-    agent = router.create_agent(output_type=AnalysisOutput)
-    res = agent.run_sync("Input text")
-    assert res.output.summary == "Rescued by cloud"
+    assert ReceiptReader(task).read("SAFEWAY $12.50").merchant == "Safeway"
 ```
 
----
+Fallback and retry behavior is tested once in `packages/homelab-ai`. Do not test it again in each app.
 
-## Step 4: Add Kubernetes Manifests and ExternalSecret
+## Step 4: Add the Kubernetes wiring
 
-Add an `openrouter-secret.yaml` manifest in the app directory. This manifest gets the credentials from Vault:
+Add the shared component to `apps/receipt-reader/kustomization.yaml`. The component creates the `homelab-ai` ConfigMap (model chain) and the `homelab-ai-credentials` ExternalSecret (API keys from Vault) in the namespace of the app:
 
 ```yaml
-apiVersion: external-secrets.io/v1
-kind: ExternalSecret
-metadata:
-  name: openrouter-credentials
-  namespace: my-new-app
-  annotations:
-    argocd.argoproj.io/sync-options: SkipDryRunOnMissingResource=true
-    argocd.argoproj.io/sync-wave: "1"
-spec:
-  refreshInterval: 1h
-  secretStoreRef:
-    name: vault
-    kind: ClusterSecretStore
-  target:
-    name: openrouter-credentials
-    creationPolicy: Owner
-  data:
-  - secretKey: OPENROUTER_API_KEY
-    remoteRef:
-      key: openrouter
-      property: api_key
+namespace: receipt-reader
+resources:
+  - namespace.yaml
+  - cronjob.yaml
+components:
+  - ../../packages/homelab-ai/kustomize
 ```
 
-In the `deployment.yaml` or `cronjob.yaml` file, mount the secret and configure the provider routing:
+In the container spec, load both:
 
 ```yaml
-            envFrom:
-            - secretRef:
-                name: openrouter-credentials
-                optional: true
-            env:
-            - name: PRIMARY_LLM_PROVIDER
-              value: "local"
-            - name: FALLBACK_LLM_PROVIDER
-              value: "openrouter"
-            - name: LLM_BASE_URL
-              value: "http://llama-server.llama.svc.cluster.local:8080/v1"
+envFrom:
+  - configMapRef:
+      name: homelab-ai
+  - secretRef:
+      name: homelab-ai-credentials
 ```
 
----
-
-## Step 5: Configure Monorepo Dockerfile and CI Pipeline
-
-In the `Dockerfile`, copy `packages/homelab-ai` into the build context. Install it with `--no-editable`:
-
-```dockerfile
-FROM ghcr.io/astral-sh/uv:python3.12-bookworm-slim AS builder
-
-ENV UV_COMPILE_BYTECODE=1 \
-    UV_LINK_MODE=copy
-
-WORKDIR /build
-
-COPY packages/homelab-ai /build/packages/homelab-ai
-COPY apps/my-new-app /build/apps/my-new-app
-WORKDIR /build/apps/my-new-app
-
-RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync --frozen --no-dev --no-editable
-
-FROM python:3.12-slim-bookworm AS runner
-WORKDIR /app
-
-RUN groupadd -g 10001 appgroup && \
-    useradd -u 10001 -g appgroup -s /bin/sh -m appuser
-
-COPY --from=builder --chown=appuser:appgroup /build/apps/my-new-app/.venv /app/.venv
-COPY --from=builder --chown=appuser:appgroup /build/apps/my-new-app/src /app/src
-
-ENV PATH="/app/.venv/bin:$PATH" \
-    PYTHONUNBUFFERED=1
-
-USER appuser
-
-ENTRYPOINT ["python", "-m", "my_new_app.main"]
-```
-
-In `.github/workflows/ci.yaml`, configure the Docker build action with `context: .`:
+To use a different model for this workload only, add an `env` entry. Values in `env` override `envFrom`:
 
 ```yaml
-      with:
-        context: .
-        file: ./apps/my-new-app/Dockerfile
+env:
+  - name: AI_MODEL
+    value: "anthropic:claude-haiku-5-5"
 ```
 
----
+## Step 5: Add the Dockerfile and CI entry
 
-## Step 6: Deploy and Test Model Flipping
+Build from the repository root so the image can copy `packages/homelab-ai`. Copy `apps/gmail-classifier/Dockerfile` and change the app name.
 
-Make sure that the lint checks and the tests pass:
+Add one line to `.github/python-projects.json`:
+
+```json
+{"name": "receipt-reader", "path": "apps/receipt-reader", "image": true}
+```
+
+CI then lints, type-checks, and tests the app when the app or `homelab-ai` changes. On `master`, CI also pushes `ghcr.io/nsudhanva/homelab-receipt-reader`.
+
+## Step 6: Check the models before you push
+
+Run the checks and call the real models from your workstation:
 
 ```bash
-uv run ruff check
-uv run ruff format --check
-uv run ty check
-uv run pytest
-pre-commit run --all-files
+uv run ruff check && uv run ruff format --check && uv run ty check && uv run pytest
+LOCAL_LLM_BASE_URL=https://ai.sudhanva.me/v1 uv run homelab-ai models
+LOCAL_LLM_BASE_URL=https://ai.sudhanva.me/v1 uv run homelab-ai ping
 ```
 
-After ArgoCD deploys the app, you can change the primary model at runtime:
-
-```bash
-# Set OpenRouter Gemma 4 31B as primary
-kubectl -n my-new-app set env deployment/my-new-app PRIMARY_LLM_PROVIDER=openrouter FALLBACK_LLM_PROVIDER=local
-
-# Revert to local inference
-kubectl -n my-new-app set env deployment/my-new-app PRIMARY_LLM_PROVIDER=local FALLBACK_LLM_PROVIDER=openrouter
-```
+Push to Git. ArgoCD deploys the workload.

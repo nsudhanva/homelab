@@ -133,6 +133,7 @@ export default defineConfig({
               items: [
                 { label: 'Add Worker Node', slug: 'how-to/add-worker-node' },
                 { label: 'Deploy Apps', slug: 'how-to/deploy-apps' },
+                { label: 'Add an AI Job', slug: 'how-to/add-ai-app' },
                 { label: 'Media Automation & VPN', slug: 'how-to/media-automation' },
                 { label: 'Actual Budget', slug: 'how-to/actual-budget' },
                 { label: 'Sync ArgoCD Apps', slug: 'how-to/argocd-sync' },
@@ -194,6 +195,7 @@ export default defineConfig({
             { label: 'Storage Architecture', slug: 'explanation/storage-architecture' },
             { label: 'Media VPN & Storage', slug: 'explanation/media-vpn-architecture' },
             { label: 'AI Email Classifier', slug: 'explanation/gmail-classifier' },
+            { label: 'AI Model Routing', slug: 'explanation/homelab-ai-architecture' },
           ],
         },
 
@@ -202,6 +204,7 @@ export default defineConfig({
           items: [
             { label: 'Infrastructure Components', slug: 'reference/infrastructure-components' },
             { label: 'Applications Catalog', slug: 'reference/applications' },
+            { label: 'AI Configuration', slug: 'reference/ai-configuration' },
             { label: 'Version Matrix', slug: 'reference/versions' },
             { label: 'Operations Checklist', slug: 'reference/operations-checklist' },
             { label: 'Documentation Structure', slug: 'reference/docs-structure' },
