@@ -18,7 +18,7 @@ spec:
   template:
     metadata:
       annotations:
-        config.kubernetes.io/restartedAt: "2026-10-24T17:26:00Z"
+        config.kubernetes.io/restartedAt: "2026-10-29T12:00:00Z"
       labels:
         app: homer
     spec:
