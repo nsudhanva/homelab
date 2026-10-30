@@ -11,8 +11,6 @@ sidebar:
   order: 17
 ---
 
-# GitOps-Driven Infrastructure Automation
-
 This repository runs host provisioning and K3s upgrades from Git. A push to `master` starts each process.
 
 ```mermaid

@@ -11,8 +11,6 @@ sidebar:
   order: 4
 ---
 
-# Ansible Configuration
-
 Ansible playbooks in this repository configure the bare-metal node. Make all node changes through the playbooks, not with commands on the node.
 
 ## Step 1: Learn the repository layout

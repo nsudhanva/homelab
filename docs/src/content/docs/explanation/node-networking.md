@@ -12,8 +12,6 @@ sidebar:
   order: 3
 ---
 
-# Node Networking and DNS
-
 This page tells how the cluster node gets its address and how DNS works at each layer. It also tells how the node divides its resources between workloads and the control plane.
 
 ## Node addressing

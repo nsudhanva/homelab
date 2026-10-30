@@ -12,8 +12,6 @@ sidebar:
   order: 1
 ---
 
-# From Scratch
-
 Use this guide to provision a bare-metal Kubernetes cluster on Ubuntu 26.04 with Ansible and K3s. This repository is the single source of truth. One command changes a machine with a base OS into a running cluster that ArgoCD manages.
 
 ## Step 1: Configure the Inventory

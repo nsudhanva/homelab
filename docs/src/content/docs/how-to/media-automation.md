@@ -13,8 +13,6 @@ sidebar:
   order: 3
 ---
 
-# Media Automation and WireGuard VPN Stack
-
 This guide shows how to configure the media automation stack in the `media` namespace.
 
 ```mermaid

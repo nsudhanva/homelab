@@ -11,8 +11,6 @@ sidebar:
   order: 4
 ---
 
-# Local-Path Storage Architecture
-
 The homelab uses the Local-Path Provisioner that K3s includes. This page tells how the provisioner creates volumes and where the data is on the host.
 
 ## Architecture Overview

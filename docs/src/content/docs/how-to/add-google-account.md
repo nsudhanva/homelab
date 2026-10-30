@@ -12,8 +12,6 @@ sidebar:
   order: 21
 ---
 
-# How to Add a Google Account to the AI Workloads
-
 This guide adds a Google account to the AI workloads `apps/gmail-classifier` and `apps/drive-organizer`. You declare the account in a file, keep its credentials in Vault, and let ArgoCD deploy it.
 
 Each account has a nickname, and all accounts have the same configuration. The repository has two accounts: `personal` and `family`. Change the account configuration only through the files in Git. Do not create or change account workloads with `kubectl`.

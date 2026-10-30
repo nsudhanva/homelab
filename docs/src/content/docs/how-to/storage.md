@@ -11,8 +11,6 @@ sidebar:
   order: 7
 ---
 
-# Persistent Storage (Local-Path Provisioner)
-
 The cluster uses the K3s `local-path-provisioner` to create persistent volumes when a claim needs one. The volumes are on the NVMe SSD at `/home/k3s-storage`.
 
 ```mermaid

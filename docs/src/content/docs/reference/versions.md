@@ -12,8 +12,6 @@ sidebar:
   order: 3
 ---
 
-# Version Matrix
-
 Keep these versions aligned when you upgrade a component.
 
 :::note

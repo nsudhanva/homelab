@@ -13,8 +13,6 @@ sidebar:
   order: 2
 ---
 
-# Applications Catalog Reference
-
 This reference lists the user workloads in the cluster. ArgoCD syncs each application through the `apps` ApplicationSet.
 
 CronJob times are in the `America/Los_Angeles` time zone, which each CronJob declares with `timeZone`.

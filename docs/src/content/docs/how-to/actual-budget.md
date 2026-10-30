@@ -12,8 +12,6 @@ sidebar:
   order: 8
 ---
 
-# Actual Budget with SimpleFIN
-
 This guide tells how the cluster deploys Actual Budget. It also tells how Actual Budget connects to bank feeds through SimpleFIN Bridge.
 
 ## Architecture and Layout

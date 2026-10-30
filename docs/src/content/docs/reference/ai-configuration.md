@@ -10,8 +10,6 @@ sidebar:
   order: 40
 ---
 
-# AI Configuration Reference
-
 All AI workloads read the same settings through `homelab_ai.AISettings`. The cluster defaults are in `packages/homelab-ai/kustomize/kustomization.yaml`.
 
 ## Model specs

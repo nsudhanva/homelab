@@ -14,8 +14,6 @@ sidebar:
   order: 10
 ---
 
-# Deploy Prometheus And Grafana
-
 This guide installs the Prometheus stack with Grafana and Alertmanager. The Tailscale Gateway exposes the three web interfaces. Prometheus collects the Headlamp metrics.
 
 ## Step 1: Store Grafana admin credentials in Vault

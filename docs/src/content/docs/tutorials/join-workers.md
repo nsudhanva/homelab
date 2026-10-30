@@ -11,6 +11,4 @@ sidebar:
   order: 8
 ---
 
-# Add Workers
-
 The cluster has one K3s server node, `legion`, and no worker nodes. The repository has no inventory group and no Ansible role for K3s agents, so the playbook cannot add a worker.

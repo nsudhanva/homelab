@@ -11,8 +11,6 @@ sidebar:
   order: 5
 ---
 
-# K3s Bootstrap
-
 In this tutorial, you provision the K3s control plane on the bare-metal node and start the GitOps control loop.
 
 ## Step 1: Run the Ansible provisioning playbook

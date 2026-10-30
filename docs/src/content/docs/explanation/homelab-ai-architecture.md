@@ -11,8 +11,6 @@ sidebar:
   order: 50
 ---
 
-# AI Model Routing and Fallback Architecture
-
 All AI jobs in the homelab use one shared package, `packages/homelab-ai`. The package sends each request to Claude Haiku 5.5. If Claude Haiku 5.5 fails, the package tries OpenRouter and then the local model.
 
 The local model is `gemma-4-e2b-it`. It runs on a GTX 1050 Ti through `llama-server`. It costs nothing and keeps the data in the cluster, but it is slow and has an 8K token context. It can also stall or run out of memory during batch jobs. The llama.cpp web UI at `ai.sudhanva.me` uses only the local model.

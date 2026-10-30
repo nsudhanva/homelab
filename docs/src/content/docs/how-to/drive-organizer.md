@@ -11,8 +11,6 @@ sidebar:
   order: 20
 ---
 
-# How to Organize Google Drive with AI
-
 This guide tells how to run, configure, and monitor the Google Drive Organizer (`apps/drive-organizer/`).
 
 ## Architecture and Workflow

@@ -11,8 +11,6 @@ sidebar:
   order: 2
 ---
 
-# Add a Worker Node
-
 The cluster has one server node, `legion`, and no worker nodes. The repository has no `k3s_agents` inventory group and no agent role, so it cannot join a worker node.
 
 ## Current Scope

@@ -12,8 +12,6 @@ sidebar:
   order: 4
 ---
 
-# Operations Checklist
-
 Use these checklists to monitor the cluster and to examine it after a change or a reboot.
 
 ## Routine checks

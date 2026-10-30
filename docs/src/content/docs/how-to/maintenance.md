@@ -12,8 +12,6 @@ sidebar:
   order: 13
 ---
 
-# Cluster Maintenance
-
 This guide gives the routine maintenance procedures for the bare-metal node. It includes operating system patches, K3s upgrades, and volume backups.
 
 ## Routine Cluster Health Checks

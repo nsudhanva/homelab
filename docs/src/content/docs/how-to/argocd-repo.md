@@ -11,8 +11,6 @@ sidebar:
   order: 5
 ---
 
-# Connect This Repo To ArgoCD
-
 ArgoCD reads `https://github.com/nsudhanva/homelab.git`. The repository is public, so ArgoCD can clone it without credentials. ArgoCD Image Updater needs credentials to push its write-back commits, so the repository declares a repository Secret.
 
 Do not add the repository with `argocd repo add` or with the UI. External Secrets manages the repository Secret.

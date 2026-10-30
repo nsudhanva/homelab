@@ -12,8 +12,6 @@ sidebar:
   order: 17
 ---
 
-# Expose Headlamp With Tailscale Gateway
-
 Headlamp is a Kubernetes UI. ArgoCD deploys it from `apps/headlamp/` as `app-headlamp`. The Tailscale Gateway exposes it at `headlamp.sudhanva.me`.
 
 ## Step 1: Review the App Manifests

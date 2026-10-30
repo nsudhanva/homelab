@@ -9,8 +9,6 @@ sidebar:
   order: 45
 ---
 
-# Tailscale Terraform Reference
-
 `terraform/tailscale/` manages the tailnet with the [Tailscale Terraform provider](https://registry.terraform.io/providers/tailscale/tailscale/latest/docs). For the change procedure, refer to [Manage Tailscale with Terraform](/how-to/tailscale-terraform/).
 
 ## Files

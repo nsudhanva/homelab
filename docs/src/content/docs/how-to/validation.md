@@ -13,8 +13,6 @@ sidebar:
   order: 14
 ---
 
-# Validation
-
 This guide gives the checks for the cluster, GitOps sync, tailnet ingress, and External Secrets.
 
 ## Step 1: Validate the cluster

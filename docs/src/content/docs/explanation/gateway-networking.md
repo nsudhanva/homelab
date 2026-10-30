@@ -12,8 +12,6 @@ sidebar:
   order: 2
 ---
 
-# Gateway API and Networking
-
 This page tells how traffic goes from tailnet clients to the applications in the cluster.
 
 ## Overview

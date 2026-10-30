@@ -11,8 +11,6 @@ sidebar:
   order: 1
 ---
 
-# Cluster Setup Tutorials
-
 These tutorials build a bare-metal K3s cluster from an empty machine. The cluster runs on node `legion` (Ubuntu 26.04 LTS).
 
 ```mermaid

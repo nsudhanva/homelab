@@ -14,8 +14,6 @@ sidebar:
   order: 9
 ---
 
-# Tailscale
-
 This guide configures Tailscale on the node and exposes the cluster services to the tailnet through the Tailscale Gateway.
 
 ## Step 1: Set up Tailscale

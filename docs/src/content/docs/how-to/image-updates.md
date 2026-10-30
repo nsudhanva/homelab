@@ -12,8 +12,6 @@ sidebar:
   order: 6
 ---
 
-# Automated Image Updates
-
 This guide configures ArgoCD Image Updater. Image Updater tracks container images and commits the updates to Git.
 
 ## Step 1: Store registry credentials in Vault

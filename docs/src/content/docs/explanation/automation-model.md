@@ -13,8 +13,6 @@ sidebar:
   order: 1
 ---
 
-# Automation Model
-
 The repository defines each layer of the homelab as code. A control loop applies each layer:
 
 | Tool | Location | Scope |

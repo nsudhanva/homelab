@@ -11,8 +11,6 @@ sidebar:
   order: 3
 ---
 
-# Host Preparation
-
 This tutorial prepares a physical machine (node `legion`) with Ubuntu 26.04 LTS for use as a Kubernetes node.
 
 ## Step 1: Install Ubuntu 26.04 LTS

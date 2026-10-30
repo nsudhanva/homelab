@@ -11,8 +11,6 @@ sidebar:
   order: 10
 ---
 
-# Ubuntu Workstation
-
 The workstation container gives you an Ubuntu 26.04 shell with Docker, Ansible, and `kubectl`. It runs on macOS hosts that have the Apple `container` CLI (`brew install container`). Use it when a task needs Linux tools.
 
 ## Step 1: Start the container

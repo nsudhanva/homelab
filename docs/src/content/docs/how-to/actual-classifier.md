@@ -11,8 +11,6 @@ sidebar:
   order: 21
 ---
 
-# How to Auto-Classify Actual Budget Transactions
-
 Use this guide to configure, benchmark, run, and monitor the Actual Budget transaction classifier (`apps/actual-classifier/`).
 
 ## Architecture and Workflow

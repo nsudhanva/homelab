@@ -12,8 +12,6 @@ sidebar:
   order: 4
 ---
 
-# Sync ArgoCD Applications
-
 Use this guide to refresh the status of an application, start a sync, or repair drift. The `apps` and `infrastructure` ApplicationSets enable automated sync on each Application. Use a manual sync during troubleshooting.
 
 ## Step 1: Check application status

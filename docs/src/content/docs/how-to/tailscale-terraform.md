@@ -10,8 +10,6 @@ sidebar:
   order: 9
 ---
 
-# Manage Tailscale with Terraform
-
 Terraform in `terraform/tailscale/` manages the tailnet. Make every change to the policy file, DNS, tailnet settings, and device tags there. Do not change them in the Tailscale admin console. The console shows a banner that an external system manages the policy. The weekly drift check fails when the tailnet and the code are different.
 
 For the list of managed resources, credentials, and state, refer to [Tailscale Terraform Reference](/reference/tailscale-terraform/).

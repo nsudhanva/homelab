@@ -10,8 +10,6 @@ sidebar:
   order: 25
 ---
 
-# How to Add an AI Job with homelab-ai
-
 This guide adds an AI workload, for example `apps/receipt-reader`. The workload uses `packages/homelab-ai`. The package gives it the shared model chain, the provider credentials, the fallback, and the retries. For the list of settings, see [AI Configuration Reference](/reference/ai-configuration/).
 
 ## Step 1: Add the dependency

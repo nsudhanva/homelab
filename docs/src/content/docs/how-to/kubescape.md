@@ -13,8 +13,6 @@ sidebar:
   order: 12
 ---
 
-# Kubescape Security Scanning
-
 This guide shows how to operate Kubescape in offline mode. In this mode, Kubescape does configuration scans and vulnerability scans in the cluster.
 
 ## Step 1: Sync the Kubescape application

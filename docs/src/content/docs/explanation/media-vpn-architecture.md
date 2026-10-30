@@ -11,8 +11,6 @@ sidebar:
   order: 7
 ---
 
-# Media VPN and Storage Architecture
-
 This page tells how the media stack keeps BitTorrent traffic in the VPN, and how the media apps share one storage volume.
 
 ```mermaid

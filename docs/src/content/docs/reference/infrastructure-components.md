@@ -15,8 +15,6 @@ sidebar:
   order: 1
 ---
 
-# Infrastructure Components
-
 This page lists each infrastructure component, its path, and its function.
 
 ```mermaid

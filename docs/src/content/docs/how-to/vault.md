@@ -14,8 +14,6 @@ sidebar:
   order: 8
 ---
 
-# Vault Secrets
-
 Vault keeps all cluster secrets. External Secrets Operator syncs them into Kubernetes Secrets.
 
 ```mermaid

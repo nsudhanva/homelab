@@ -13,8 +13,6 @@ sidebar:
   order: 15
 ---
 
-# CI And CD With GitHub Actions
-
 This guide tells how GitHub Actions runs CI and how ArgoCD runs CD.
 
 ## Step 1: Review the Workflows

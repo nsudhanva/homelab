@@ -13,8 +13,6 @@ sidebar:
   order: 3
 ---
 
-# Deploy Apps With GitOps
-
 This guide tells how to deploy a workload from this repository through the ArgoCD ApplicationSets.
 
 ## Step 1: Add an App Directory
