@@ -3,10 +3,11 @@ kind: Kustomization
 namespace: gmail-classifier
 resources:
 - namespace.yaml
-- openrouter-secret.yaml
 - secret-personal.yaml
 - cronjob-personal.yaml
 - cronjob-personal-mark-read.yaml
 - secret-family.yaml
 - cronjob-family.yaml
 - cronjob-family-mark-read.yaml
+components:
+- ../../packages/homelab-ai/kustomize

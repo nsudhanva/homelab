@@ -43,11 +43,13 @@ spec:
               cpu: 1000m
               memory: 512Mi
           envFrom:
+            - configMapRef:
+                name: homelab-ai
+            - secretRef:
+                name: homelab-ai-credentials
             - secretRef:
                 name: gmail-credentials
           env:
-            - name: LLM_BASE_URL
-              value: "http://llama-server.llama.svc.cluster.local:8080/v1"
             - name: TELEGRAM_CHAT_ID
               value: "7341944813"
             - name: CONFIDENCE_THRESHOLD

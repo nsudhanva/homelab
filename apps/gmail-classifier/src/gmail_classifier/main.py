@@ -8,7 +8,9 @@ import time
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
-from .classifier import EmailClassifier, LLMConnectionError
+from homelab_ai import LLMConnectionError
+
+from .classifier import EmailClassifier
 from .config import Settings
 from .gmail_client import GmailClient
 from .notifier import TelegramNotifier
@@ -191,15 +193,12 @@ def run_pipeline(
 
     if classifier is None:
         classifier = EmailClassifier(
-            base_url=settings.llm_base_url,
-            model_name=settings.llm_model,
             confidence_threshold=settings.confidence_threshold,
             quarantine_label=settings.quarantine_label,
             processed_label=settings.processed_label,
-            timeout_seconds=settings.llm_timeout_seconds,
             allow_label_creation=settings.allow_label_creation,
-            config=settings.to_llm_client_config(),
         )
+        logger.info(f"AI models: {classifier.task.describe()}")
 
     if notifier is None:
         notifier = TelegramNotifier(
