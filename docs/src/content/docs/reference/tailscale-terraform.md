@@ -32,7 +32,7 @@ sidebar:
 | Resource | What it controls |
 | --- | --- |
 | `tailscale_acl.this` | The whole policy file |
-| `tailscale_dns_configuration.this` | Global nameservers (Technitium `technitium-dns`, with AdGuard DNS `94.140.14.14` and `94.140.15.15` as the fallback), split DNS for `sudhanva.me` (`tailscale-dns`), MagicDNS, override local DNS |
+| `tailscale_dns_configuration.this` | Global nameserver (Technitium, `technitium-dns`), split DNS for `sudhanva.me` (`tailscale-dns`), MagicDNS, override local DNS |
 | `tailscale_tailnet_settings.this` | Key expiry (180 days), device and user approval, auto updates, HTTPS, flow logging, external policy management |
 | `tailscale_device_tags.legion` | `tag:server` on `legion` |
 

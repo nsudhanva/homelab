@@ -64,7 +64,6 @@ flowchart TB
     Public["Public resolvers"]
 
     Client -->|"global nameserver"| Technitium
-    Client -->|"fallback nameserver"| AdGuard["AdGuard DNS"]
     Client -->|"sudhanva.me"| SplitDNS
     Resolved --> Upstream
     CoreDNS -->|"forward ."| Resolved
@@ -92,12 +91,11 @@ Tailnet clients get their DNS configuration from Tailscale. Terraform sets it in
 | Setting | Value |
 | --- | --- |
 | Global nameserver | Tailscale IP of the `technitium-tailscale` Service in namespace `technitium` (Tailscale hostname `technitium-dns`). Technitium provides ad blocking and DNSSEC validation (`apps/technitium/`) |
-| Fallback global nameservers | AdGuard DNS `94.140.14.14` and `94.140.15.15`, which also block ads |
 | Split DNS for `sudhanva.me` | `tailscale-dns` Tailscale IP (`infrastructure/tailscale-dns/`) |
 | MagicDNS | Enabled |
 | Override local DNS | Enabled |
 
-Technitium and the `sudhanva.me` resolver both run in the cluster. AdGuard DNS (`94.140.14.14`, `94.140.15.15`) is a second global nameserver. Tailscale queries all global nameservers in parallel and uses the fastest answer. AdGuard DNS also blocks ads, so ad blocking works whichever server answers. When the cluster is down, tailnet clients still resolve public names through AdGuard DNS, but `*.sudhanva.me` names do not resolve. Cluster nodes are not affected, because they run with `--accept-dns=false`. To change the fallback, refer to [Change the fallback nameservers](/how-to/tailscale-terraform/#change-the-fallback-nameservers).
+Technitium and the `sudhanva.me` resolver both run in the cluster, and there is no fallback nameserver. When the cluster is down, tailnet clients cannot resolve names. Cluster nodes are not affected, because they run with `--accept-dns=false`. To add a fallback, refer to [Add a fallback nameserver](/how-to/tailscale-terraform/#add-a-fallback-nameserver).
 
 ## Resource reservations
 
