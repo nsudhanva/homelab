@@ -1,27 +1,22 @@
-"""homelab-ai: High-availability LLM routing and resilience for homelab services."""
+"""homelab-ai: one model chain, one task API, every provider, for all homelab AI jobs."""
 
-from .config import FallbackProviderType, LLMClientConfig, LLMProviderType
-from .exceptions import HomelabAIError, LLMConfigurationError, LLMConnectionError
-from .providers import (
-    BaseProviderBuilder,
-    CustomModelProviderBuilder,
-    LocalOpenAIProviderBuilder,
-    OpenRouterProviderBuilder,
-    register_provider,
-)
-from .router import ModelRouter
+from .exceptions import HomelabAIError, LLMConfigurationError, LLMConnectionError, LLMOutputError
+from .providers import Provider, ProviderContext, build_model, build_routed_model, register_provider
+from .settings import AISettings, ModelSpec
+from .task import AITask, is_transient
 
 __all__ = [
-    "BaseProviderBuilder",
-    "CustomModelProviderBuilder",
-    "FallbackProviderType",
+    "AISettings",
+    "AITask",
     "HomelabAIError",
-    "LLMClientConfig",
     "LLMConfigurationError",
     "LLMConnectionError",
-    "LLMProviderType",
-    "LocalOpenAIProviderBuilder",
-    "ModelRouter",
-    "OpenRouterProviderBuilder",
+    "LLMOutputError",
+    "ModelSpec",
+    "Provider",
+    "ProviderContext",
+    "build_model",
+    "build_routed_model",
+    "is_transient",
     "register_provider",
 ]

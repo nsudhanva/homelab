@@ -6,8 +6,12 @@ class HomelabAIError(Exception):
 
 
 class LLMConnectionError(HomelabAIError, RuntimeError):
-    """Raised when the LLM server or fallback is unreachable or timed out."""
+    """Every model in the chain was unreachable, timed out, or rate limited."""
+
+
+class LLMOutputError(HomelabAIError, RuntimeError):
+    """A model answered, but no answer passed output validation."""
 
 
 class LLMConfigurationError(HomelabAIError, ValueError):
-    """Raised when LLM configuration or provider settings are invalid."""
+    """The model chain or provider settings are invalid."""

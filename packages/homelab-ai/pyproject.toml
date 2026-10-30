@@ -1,15 +1,19 @@
 [project]
 name = "homelab-ai"
-version = "0.1.0"
-description = "High-availability LLM routing, fallback models, and agent factories for homelab"
+version = "0.2.0"
+description = "One model chain and task API for every homelab AI workload"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
     "pydantic>=2.9.0",
-    "pydantic-settings>=2.5.0",
-    "pydantic-ai>=2.43.0",
-    "openai>=1.50.0",
+    "pydantic-settings>=2.16.2",
+    "pydantic-ai>=2.63.0",
+    "openai>=3.41.0",
+    "anthropic>=2.3.0",
 ]
+
+[project.scripts]
+homelab-ai = "homelab_ai.cli:main"
 
 [build-system]
 requires = ["hatchling"]
