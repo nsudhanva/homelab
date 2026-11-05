@@ -40,7 +40,6 @@ def process_single_file(
     logger.info(f"Inspecting '{filename}' (ID: {file_id}, MIME: {mime_type}){path_desc}")
 
     try:
-        # 1. Download initial bytes for inspection
         file_bytes = drive_client.download_file_header_bytes(
             file_id, mime_type=mime_type, max_bytes=settings.max_download_bytes
         )
@@ -51,10 +50,8 @@ def process_single_file(
             max_chars=settings.max_document_chars,
             pdf_max_pages=settings.pdf_max_pages,
             created_time_str=created_time,
-            folder_breadcrumbs=breadcrumbs,
         )
 
-        # 2. Handle Media Files (Deterministic datetime organization)
         if inspection.is_media and inspection.media_date:
             dt = inspection.media_date
             target_folder = f"Media/{dt.year}/{dt.year}-{dt.month:02d}"
@@ -75,13 +72,12 @@ def process_single_file(
             stats.actions.append(f"📷 {filename} → {target_folder}/")
             return True
 
-        # 3. Handle Documents (Classifier with Pydantic AI)
         if inspection.has_extractable_text:
-            logger.info(
+            logger.debug(
                 f"Extracted {len(inspection.extracted_text)} chars from {inspection.page_count} page(s) of '{filename}'. Submitting to LLM..."
             )
         else:
-            logger.info(
+            logger.debug(
                 f"No extractable text in '{filename}' ({mime_type}). Submitting metadata to LLM..."
             )
 
@@ -98,14 +94,15 @@ def process_single_file(
             f"LLM Classified '{filename}' -> '{clean_name}' in '{target_folder}' "
             f"(person={res.person}, conf={res.confidence:.2f}, is_joint={res.is_joint})"
         )
-        logger.info(f"Summary: {res.summary}")
-        logger.info(f"Reasoning: {res.reasoning}")
+        logger.debug(f"Summary: {res.summary}")
+        logger.debug(f"Reasoning: {res.reasoning}")
 
         if res.category == "Review" or res.confidence < settings.confidence_threshold:
             stats.total_quarantined += 1
         else:
             stats.total_docs_classified += 1
 
+        spouse = "Maanasa" if res.person == "Sudhanva" else "Sudhanva"
         if not dry_run:
             target_folder_id = drive_client.get_or_create_path(target_folder)
             drive_client.move_and_tag_file(
@@ -119,7 +116,6 @@ def process_single_file(
 
             # Handle Joint Documents: Create full independent copy under spouse folder
             if res.is_joint and res.person in ("Sudhanva", "Maanasa"):
-                spouse = "Maanasa" if res.person == "Sudhanva" else "Sudhanva"
                 spouse_path = target_folder.replace(f"{res.person}/", f"{spouse}/", 1)
                 spouse_folder_id = drive_client.get_or_create_path(spouse_path)
                 drive_client.copy_file(
@@ -134,7 +130,6 @@ def process_single_file(
 
         action_desc = f"📄 {clean_name} → {target_folder}/"
         if res.is_joint:
-            spouse = "Maanasa" if res.person == "Sudhanva" else "Sudhanva"
             action_desc += f" (+ Joint Copy in {spouse}/)"
         stats.actions.append(action_desc)
 
@@ -181,7 +176,6 @@ def run_pipeline(
     classifier = DriveClassifier(confidence_threshold=settings.confidence_threshold)
     logger.info(f"[{settings.account_name}] AI models: {classifier.document_task.describe()}")
 
-    # 1. Process loose files in root (or target folder)
     folder_id = "root" if scope == "root" else None
     logger.info(
         f"[{settings.account_name}] Scanning for unprocessed Google Drive files (scope={scope}, folder_id={folder_id}, limit={limit}, dry_run={dry_run})..."
@@ -201,7 +195,6 @@ def run_pipeline(
             dry_run=dry_run,
         )
 
-    # 2. If scope is root, discover and process unorganized dropped folders
     if scope == "root":
         unorganized_folders = drive_client.list_unorganized_root_folders()
         logger.info(f"Found {len(unorganized_folders)} unorganized folder(s) in My Drive root.")
@@ -294,7 +287,6 @@ def main() -> None:
     parser.add_argument(
         "--limit", type=int, default=None, help="Maximum number of files to process"
     )
-    parser.add_argument("--all", action="store_true", help="Alias for --scope=all")
     parser.add_argument(
         "--account",
         type=str,
@@ -303,12 +295,12 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    scope = "all" if args.all else args.scope
-
     settings = Settings()
     if args.account:
         settings.account_name = args.account
-    stats = run_pipeline(settings=settings, scope=scope, limit=args.limit, dry_run=args.dry_run)
+    stats = run_pipeline(
+        settings=settings, scope=args.scope, limit=args.limit, dry_run=args.dry_run
+    )
 
     if stats.errors:
         sys.exit(1)

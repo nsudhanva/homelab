@@ -4,12 +4,6 @@ from drive_organizer.config import Settings
 from drive_organizer.notifier import OrganizerRunStats, TelegramNotifier
 
 
-def test_settings_account_name_default() -> None:
-    settings = Settings()
-    assert settings.account_name == "primary"
-    assert settings.telegram_topic_id is None
-
-
 def test_settings_account_name_env_override(monkeypatch) -> None:
     monkeypatch.setenv("ACCOUNT_NAME", "family")
     monkeypatch.setenv("TELEGRAM_TOPIC_ID", "12345")

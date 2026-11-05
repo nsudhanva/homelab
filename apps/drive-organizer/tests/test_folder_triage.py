@@ -1,20 +1,12 @@
 from unittest.mock import MagicMock
 
+import pytest
+
 from drive_organizer.classifier import DocumentClassification, DriveClassifier, FolderTriageDecision
-from drive_organizer.drive_client import PROTECTED_ROOT_FOLDERS, DriveClient
+from drive_organizer.drive_client import DriveClient
 from drive_organizer.pre_router import PreRouter
 
-from .conftest import Down, returning
-
-
-def test_protected_root_folders():
-    assert "sudhanva" in PROTECTED_ROOT_FOLDERS
-    assert "maanasa" in PROTECTED_ROOT_FOLDERS
-    assert "media" in PROTECTED_ROOT_FOLDERS
-    assert "code" in PROTECTED_ROOT_FOLDERS
-    assert "review" in PROTECTED_ROOT_FOLDERS
-    assert "folder 1" not in PROTECTED_ROOT_FOLDERS
-    assert "taxes 2024" not in PROTECTED_ROOT_FOLDERS
+from .conftest import Down
 
 
 def test_list_unorganized_root_folders_filters_protected():
@@ -27,8 +19,11 @@ def test_list_unorganized_root_folders_filters_protected():
         {"id": "id1", "name": "Sudhanva"},
         {"id": "id2", "name": "Maanasa"},
         {"id": "id3", "name": "Code"},
-        {"id": "id4", "name": "folder 1"},
-        {"id": "id5", "name": "2024 Taxes"},
+        {"id": "id4", "name": "Media"},
+        {"id": "id5", "name": "Review"},
+        {"id": "id6", "name": "folder 1"},
+        {"id": "id7", "name": "2024 Taxes"},
+        {"id": "id8", "name": "Taxes 2024"},
     ]
     mock_service = MagicMock()
     mock_service.files().list().execute.return_value = {"files": mock_files}
@@ -36,68 +31,51 @@ def test_list_unorganized_root_folders_filters_protected():
 
     unorganized = client.list_unorganized_root_folders()
     names = [f["name"] for f in unorganized]
-    assert "folder 1" in names
-    assert "2024 Taxes" in names
-    assert "Sudhanva" not in names
-    assert "Maanasa" not in names
-    assert "Code" not in names
+    assert names == ["folder 1", "2024 Taxes", "Taxes 2024"]
 
 
-def test_folder_triage_heuristics_code_intact(make_task):
+@pytest.mark.parametrize(
+    ("folder_name", "sample_files", "tree_summary", "action", "is_code", "target_folder"),
+    [
+        pytest.param(
+            "homelab-service",
+            ["src/main.py", "pyproject.toml", "README.md"],
+            "Folder: homelab-service\n  📁 src/\n    📄 main.py\n  📄 pyproject.toml",
+            "keep_intact",
+            True,
+            "Code/homelab-service",
+            id="code-kept-intact",
+        ),
+        pytest.param(
+            "ml-experiments",
+            ["data.csv", "exploration.ipynb"],
+            "Folder: ml-experiments\n  📄 data.csv\n  📄 exploration.ipynb",
+            "keep_intact",
+            True,
+            "Colab Notebooks/ml-experiments",
+            id="notebooks-kept-intact",
+        ),
+        pytest.param(
+            "folder 1",
+            ["sub folder 1/dummy.pdf", "receipt.png"],
+            "Folder: folder 1\n  📁 sub folder 1/\n    📄 dummy.pdf",
+            "dismantle",
+            False,
+            None,
+            id="documents-dismantled",
+        ),
+    ],
+)
+def test_folder_triage_heuristics_when_model_is_down(
+    make_task, folder_name, sample_files, tree_summary, action, is_code, target_folder
+):
     classifier = DriveClassifier(triage_task=make_task(FolderTriageDecision, Down()))
     decision = classifier.triage_folder(
-        folder_name="homelab-service",
-        sample_files=["src/main.py", "pyproject.toml", "README.md"],
-        tree_summary="Folder: homelab-service\n  📁 src/\n    📄 main.py\n  📄 pyproject.toml",
+        folder_name=folder_name, sample_files=sample_files, tree_summary=tree_summary
     )
-    assert decision.action == "keep_intact"
-    assert decision.is_code is True
-    assert decision.target_folder == "Code/homelab-service"
-
-
-def test_folder_triage_heuristics_notebooks_intact(make_task):
-    classifier = DriveClassifier(triage_task=make_task(FolderTriageDecision, Down()))
-    decision = classifier.triage_folder(
-        folder_name="ml-experiments",
-        sample_files=["data.csv", "exploration.ipynb"],
-        tree_summary="Folder: ml-experiments\n  📄 data.csv\n  📄 exploration.ipynb",
-    )
-    assert decision.action == "keep_intact"
-    assert decision.is_code is True
-    assert decision.target_folder == "Colab Notebooks/ml-experiments"
-
-
-def test_folder_triage_heuristics_documents_dismantle(make_task):
-    classifier = DriveClassifier(triage_task=make_task(FolderTriageDecision, Down()))
-    decision = classifier.triage_folder(
-        folder_name="folder 1",
-        sample_files=["sub folder 1/dummy.pdf", "receipt.png"],
-        tree_summary="Folder: folder 1\n  📁 sub folder 1/\n    📄 dummy.pdf",
-    )
-    assert decision.action == "dismantle"
-    assert decision.is_code is False
-    assert decision.target_folder is None
-
-
-def test_folder_triage_mock_agent(make_task):
-    mock_decision = FolderTriageDecision(
-        action="dismantle",
-        is_code=False,
-        target_folder=None,
-        confidence=0.99,
-        reasoning="Document batch for personal organization.",
-    )
-
-    classifier = DriveClassifier(
-        triage_task=make_task(FolderTriageDecision, returning(mock_decision))
-    )
-    decision = classifier.triage_folder(
-        folder_name="Scans",
-        sample_files=["scan1.pdf"],
-        tree_summary="Folder: Scans\n  📄 scan1.pdf",
-    )
-    assert decision.action == "dismantle"
-    assert decision.confidence == 0.99
+    assert decision.action == action
+    assert decision.is_code is is_code
+    assert decision.target_folder == target_folder
 
 
 def test_walk_folder_files_and_dirs():
@@ -192,9 +170,8 @@ def test_pre_router_with_folder_breadcrumbs():
     assert res.subcategory == "2024"
 
 
-def test_end_to_end_process_dummy_pdf_inside_folder1_subfolder1_with_fallback(make_task):
-    """Verify end-to-end processing of dummy.pdf inside folder 1 > sub folder 1 with model fallback to OpenRouter."""
-    from pydantic_ai.exceptions import ModelAPIError
+def test_nested_file_move_with_model_fallback(make_task):
+    """Walk a nested folder, classify its file with an injected fallback model, move it, and prune."""
     from pydantic_ai.models.test import TestModel
 
     from drive_organizer.config import Settings
@@ -251,7 +228,6 @@ def test_end_to_end_process_dummy_pdf_inside_folder1_subfolder1_with_fallback(ma
     mock_service.files().list.side_effect = mock_list
     client.service = mock_service
 
-    # 1. Walk folder discovers dummy.pdf and produces deepest-leaf-first prune order
     files_to_process, folders_to_prune = client.walk_folder_files_and_dirs("root-id", "folder 1")
     assert len(files_to_process) == 1
     file_info = files_to_process[0]
@@ -261,13 +237,7 @@ def test_end_to_end_process_dummy_pdf_inside_folder1_subfolder1_with_fallback(ma
     assert folders_to_prune[0]["name"] == "sub folder 1"
     assert folders_to_prune[1]["name"] == "folder 1"
 
-    # 2. Simulate crashed local LLM endpoint (502 Connection Refused)
-    class FailingLocalModel(TestModel):
-        async def request(self, *args, **kwargs):
-            raise ModelAPIError(model_name="gemma-4-e2b-it", message="Connection Refused 502")
-
-    # Fallback model routes to OpenRouter Gemma 4 31B
-    openrouter_output = {
+    fallback_output = {
         "person": "Sudhanva",
         "jurisdiction": "USA",
         "category": "Career",
@@ -275,17 +245,14 @@ def test_end_to_end_process_dummy_pdf_inside_folder1_subfolder1_with_fallback(ma
         "clean_filename": "dummy_clean.pdf",
         "is_joint": False,
         "confidence": 0.95,
-        "summary": "Processed dummy.pdf routed via OpenRouter Gemma 4 31B",
+        "summary": "Processed dummy.pdf with the fallback model",
         "search_tags": ["notes", "interview"],
-        "reasoning": "Fallback to OpenRouter Gemma 4 31B succeeded after local endpoint failure",
+        "reasoning": "Fallback model succeeded after local endpoint failure",
     }
-    openrouter_model = TestModel(
-        custom_output_args=openrouter_output,
-        model_name="google/gemma-4-31b-it",
-    )
+    fallback_model = TestModel(custom_output_args=fallback_output, model_name="fallback")
 
     classifier = DriveClassifier(
-        document_task=make_task(DocumentClassification, FailingLocalModel(), openrouter_model)
+        document_task=make_task(DocumentClassification, Down(), fallback_model)
     )
 
     client.download_file_header_bytes = MagicMock(return_value=b"%PDF-1.4 simulated pdf stream")
@@ -295,7 +262,6 @@ def test_end_to_end_process_dummy_pdf_inside_folder1_subfolder1_with_fallback(ma
     settings = Settings(pacing_seconds=0.0)
     stats = OrganizerRunStats()
 
-    # 3. Process dummy.pdf through full inspection, fallback classification, move and tag
     success = process_single_file(
         file_info=file_info,
         drive_client=client,
@@ -315,11 +281,10 @@ def test_end_to_end_process_dummy_pdf_inside_folder1_subfolder1_with_fallback(ma
         new_name="dummy_clean.pdf",
         target_folder_id="target-folder-id",
         current_parents=["sub-id"],
-        description="Processed dummy.pdf routed via OpenRouter Gemma 4 31B",
+        description="Processed dummy.pdf with the fallback model",
         search_tags=["notes", "interview"],
     )
 
-    # 4. Prune empty folder shells (leaf first: sub folder 1, then folder 1)
     pruned = client.prune_empty_folders(folders_to_prune, dry_run=False)
     assert pruned == ["sub folder 1", "folder 1"]
     assert mock_service.files().update.call_count == 2

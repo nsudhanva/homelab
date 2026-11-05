@@ -1,14 +1,26 @@
+import pytest
+
 from drive_organizer.inspector import FileInspector
 
 
-def test_inspect_plain_text():
-    content = b"This is a test document with some words and lines."
+@pytest.mark.parametrize(
+    ("content", "expected_text"),
+    [
+        pytest.param(
+            b"This is a test document with some words and lines.",
+            "This is a test document with some words and lines.",
+            id="short",
+        ),
+        pytest.param(b"x" * 500, "x" * 100, id="capped-at-max-chars"),
+    ],
+)
+def test_inspect_plain_text(content, expected_text):
     res = FileInspector.inspect_bytes(
         "test.txt", "text/plain", content, max_chars=100, pdf_max_pages=2
     )
     assert res.is_media is False
     assert res.has_extractable_text is True
-    assert "test document" in res.extracted_text
+    assert res.extracted_text == expected_text
 
 
 def test_inspect_media_image():
@@ -26,10 +38,3 @@ def test_inspect_media_image():
     assert res.media_date is not None
     assert res.media_date.year == 2026
     assert res.media_date.month == 8
-
-
-def test_text_is_capped_at_max_chars():
-    res = FileInspector.inspect_bytes(
-        "long.txt", "text/plain", b"x" * 500, max_chars=100, pdf_max_pages=2
-    )
-    assert len(res.extracted_text) == 100

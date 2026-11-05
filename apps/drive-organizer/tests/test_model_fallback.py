@@ -18,29 +18,6 @@ from .conftest import Down
 
 MakeTask = Callable[..., AITask[Any]]
 
-DOCUMENT = DocumentClassification(
-    person="Sudhanva",
-    jurisdiction="USA",
-    category="Career",
-    subcategory="Interview Prep",
-    clean_filename="System Design Cheatsheet.pdf",
-    confidence=0.96,
-    summary="Distributed systems notes from the fallback model",
-    search_tags=["system design", "interview"],
-    reasoning="Fallback model succeeded after local endpoint failure",
-)
-
-
-def test_document_classification_fails_over_to_next_model(make_task: MakeTask) -> None:
-    fallback = TestModel(custom_output_args=DOCUMENT.model_dump())
-    classifier = DriveClassifier(document_task=make_task(DocumentClassification, Down(), fallback))
-
-    res = classifier.classify(
-        filename="System Design Cheatsheet.pdf",
-        extracted_text="Consistent hashing, Raft consensus, vector clocks",
-    )
-    assert res == DOCUMENT
-
 
 def test_folder_triage_fails_over_to_next_model(make_task: MakeTask) -> None:
     decision = FolderTriageDecision(

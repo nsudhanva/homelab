@@ -27,7 +27,6 @@ class PreRouter:
         breadcrumbs_str = " ".join(folder_breadcrumbs) if folder_breadcrumbs else ""
         combined = f"{filename} {breadcrumbs_str} {extracted_text}".lower()
 
-        # 1. Joint Documents (Marriage cert, joint lease, joint taxes)
         if any(term in combined for term in ["marriage cert", "marriage certificate", "form-mrg"]):
             return PreRouteSuggestion(
                 person="Sudhanva",
@@ -61,7 +60,6 @@ class PreRouter:
                 reason="JVue at the LMA apartment lease.",
             )
 
-        # 2. Person Identification
         if "sudhanva" in combined or "sudhanvva" in combined:
             person = "Sudhanva"
         elif any(
@@ -94,7 +92,6 @@ class PreRouter:
         else:
             person = "Sudhanva"
 
-        # 3. Category & Jurisdiction Resolution
         # Colab / Jupyter Notebooks
         if filename.lower().endswith(".ipynb") or "colaboratory" in combined:
             return PreRouteSuggestion(

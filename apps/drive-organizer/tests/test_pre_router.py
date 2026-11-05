@@ -1,139 +1,153 @@
+import pytest
+
 from drive_organizer.pre_router import PreRouter
 
-
-def test_marriage_certificate_joint_routing():
-    suggestion = PreRouter.analyze(
-        "form-MRG-10022025-0459358.pdf", "Registrar of Marriages Karnataka"
-    )
-    assert suggestion.is_joint is True
-    assert suggestion.person == "Sudhanva"
-    assert suggestion.jurisdiction == "India"
-    assert suggestion.category == "Identity"
-    assert suggestion.clean_filename == "Marriage Certificate.pdf"
-    assert suggestion.confidence >= 0.95
-
-
-def test_ironworks_lease_joint_routing():
-    suggestion = PreRouter.analyze(
+CASES = [
+    pytest.param(
+        "form-MRG-10022025-0459358.pdf",
+        "Registrar of Marriages Karnataka",
+        {
+            "is_joint": True,
+            "person": "Sudhanva",
+            "jurisdiction": "India",
+            "category": "Identity",
+            "clean_filename": "Marriage Certificate.pdf",
+        },
+        0.95,
+        None,
+        id="marriage-certificate-joint",
+    ),
+    pytest.param(
         "01-Form-Rental-agreement-Lease.pdf",
         "Ironworks Apartments Sunnyvale CA Residential Lease",
-    )
-    assert suggestion.is_joint is True
-    assert suggestion.person == "Sudhanva"
-    assert suggestion.jurisdiction == "USA"
-    assert suggestion.category == "Housing"
-    assert suggestion.clean_filename == "Ironworks Lease.pdf"
-
-
-def test_maanasa_california_dl():
-    suggestion = PreRouter.analyze(
+        {
+            "is_joint": True,
+            "person": "Sudhanva",
+            "jurisdiction": "USA",
+            "category": "Housing",
+            "clean_filename": "Ironworks Lease.pdf",
+        },
+        0.0,
+        None,
+        id="ironworks-lease-joint",
+    ),
+    pytest.param(
         "Learners.pdf",
         "State of California Driver License Maanasa Narayan",
-    )
-    assert suggestion.person == "Maanasa"
-    assert suggestion.jurisdiction == "USA"
-    assert suggestion.category == "Identity"
-    assert (
-        suggestion.clean_filename is not None
-        and "California Driver License" in suggestion.clean_filename
-    )
-
-
-def test_sudhanva_aadhaar():
-    suggestion = PreRouter.analyze(
+        {
+            "person": "Maanasa",
+            "jurisdiction": "USA",
+            "category": "Identity",
+            "clean_filename": "Maanasa - California Driver License.pdf",
+        },
+        0.0,
+        None,
+        id="maanasa-california-dl",
+    ),
+    pytest.param(
         "Aadhar - Sudhanvva Narayana.pdf",
         "Unique Identification Authority of India Government of India",
-    )
-    assert suggestion.person == "Sudhanva"
-    assert suggestion.jurisdiction == "India"
-    assert suggestion.category == "Identity"
-    assert suggestion.clean_filename == "Sudhanva - Aadhaar Card.pdf"
-
-
-def test_father_ds160_visa():
-    suggestion = PreRouter.analyze(
+        {
+            "person": "Sudhanva",
+            "jurisdiction": "India",
+            "category": "Identity",
+            "clean_filename": "Sudhanva - Aadhaar Card.pdf",
+        },
+        0.0,
+        None,
+        id="sudhanva-aadhaar",
+    ),
+    pytest.param(
         "DS160 - Confirmation Page - Narayana.pdf",
         "Nonimmigrant Visa Application Confirmation",
-    )
-    assert suggestion.person == "Narayana"
-    assert suggestion.jurisdiction == "USA"
-    assert suggestion.category == "Visas & Legal"
-    assert suggestion.clean_filename == "Narayana - DS-160 Visa Confirmation.pdf"
-
-
-def test_w2_tax_routing():
-    suggestion = PreRouter.analyze(
+        {
+            "person": "Narayana",
+            "jurisdiction": "USA",
+            "category": "Visas & Legal",
+            "clean_filename": "Narayana - DS-160 Visa Confirmation.pdf",
+        },
+        0.0,
+        None,
+        id="father-ds160-visa",
+    ),
+    pytest.param(
         "Statement for 2024 W2.pdf",
         "Form W-2 Wage and Tax Statement Montai Therapeutics",
-    )
-    assert suggestion.person == "Sudhanva"
-    assert suggestion.jurisdiction == "USA"
-    assert suggestion.category == "Taxes"
-    assert suggestion.subcategory == "2024"
-
-
-def test_leetcode_progress_routing():
-    suggestion = PreRouter.analyze("Leetcode Progress", "")
-    assert suggestion.person == "Sudhanva"
-    assert suggestion.category == "Career"
-    assert suggestion.subcategory == "Interview Prep"
-    assert suggestion.confidence >= 0.95
-
-
-def test_lakshmi_metaplan_routing():
-    suggestion = PreRouter.analyze("Lakshmi Stock Research Metaplan", "")
-    assert suggestion.person == "Sudhanva"
-    assert suggestion.category == "Career"
-    assert suggestion.subcategory == "Lakshmi"
-    assert suggestion.confidence >= 0.95
-
-
-def test_neu_education_and_housing():
-    s_edu = PreRouter.analyze("NEU Estimated Cost of Attendance (Archive)", "")
-    assert s_edu.person == "Sudhanva"
-    assert s_edu.category == "Education"
-    assert s_edu.subcategory == "Northeastern University"
-
-    s_house = PreRouter.analyze("NEU-Fall-2021-Housing (Archive)", "")
-    assert s_house.person == "Sudhanva"
-    assert s_house.category == "Housing"
-
-
-def test_candidate_resume_recruiting():
-    suggestion = PreRouter.analyze("KimberlyDo_CV.pdf", "Senior Machine Learning Engineer")
-    assert suggestion.category == "CVs"
-    assert suggestion.clean_filename == "KimberlyDo - CV.pdf"
-    assert suggestion.confidence >= 0.95
-
-
-def test_books_pre_router():
-    suggestion = PreRouter.analyze(
+        {"person": "Sudhanva", "jurisdiction": "USA", "category": "Taxes", "subcategory": "2024"},
+        0.0,
+        None,
+        id="w2-tax-year",
+    ),
+    pytest.param(
+        "Leetcode Progress",
+        "",
+        {"person": "Sudhanva", "category": "Career", "subcategory": "Interview Prep"},
+        0.95,
+        None,
+        id="leetcode-interview-prep",
+    ),
+    pytest.param(
+        "Lakshmi Stock Research Metaplan",
+        "",
+        {"person": "Sudhanva", "category": "Career", "subcategory": "Lakshmi"},
+        0.95,
+        None,
+        id="lakshmi-career",
+    ),
+    pytest.param(
+        "NEU Estimated Cost of Attendance (Archive)",
+        "",
+        {"person": "Sudhanva", "category": "Education", "subcategory": "Northeastern University"},
+        0.0,
+        None,
+        id="neu-education",
+    ),
+    pytest.param(
+        "NEU-Fall-2021-Housing (Archive)",
+        "",
+        {"person": "Sudhanva", "category": "Housing"},
+        0.0,
+        None,
+        id="neu-housing",
+    ),
+    pytest.param(
+        "KimberlyDo_CV.pdf",
+        "Senior Machine Learning Engineer",
+        {"category": "CVs", "clean_filename": "KimberlyDo - CV.pdf"},
+        0.95,
+        None,
+        id="candidate-cv",
+    ),
+    pytest.param(
         "The Algorithm Design Manual (Texts in Computer Science) by Steven S. Skiena (z-lib.org).pdf",
         "",
-    )
-    assert suggestion.category == "Books"
-    assert suggestion.subcategory == "Computer Science"
-    assert "(z-lib.org)" not in (suggestion.clean_filename or "")
-    assert suggestion.confidence >= 0.95
+        {"category": "Books", "subcategory": "Computer Science"},
+        0.95,
+        "(z-lib.org)",
+        id="book-topic",
+    ),
+    pytest.param(
+        "Learning NN.ipynb", "", {"category": "Notebooks"}, 0.95, None, id="colab-notebook"
+    ),
+    pytest.param("WeatherMesh3.pt", "", {"category": "Models"}, 0.95, None, id="model-weights"),
+    pytest.param("data.zip", "", {"category": "Code"}, 0.95, None, id="data-archive"),
+    pytest.param(
+        "De-Slop Docs & Refactor.prompt",
+        "",
+        {"category": "AI Studio"},
+        0.95,
+        None,
+        id="ai-studio-prompt",
+    ),
+]
 
 
-def test_tech_artifacts_pre_router():
-    # 1. Colab notebook
-    s_nb = PreRouter.analyze("Learning NN.ipynb", "")
-    assert s_nb.category == "Notebooks"
-    assert s_nb.confidence >= 0.95
-
-    # 2. PyTorch model weights
-    s_model = PreRouter.analyze("WeatherMesh3.pt", "")
-    assert s_model.category == "Models"
-    assert s_model.confidence >= 0.95
-
-    # 3. Data archive
-    s_code = PreRouter.analyze("data.zip", "")
-    assert s_code.category == "Code"
-    assert s_code.confidence >= 0.95
-
-    # 4. Google AI Studio prompt
-    s_ais = PreRouter.analyze("De-Slop Docs & Refactor.prompt", "")
-    assert s_ais.category == "AI Studio"
-    assert s_ais.confidence >= 0.95
+@pytest.mark.parametrize(("filename", "text", "expected", "min_confidence", "name_lacks"), CASES)
+def test_pre_router(filename, text, expected, min_confidence, name_lacks):
+    suggestion = PreRouter.analyze(filename, text)
+    for field, value in expected.items():
+        assert getattr(suggestion, field) == value, field
+    assert suggestion.confidence >= min_confidence
+    if name_lacks:
+        assert suggestion.clean_filename
+        assert name_lacks not in suggestion.clean_filename

@@ -1,6 +1,6 @@
 import io
 import logging
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
 
@@ -17,11 +17,10 @@ class DocumentInspection:
     page_count: int = 1
     has_extractable_text: bool = False
     extracted_text: str = ""
-    folder_breadcrumbs: list[str] = field(default_factory=list)
 
 
 class FileInspector:
-    """Inspects file streams using lightweight single-page extraction and EXIF analysis."""
+    """Extract document text and media dates."""
 
     @staticmethod
     def inspect_bytes(
@@ -32,13 +31,10 @@ class FileInspector:
         max_chars: int,
         pdf_max_pages: int,
         created_time_str: str | None = None,
-        folder_breadcrumbs: list[str] | None = None,
     ) -> DocumentInspection:
-        breadcrumbs = folder_breadcrumbs or []
         lower_name = filename.lower()
         lower_mime = mime_type.lower()
 
-        # 1. Media handling (Image / Video)
         if (
             lower_mime.startswith("image/")
             or lower_mime.startswith("video/")
@@ -71,39 +67,28 @@ class FileInspector:
                     media_date=exif_date or datetime.now(),
                     has_extractable_text=False,
                     extracted_text="",
-                    folder_breadcrumbs=breadcrumbs,
                 )
 
-        # 2. PDF inspection (Firecrawl single-page pattern)
         if lower_mime == "application/pdf" or lower_name.endswith(".pdf"):
-            inspection = FileInspector._inspect_pdf(file_bytes, max_chars, pdf_max_pages)
-            inspection.folder_breadcrumbs = breadcrumbs
-            return inspection
+            return FileInspector._inspect_pdf(file_bytes, max_chars, pdf_max_pages)
 
-        # 3. Plain text / CSV / Google Workspace exports
         if (
             lower_mime.startswith("text/")
             or lower_mime.startswith("application/vnd.google-apps.")
             or lower_name.endswith((".txt", ".csv", ".json", ".md"))
         ):
-            try:
-                text = file_bytes.decode("utf-8", errors="replace")
-                return DocumentInspection(
-                    is_media=False,
-                    page_count=1,
-                    has_extractable_text=bool(text.strip()),
-                    extracted_text=text.strip()[:max_chars],
-                    folder_breadcrumbs=breadcrumbs,
-                )
-            except Exception as e:
-                logger.warning(f"Error decoding text for {filename}: {e}")
+            stripped = file_bytes.decode("utf-8", errors="replace").strip()
+            return DocumentInspection(
+                is_media=False,
+                page_count=1,
+                has_extractable_text=bool(stripped),
+                extracted_text=stripped[:max_chars],
+            )
 
-        # Fallback
         return DocumentInspection(
             is_media=False,
             has_extractable_text=False,
             extracted_text="",
-            folder_breadcrumbs=breadcrumbs,
         )
 
     @staticmethod

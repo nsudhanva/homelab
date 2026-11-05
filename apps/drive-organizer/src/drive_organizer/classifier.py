@@ -260,12 +260,10 @@ class DriveClassifier:
         folder_breadcrumbs: list[str] | None = None,
     ) -> DocumentClassification:
         """Classifies a document by reading its content with the model chain."""
-        # 1. Preliminary heuristic scan for contextual hints (non-binding)
         pre_route: PreRouteSuggestion = PreRouter.analyze(
             filename, extracted_text, folder_breadcrumbs=folder_breadcrumbs
         )
 
-        # 2. Construct LLM prompt with actual extracted document text
         text_section = (
             f"--- EXTRACTED DOCUMENT TEXT ---\n{extracted_text}\n--- END DOCUMENT TEXT ---"
             if extracted_text.strip()
@@ -294,7 +292,7 @@ class DriveClassifier:
         )
 
         try:
-            logger.info(f"Submitting '{filename}' to LLM for content analysis...")
+            logger.debug(f"Submitting '{filename}' to LLM for content analysis...")
             return self._normalize(self.document_task.run_sync(prompt_content), filename)
         except HomelabAIError as exc:
             last_exc = exc
