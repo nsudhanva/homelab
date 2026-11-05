@@ -169,7 +169,7 @@ These rules give this result:
 - Keep the public Cloudflare DNS record for the hostname. ExternalDNS does not manage it.
 - Send tailnet DNS through the `tailscale-dns` resolver. This resolver answers HTTPRoute hostnames with the Tailscale Gateway IP. It sends all other `sudhanva.me` names to public DNS.
 - Do not add the `external-dns.alpha.kubernetes.io/expose: "true"` annotation to the HTTPRoute. Without the annotation, ExternalDNS does not overwrite the public record.
-- Let the `tailscale-dns-updater` CronJob write the Gateway IP and the list of HTTPRoute hostnames into the resolver configuration.
+- Let the `tailscale-dns-updater` CronJob write the Gateway IP and the list of HTTPRoute hostnames into the resolver configuration. ArgoCD applies `infrastructure/tailscale-dns/configmap.yaml` and replaces the CronJob output with it, so add each new HTTPRoute hostname to the `match` list in that file.
 
 ## In-cluster access to Gateway services
 

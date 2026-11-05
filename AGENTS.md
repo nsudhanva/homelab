@@ -20,7 +20,7 @@ A multi-node bare-metal Kubernetes cluster on Ubuntu 26.04 LTS. It uses K3s. Arg
 - Place user applications in `apps/{app-name}/`
 - Use Tailscale Gateway API (`gatewayClassName: tailscale`) for HTTPS exposure
 - Commit small, logical changes with messages that describe them. Use short commit messages.
-- If you add a new httproute, update the homer configmap to add it to the dashboard
+- If you add a new httproute, update the homer configmap to add it to the dashboard, and add its hostname to the `match` list in `infrastructure/tailscale-dns/configmap.yaml`. ArgoCD applies that file, so a hostname that is not in it does not resolve on the tailnet
 - Add all necessary documentation under `docs/`
 - Write docs and READMEs in ASD-STE100 Simplified Technical English, with the rules in `docs/src/content/docs/reference/docs-structure.md` (Writing Standard). Describe the current state only: no history of changes, no rejected options, and no marketing language or AI filler
 - Use the [Divio documentation system](https://docs.divio.com/documentation-system/) to structure docs:
