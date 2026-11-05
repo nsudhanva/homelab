@@ -2,6 +2,7 @@
 and writes user decisions and overrides."""
 
 import sqlite3
+import time
 from collections.abc import Iterable
 from contextlib import closing
 from dataclasses import dataclass
@@ -96,6 +97,10 @@ MIGRATIONS = [
         message TEXT NOT NULL DEFAULT ''
     );
     """,
+    """
+    ALTER TABLE evidence ADD COLUMN promo_cents INTEGER NOT NULL DEFAULT 0;
+    ALTER TABLE review ADD COLUMN ai_match INTEGER NOT NULL DEFAULT 0
+    """,
 ]
 
 
@@ -112,6 +117,7 @@ class ReviewItem:
     kind: EvidenceKind
     confidence: float
     reason: str
+    ai_match: bool = False
 
 
 @dataclass(frozen=True)
@@ -136,14 +142,28 @@ class Store:
         self.conn.close()
 
     def _migrate(self) -> None:
-        version = self.conn.execute("PRAGMA user_version").fetchone()[0]
-        for number, script in enumerate(MIGRATIONS[version:], start=version + 1):
-            with closing(self.conn.cursor()) as cur:
-                cur.execute("BEGIN")
-                for statement in filter(str.strip, script.split(";")):
-                    cur.execute(statement)
-                cur.execute(f"PRAGMA user_version = {number}")
+        for attempt in range(5):
+            try:
+                self._migrate_once()
+                return
+            except sqlite3.OperationalError:
+                if attempt == 4:
+                    raise
+                time.sleep(0.2 * (attempt + 1))
+
+    def _migrate_once(self) -> None:
+        with closing(self.conn.cursor()) as cur:
+            cur.execute("BEGIN IMMEDIATE")
+            try:
+                version = cur.execute("PRAGMA user_version").fetchone()[0]
+                for number, script in enumerate(MIGRATIONS[version:], start=version + 1):
+                    for statement in filter(str.strip, script.split(";")):
+                        cur.execute(statement)
+                    cur.execute(f"PRAGMA user_version = {number}")
                 cur.execute("COMMIT")
+            except Exception:
+                cur.execute("ROLLBACK")
+                raise
 
     def _write(self, statements: Iterable[tuple[str, tuple | list[tuple]]]) -> None:
         with closing(self.conn.cursor()) as cur:
@@ -255,6 +275,7 @@ class Store:
                 amount_cents=r["amount_cents"],
                 confidence=r["confidence"],
                 reason=r["reason"],
+                promo_cents=r["promo_cents"],
             )
             for r in self.conn.execute("SELECT * FROM evidence")
         ]
@@ -264,7 +285,8 @@ class Store:
             [
                 ("DELETE FROM review", ()),
                 (
-                    "INSERT OR REPLACE INTO review VALUES (?, ?, ?, ?, ?, ?, ?)",
+                    "INSERT OR REPLACE INTO review (txn_id, offer_id, account_id, period_start,"
+                    " kind, confidence, reason, ai_match) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
                     [
                         (
                             c.txn.id,
@@ -274,6 +296,7 @@ class Store:
                             c.kind.value,
                             d.confidence,
                             d.reason,
+                            int(d.match),
                         )
                         for c, d in items
                     ],
@@ -284,6 +307,7 @@ class Store:
     def review(self) -> list[ReviewItem]:
         rows = self.conn.execute(
             "SELECT r.offer_id, r.account_id, r.period_start, r.kind, r.confidence, r.reason,"
+            " r.ai_match,"
             " t.id, t.account_id AS txn_account, t.date, t.amount_cents, t.payee, t.description"
             " FROM review r JOIN transactions t ON t.id = r.txn_id ORDER BY t.date DESC"
         )
@@ -303,6 +327,7 @@ class Store:
                 kind=EvidenceKind(r["kind"]),
                 confidence=r["confidence"],
                 reason=r["reason"],
+                ai_match=bool(r["ai_match"]),
             )
             for r in rows
         ]
@@ -360,7 +385,10 @@ class Store:
         return Run(row["started_at"], row["finished_at"], row["status"], row["message"])
 
 
-EVIDENCE_INSERT = "INSERT OR REPLACE INTO evidence VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
+EVIDENCE_INSERT = (
+    "INSERT OR REPLACE INTO evidence (offer_id, account_id, period_start, txn_id, kind, source,"
+    " amount_cents, confidence, reason, promo_cents) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+)
 
 
 def _row(e: Evidence) -> tuple:
@@ -374,6 +402,7 @@ def _row(e: Evidence) -> tuple:
         e.amount_cents,
         e.confidence,
         e.reason,
+        e.promo_cents,
     )
 
 

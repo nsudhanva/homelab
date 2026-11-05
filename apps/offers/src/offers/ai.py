@@ -1,9 +1,9 @@
 """AI decisions for candidates that no rule can decide.
 
 The AI answers one question: does this transaction count for this offer? It returns a
-structured answer with a confidence. The engine applies the answer only at or above the
-confidence threshold. Answers are cached against the offer fingerprint, so the AI sees each
-transaction once per offer definition.
+structured answer with a confidence. The engine applies every answer, and lists the answers
+below the confidence threshold in the AI log. Answers are cached against the offer
+fingerprint, so the AI sees each transaction once for each meaning of an offer.
 """
 
 import logging

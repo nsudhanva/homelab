@@ -8,7 +8,7 @@ from offers.config import Settings
 from offers.models import Account, AIDecision, Candidate, OverrideStatus, State
 from offers.notify import notify
 from offers.source import Snapshot
-from offers.store import Store
+from offers.store import MIGRATIONS, Store
 from offers.sync import sync
 from offers.views import build
 from offers.web import account_out, create_app, month_list
@@ -77,7 +77,9 @@ def test_sync_stops_asking_when_ai_fails(store, catalog, settings, accounts) -> 
 
 def test_notifications_are_sent_once(store, catalog, settings, accounts) -> None:
     sender = FakeSender()
-    sync(store, catalog, settings, _snapshot(accounts), date(2026, 11, 27), None, sender)
+    snapshot = _snapshot(accounts)
+    snapshot.transactions.append(txn("fresh", "a-other", date(2026, 11, 26), -3, "Grocer"))
+    sync(store, catalog, settings, snapshot, date(2026, 11, 27), None, sender)
     assert any("end soon" in m and "Ride cash" in m for m in sender.messages)
     assert not any("review" in m for m in sender.messages)
     count = len(sender.messages)
@@ -86,7 +88,9 @@ def test_notifications_are_sent_once(store, catalog, settings, accounts) -> None
 
 
 def test_monthly_summary(store, catalog, settings, accounts) -> None:
-    sync(store, catalog, settings, _snapshot(accounts), date(2026, 11, 5), None, None)
+    snapshot = _snapshot(accounts)
+    snapshot.transactions.append(txn("fresh", "a-other", date(2026, 11, 30), -3, "Grocer"))
+    sync(store, catalog, settings, snapshot, date(2026, 11, 5), None, None)
     sender = FakeSender()
     sent = notify(store, catalog, settings, date(2026, 12, 1), sender)
     assert "summary:2026-11" in sent
@@ -106,7 +110,7 @@ def test_dashboard_view(store, catalog, settings, accounts) -> None:
 def test_store_reopens_without_migrating_again(settings: Settings) -> None:
     Store(settings.db_path).close()
     s = Store(settings.db_path)
-    assert s.conn.execute("PRAGMA user_version").fetchone()[0] == 1
+    assert s.conn.execute("PRAGMA user_version").fetchone()[0] == len(MIGRATIONS)
     s.close()
 
 
@@ -188,3 +192,89 @@ def test_month_list() -> None:
         "2027-01",
         "2027-02",
     ]
+
+
+def test_tracker_grid(store, catalog, settings, accounts) -> None:
+    txns = [
+        txn("a", "a-gold", date(2026, 9, 3), -12, "Coffee Co"),
+        txn("b", "a-gold", date(2026, 9, 4), 7, "Coffee Co"),
+        txn("c", "a-other", date(2026, 10, 4), -9, "Rides"),
+        txn("d", "a-gold", date(2026, 11, 2), -3, "Grocer"),
+    ]
+    sync(store, catalog, settings, Snapshot(accounts, txns), date(2026, 11, 5), None, None)
+    client = TestClient(create_app(settings, catalog, web_dist=settings.db_path.parent / "none"))
+    grid = client.get("/api/tracker").json()
+    assert grid["months"] == ["2026-09", "2026-10", "2026-11"]
+    gold = next(c for c in grid["cards"] if c["card_id"] == "gold")
+    coffee = next(r for r in gold["rows"] if r["offer_id"] == "gold-coffee")
+    assert [c["state"] for c in coffee["cells"]] == ["credited", "unused", "unused"]
+    assert coffee["cells"][-1]["current"] and coffee["cells"][-1]["days_left"] == 26
+    travel = next(r for r in gold["rows"] if r["offer_id"] == "gold-travel")
+    assert [c["span"] for c in travel["cells"]] == [3]
+    rides = next(r for r in gold["rows"] if r["offer_id"] == "gold-rides")
+    assert rides["in_app"] and rides["cells"][1]["state"] == "used"
+    assert grid["current"]["month"] == "2026-11"
+    assert grid["latest_txn"] == "2026-11-02"
+
+
+def test_one_ai_failure_does_not_stop_the_queue(store, catalog, settings, accounts) -> None:
+    class Flaky(FakeMatcher):
+        def decide(self, candidate, offer, card):
+            self.calls.append(candidate.txn.id)
+            return None if candidate.txn.id == "new" else AIDecision(True, 0.9, "ok")
+
+    snapshot = Snapshot(
+        accounts,
+        [
+            txn("old", "a-gold", date(2026, 10, 3), -30, "DD *DeliveryDash Thai"),
+            txn("new", "a-gold", date(2026, 11, 3), -30, "DD *DeliveryDash Noodles"),
+        ],
+    )
+    matcher = Flaky(None)
+    sync(store, catalog, settings, snapshot, date(2026, 11, 5), matcher, None)
+    assert matcher.calls == ["new", "old"]
+    assert [k[0] for k in store.ai_decisions()] == ["old"]
+
+
+def test_stale_data_sends_one_warning_and_no_reminders(store, catalog, settings, accounts) -> None:
+    sender = FakeSender()
+    sync(store, catalog, settings, _snapshot(accounts), date(2026, 11, 28), None, sender)
+    assert (
+        len(sender.messages) == 1 and "no new transactions since November 4" in sender.messages[0]
+    )
+    assert notify(store, catalog, settings, date(2026, 11, 29), sender) == []
+
+
+def test_offer_page_shows_every_version(store, catalog, settings, accounts) -> None:
+    newer = catalog.offer("gold-coffee").model_copy(  # type: ignore[union-attr]
+        update={"id": "gold-coffee-v2", "valid_from": date(2026, 11, 1)}
+    )
+    older = catalog.offer("gold-coffee").model_copy(  # type: ignore[union-attr]
+        update={"valid_to": date(2026, 10, 31)}
+    )
+    offers = (*(o for o in catalog.offers if o.id != "gold-coffee"), older, newer)
+    two = Catalog(cards=catalog.cards, offers=offers)
+    snapshot = Snapshot(accounts, [txn("a", "a-gold", date(2026, 10, 3), -12, "Coffee Co")])
+    sync(store, two, settings, snapshot, date(2026, 11, 5), None, None)
+    client = TestClient(create_app(settings, two, web_dist=settings.db_path.parent / "none"))
+    detail = client.get("/api/offers/gold-coffee-v2/a-gold").json()
+    assert [h["status"]["offer_id"] for h in detail["history"]] == ["gold-coffee-v2", "gold-coffee"]
+
+
+def test_summary_waits_for_current_data(store, catalog, settings, accounts) -> None:
+    stale = _snapshot(accounts)
+    sync(store, catalog, settings, stale, date(2026, 12, 2), None, None)
+    sender = FakeSender()
+    assert "summary:2026-11" not in notify(store, catalog, settings, date(2026, 12, 2), sender)
+    fresh = _snapshot(accounts)
+    fresh.transactions.append(txn("late", "a-other", date(2026, 12, 8), -3, "Grocer"))
+    sync(store, catalog, settings, fresh, date(2026, 12, 9), None, None)
+    assert "summary:2026-11" in notify(store, catalog, settings, date(2026, 12, 9), sender)
+
+
+def test_activation_reminder_is_sent_with_stale_data(store, catalog, settings, accounts) -> None:
+    sync(store, catalog, settings, _snapshot(accounts), date(2027, 1, 2), None, None)
+    sender = FakeSender()
+    sent = notify(store, catalog, settings, date(2027, 1, 2), sender)
+    assert any(k.startswith("remind:flex-activate") for k in sent)
+    assert any(k.startswith("stale:") for k in sent)

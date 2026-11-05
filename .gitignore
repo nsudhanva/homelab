@@ -59,3 +59,9 @@ bw_*.json
 
 # Offers frontend build output
 apps/offers/src/offers/web_dist/
+
+# Offers local data and frontend build state
+apps/offers/*.db
+apps/offers/*.db-wal
+apps/offers/*.db-shm
+apps/offers/web/tsconfig.tsbuildinfo

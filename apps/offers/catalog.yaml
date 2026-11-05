@@ -37,7 +37,7 @@ offers:
       used.
     detect:
       usage:
-        payee: \buber\b
+        payee: \buber\b(?![\W_]*one\b)
 
   - id: amex-gold-dining
     card: amex-gold
@@ -51,6 +51,7 @@ offers:
     detect:
       credit:
         payee: grubhub|seamless|cheesecake|five guys|buffalo wild wings|\bwonder\b|dining credit
+        max_amount: 10
       usage:
         payee: grubhub|seamless|cheesecake|five guys|buffalo wild wings|\bwonder\b
       keywords: [grubhub, seamless, cheesecake, five guys, buffalo wild wings, bww, wonder]
@@ -68,6 +69,7 @@ offers:
     detect:
       credit:
         payee: dunkin
+        max_amount: 7
       usage:
         payee: dunkin
 
@@ -87,19 +89,23 @@ offers:
   - id: amex-offer-paramount-plus
     card: amex-gold
     name: "Amex Offer: Paramount+"
-    value: 13.99
-    period: monthly
+    value: 41.97
+    period: annual
+    uses: 3
     valid_from: 2026-05-06
-    valid_to: 2026-10-20
+    valid_to: 2026-10-19
     enrollment: true
     how_to_use: >-
       An Amex Offer added to the Gold Card. Spend $13.99 or more at Paramount+ and get $13.99
-      back, up to 3 times. Amex Offers are targeted, so check the Amex app for a new round.
+      back, up to 3 times ($41.97). Amex Offers are targeted, so check the Amex app for a new
+      round.
     detect:
       credit:
         payee: paramount
+        max_amount: 13.99
       usage:
         payee: paramount
+        min_amount: 13.99
 
   - id: csr-travel
     card: chase-sapphire-reserve
@@ -167,6 +173,7 @@ offers:
     detect:
       credit:
         payee: stubhub|viagogo
+        max_amount: 150
       usage:
         payee: stubhub|viagogo
 
@@ -181,6 +188,7 @@ offers:
     detect:
       credit:
         payee: peloton
+        max_amount: 10
       usage:
         payee: peloton
 
@@ -195,55 +203,73 @@ offers:
       usage:
         payee: \blyft\b
 
-  - id: csr-doordash-restaurant
+  - id: csr-doordash
     card: chase-sapphire-reserve
-    name: DoorDash restaurant promo
-    value: 5
+    name: DoorDash credits
     period: monthly
     valid_to: 2026-09-30
-    group: doordash
-    how_to_use: The promo is in the DoorDash app with DashPass. Use it on a restaurant order.
-    detect:
-      usage:
-        payee: ^doordash$
-      keywords: [doordash, "dd *"]
-      ai_hint: >-
-        A DoorDash order from a restaurant. Orders from stores, for example Walgreens, CVS,
-        DashMart, or a grocery store, do not count.
-
-  - id: csr-doordash-non-restaurant
-    card: chase-sapphire-reserve
-    name: DoorDash store promos
-    value: 20
-    period: monthly
-    uses: 2
-    valid_to: 2029-12-31
-    group: doordash
     how_to_use: >-
-      Two promos of $10 in the DoorDash app with DashPass. Use them on orders from stores,
-      for example grocery, convenience, or pharmacy.
-    detect:
-      usage:
+      In-app promos in the DoorDash account with DashPass, applied to orders paid with the
+      card: $5 off one restaurant order and $10 off each of two store orders, every month.
+    promos:
+      - name: Store promo
+        value: 10
         payee: via doordash|dashmart
-      keywords: [doordash, "dd *"]
-      ai_hint: >-
-        A DoorDash order from a store, for example a grocery store, a pharmacy, a convenience
-        store, or DashMart. Restaurant orders do not count.
-
-  - id: csr-doordash-any-order
-    card: chase-sapphire-reserve
-    name: DoorDash order promo
-    value: 15
-    period: monthly
-    valid_from: 2026-10-01
-    valid_to: 2029-12-31
-    group: doordash
-    how_to_use: >-
-      The promo is in the DoorDash app with DashPass. Use it on any eligible order. Each promo
-      needs its own order.
+      - name: Store promo
+        value: 10
+        payee: via doordash|dashmart
+      - name: Restaurant promo
+        value: 5
+        payee: ^doordash$
     detect:
       usage:
         payee: doordash|dashmart
+
+  - id: csr-doordash-2026-10
+    card: chase-sapphire-reserve
+    name: DoorDash credits
+    period: monthly
+    valid_from: 2026-10-01
+    valid_to: 2029-12-31
+    how_to_use: >-
+      In-app promos in the DoorDash account with DashPass, applied to orders paid with the
+      card: $15 off one order and $10 off each of two store orders, every month.
+    promos:
+      - name: Store promo
+        value: 10
+        payee: via doordash|dashmart
+      - name: Store promo
+        value: 10
+        payee: via doordash|dashmart
+      - name: Order promo
+        value: 15
+    detect:
+      usage:
+        payee: doordash|dashmart
+
+  - id: csr-apple-subscriptions
+    card: chase-sapphire-reserve
+    name: Apple TV and Apple Music
+    kind: activation
+    period: once
+    valid_from: 2026-01-01
+    valid_to: 2027-06-22
+    enrollment: true
+    how_to_use: >-
+      The card includes Apple TV and Apple Music. Activate them in the Chase app by
+      2027-06-22, and cancel any paid Apple TV or Apple Music subscription.
+
+  - id: csr-dashpass
+    card: chase-sapphire-reserve
+    name: DashPass
+    kind: activation
+    period: once
+    valid_from: 2026-01-01
+    valid_to: 2029-12-31
+    enrollment: true
+    how_to_use: >-
+      The card includes DashPass. Activate it in the DoorDash app with the card. The DoorDash
+      promos need it.
 
   - id: freedom-flex-5-percent
     card: chase-freedom-flex
@@ -252,21 +278,6 @@ offers:
     period: quarterly
     enrollment: true
     how_to_use: Activate this quarter's 5% categories in the Chase app.
-
-  - id: freedom-flex-doordash
-    card: chase-freedom-flex
-    name: DoorDash store promo
-    value: 10
-    period: quarterly
-    valid_to: 2029-12-31
-    enrollment: true
-    group: doordash
-    how_to_use: >-
-      A $10 promo each quarter in the DoorDash app, with the DashPass that the card activates.
-      Use it on an order from a store, for example grocery, convenience, or pharmacy.
-    detect:
-      usage:
-        payee: via doordash|dashmart
 
   - id: discover-it-5-percent
     card: discover-it

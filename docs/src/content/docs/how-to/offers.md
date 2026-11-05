@@ -26,9 +26,10 @@ flowchart LR
 ```
 
 - Catalog: `apps/offers/catalog.yaml` lists the cards and their offers. Kustomize puts the file in the ConfigMap `offers-catalog`. A change to the file restarts the dashboard, and the next sync uses it.
-- Sync: The `offers-sync` CronJob runs each day at 06:30 America/Los_Angeles. It reads the on-budget accounts and all their transactions from Actual Budget. To read fewer days, set `OFFERS_LOOKBACK_DAYS`. It does not change Actual Budget.
+- Sync: The `offers-sync` CronJob runs each day at 06:30 America/Los_Angeles. It runs the Actual Budget bank sync, then reads the on-budget accounts and all their transactions. The bank sync is the only change that Offers makes to Actual Budget. Keep `OFFERS_LOOKBACK_DAYS` empty: each sync replaces the stored transactions, so a shorter lookback removes the history of long periods.
 - Dashboard: The `offers` Deployment serves a single-page app (React, TanStack Router and Query, shadcn/ui) and a JSON API under `/api` from the SQLite file. It writes only your corrections. The app source is in `apps/offers/web/`, and the container build compiles it.
-- No manual work: The sync decides every offer state. The dashboard shows the result. You correct a state only when it is wrong.
+- No manual work: The sync decides every offer state that transactions can show. You correct a state only when the transactions cannot show it, for example an in-app credit that paid an order in full, or an activation.
+- Two kinds of offer: An in-app credit sits in an app account, for example Uber Cash or the DoorDash promos, and applies to an order. An order on the platform, paid with the card, uses it. A statement credit posts back to the card, for example the dining credit or an Amex Offer. The posted credit shows it.
 - Card accounts: The `account` pattern of a card matches the names of Actual accounts. Each matched account gets its own copy of each offer.
 
 ## Daily Sync
@@ -37,9 +38,12 @@ flowchart LR
 sequenceDiagram
   participant Cron as offers-sync CronJob
   participant Actual as Actual Budget
+  participant Bank as SimpleFIN Bridge
   participant DB as SQLite
   participant AI as homelab-ai
   participant TG as Telegram
+  Cron->>Actual: Run the bank sync
+  Actual->>Bank: Fetch new transactions
   Cron->>Actual: Read accounts and transactions
   Cron->>DB: Replace the snapshot
   Cron->>Cron: Apply the catalog rules
@@ -50,7 +54,11 @@ sequenceDiagram
     Cron->>DB: Cache the answer with the offer fingerprint
   end
   Cron->>DB: Write the evidence and the review list
-  Cron->>TG: Send due reminders, the monthly summary, and the review prompt
+  alt Newest transaction is more than 4 days old
+    Cron->>TG: Send one stale-data warning each week
+  else Data is current
+    Cron->>TG: Send due reminders and the monthly summary
+  end
   Cron->>DB: Record the sent message keys and the run
 ```
 
@@ -83,7 +91,13 @@ flowchart TD
   AIEvidence -. "Confidence below 0.85" .-> Log["Also listed in the AI log"]
 ```
 
-Offers in the same `group` share one pool of orders. After the decisions, each purchase in a group stays with one offer only.
+After the decisions, Offers applies these steps:
+
+- A credit counts for one offer only, the first offer in catalog order whose rule matches it.
+- A credit moves to the period of the purchase that it pays back: the latest earlier purchase for the same offer, within 45 days. A credit that posts in the next month counts for the month of the purchase.
+- A credit that posts up to 60 days after the end date of an offer still counts.
+- In an offer with `promos`, each purchase in date order takes the first free promo whose `payee` matches it. A promo without `payee` takes a purchase only when no specific promo matches.
+- Offers in the same `group` share one pool of orders. Each purchase in a group stays with one offer only.
 
 The AI never overrules a rule. It sees a transaction only when no rule matched it. Offers keeps each AI answer in SQLite with the offer fingerprint. The AI sees each transaction once for each version of an offer. When you change an offer in the catalog, the AI decides its transactions again. Each sync asks the AI a maximum of 40 times (`OFFERS_AI_MAX_CALLS`). If the AI is not available, the transactions wait for the next sync.
 
@@ -122,26 +136,37 @@ flowchart TD
   Purchase -- "Yes, fewer than uses" --> PartUse["Partly credited"]
 ```
 
+A period ends at the end date of its offer. A period that starts before the first transaction of its account shows "Before your data" instead of "Missed".
+
 The history of each offer starts at the first transaction of its account in Actual Budget. A period before that date does not count as missed. The card totals on the dashboard count the current calendar year. The offer pages show the full history.
 
-## Step 1: Read the Dashboard
+## Step 1: Read the Tracker
 
-- Open `https://offers.sudhanva.me`. The month name and the arrows at the top select the month. Each past month keeps its result.
-- **Unused** lists the offers with no evidence in the period, ordered by deadline. A circle marks each one.
-- **Awaiting credit** lists the purchases that wait for an issuer credit.
-- **Used** lists the used and credited offers. A green check mark marks each one.
-- The holder buttons show one person's cards. **By card** groups the offers by card.
+Open `https://offers.sudhanva.me`. The tracker shows each card with its offers as rows and the last six months as columns. The current month has a shaded column.
+
+| Mark | Meaning |
+| --- | --- |
+| Green check | Used or credited |
+| Half circle | Partly used. The caption shows the uses or the amount |
+| Dashed ring | Open in the current period. The caption shows the amount left, or the days left in the last 7 days |
+| Red cross | Missed. The period ended unused |
+| Question mark | The period starts before your data, so earlier use is not visible |
+| Clock | A purchase waits for its credit |
+| Dash | You marked it not interested |
+
+- An offer with a longer period, for example a half-year credit, shows one wide cell across its months.
+- An amber dot on a cell means that matching orders were paid with another card. Pay with this card to use the credit.
+- The summary at the top shows the credits used this month, the amount still open, and the amount missed last month.
+- A banner shows when Actual Budget has no transactions in the last 4 days.
+- Select a cell or an offer name to see each period with the transactions that count for it.
 - The **Cards** page compares the captured credits of the year with each annual fee, and lists the credits that no offer explains.
-- Select an offer name to see its history and the transactions that count for it.
-
-The quarterly activations show as reminders above the list.
 
 ## Step 2: Correct a State
 
-You do not have to do anything. Correct a state only when it is wrong:
+You do not have to do anything. Correct a period only when the transactions cannot show it:
 
-- In the **…** menu of an offer, select **I used it** for a use that Actual Budget cannot show. For example, Uber Cash that paid a full trip has no card transaction.
-- Select **Not interested this period** to remove an offer from the unused list.
+- On the offer page, select **I used it** for a period that an in-app credit paid in full. Select **I activated it** for an activation.
+- Select **Not interested** to stop an open period from counting.
 - Select **Undo** to remove a correction.
 - The **AI log** lists the AI answers with a low confidence. Select **Wrong? Flip it** to reverse one. Offers keeps each correction in the `user_decisions` table as a test case.
 
@@ -152,7 +177,8 @@ The sync sends these messages to the Telegram chat in `TELEGRAM_CHAT_ID`. The bo
 | Message | When |
 | --- | --- |
 | Offers that end soon | An offer is unused or partly credited, and its period ends in 5 days or less (`OFFERS_REMINDER_DAYS`). For an activation offer, in the first 5 days of its period |
-| Monthly summary | On the first sync of days 1 to 3 of a month, for the periods that ended in the previous month |
+| Monthly summary | When the data covers the previous month, for the periods that ended in that month. One message for each month |
+| Stale data | Once each week while the newest transaction is more than 4 days old. Reminders about unused credits and the monthly summary wait until the data is current. Activation reminders do not wait |
 
 The `notifications` table keeps a key for each message, so a message goes out one time only.
 
@@ -190,11 +216,12 @@ Each offer has these fields:
 | --- | --- |
 | `id`, `card`, `name` | The offer identifier, the card `id`, and the display name |
 | `value` | The value in dollars for each period |
-| `period` | `monthly`, `quarterly`, `semiannual`, `annual`, or `cardmember_year` |
+| `period` | `monthly`, `quarterly`, `semiannual`, `annual`, `cardmember_year`, or `once`. A `once` offer has one period from `valid_from` to `valid_to`, for example an activation that you do one time |
 | `kind` | `credit` (default) or `activation` |
 | `valid_from`, `valid_to` | Optional dates. Past periods keep the offer as it was |
 | `enrollment` | `true` if the offer needs enrollment or activation |
-| `uses` | The number of uses in a period, for an offer made of more than one promo. For example, two promos of $10 have `value: 20` and `uses: 2`. One qualifying purchase then shows the offer as partly used |
+| `uses` | The number of uses in a period, for an offer of equal uses. One qualifying purchase of a two-use offer shows it as partly used |
+| `promos` | Optional. A list of promos with a `name`, a `value`, and an optional `payee` regular expression. Offers sets `value` to their sum and `uses` to their number. Use it when the promos have different values or different merchants, for example the DoorDash promos |
 | `group` | Optional. Offers in the same group are separate promos that one order cannot share. Each purchase counts for the first offer in catalog order that matches it and has a use left |
 | `how_to_use` | A short instruction for the dashboard and the AI |
 | `detect.credit` | A rule for the credit that the issuer posts on the card |
@@ -223,4 +250,4 @@ kubectl -n offers logs -f job/offers-sync-manual
 
 ## Bank Sync
 
-Offers reads the transactions that are in Actual Budget. Run the bank sync in Actual Budget to import new transactions. To let Offers run the Actual bank sync before each read, set `OFFERS_BANK_SYNC` to `"true"` in `apps/offers/cronjob.yaml`. The bank sync is the only write from Offers to Actual Budget.
+The sync runs the Actual Budget bank sync before it reads the transactions (`OFFERS_BANK_SYNC: "true"` in `apps/offers/cronjob.yaml`). The bank sync imports new transactions from SimpleFIN Bridge, in the same way as the **Sync** button in Actual Budget. If the bank sync fails, the sync logs a warning and continues. The stale-data warning then tells you on Telegram. To stop the bank sync, set `OFFERS_BANK_SYNC` to `"false"`.

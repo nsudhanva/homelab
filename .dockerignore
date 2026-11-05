@@ -25,3 +25,7 @@ bw_*.json
 **/node_modules
 apps/offers/web/dist
 apps/offers/src/offers/web_dist
+**/*.db
+**/*.db-wal
+**/*.db-shm
+**/tsconfig.tsbuildinfo

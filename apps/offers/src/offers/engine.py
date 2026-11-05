@@ -14,8 +14,8 @@ The AI never overrules a rule: it only sees transactions that no rule matched.
 import re
 from collections import defaultdict
 from collections.abc import Iterable, Mapping
-from dataclasses import dataclass, field
-from datetime import date
+from dataclasses import dataclass, field, replace
+from datetime import date, timedelta
 
 from offers.catalog import Card, Catalog, Kind, Offer, Rule
 from offers.models import (
@@ -29,7 +29,7 @@ from offers.models import (
     State,
     Txn,
 )
-from offers.periods import Window, window_for, windows_between
+from offers.periods import Period, Window, window_for, windows_between
 
 NOT_AN_OFFER = re.compile(
     r"\b(payment|autopay|transfer|interest|starting balance|cashback redemption|"
@@ -65,6 +65,7 @@ class OfferStatus:
     captured_cents: int
     evidence: tuple[Evidence, ...]
     override: OverrideStatus | None = None
+    data_from: date | None = None
 
     @property
     def remaining_cents(self) -> int:
@@ -138,28 +139,37 @@ def collect(
             continue
         fingerprint = offer.fingerprint()
         for txn in txns:
-            if txn.amount_cents == 0 or not offer.active_on(txn.date):
+            if txn.amount_cents == 0:
+                continue
+            kind = EvidenceKind.CREDIT if txn.amount_cents > 0 else EvidenceKind.USAGE
+            active = offer.accepts_credit_on if kind is EvidenceKind.CREDIT else offer.active_on
+            if not active(txn.date):
                 continue
             on_card = txn.account_id == account.id
-            kind = EvidenceKind.CREDIT if txn.amount_cents > 0 else EvidenceKind.USAGE
             rule = offer.detect.credit if kind is EvidenceKind.CREDIT else offer.detect.usage
             if rule is None or not (on_card or rule.scope == "any"):
                 continue
             if kind is EvidenceKind.CREDIT and not on_card:
                 continue
-            window = window_for(offer.period, txn.date, anniversary.get(account.id))
+            window = window_for(
+                offer.period, txn.date, anniversary.get(account.id), offer.valid_from
+            )
             pairs.append(
                 (offer, rule, Candidate(offer.id, account.id, window.start, txn, kind, fingerprint))
             )
 
     matched: set[str] = set()
+    credited: set[str] = set()
     for _, rule, candidate in pairs:
         txn = candidate.txn
-        if rule.matches((txn.payee, txn.description), txn.amount):
-            result.evidence.append(
-                make_evidence(candidate, Source.RULE, 1.0, f"rule: {rule.payee}")
-            )
-            matched.add(txn.id)
+        if not rule.matches((txn.payee, txn.description), txn.amount):
+            continue
+        if candidate.kind is EvidenceKind.CREDIT:
+            if txn.id in credited:
+                continue
+            credited.add(txn.id)
+        result.evidence.append(make_evidence(candidate, Source.RULE, 1.0, f"rule: {rule.payee}"))
+        matched.add(txn.id)
 
     for offer, _, candidate in pairs:
         txn = candidate.txn
@@ -183,8 +193,94 @@ def collect(
                 )
             if decision.confidence < threshold:
                 result.review.append((candidate, decision))
+    by_id = {t.id: t for t in txns}
     result.evidence = _allocate(catalog, result.evidence)
+    result.evidence = _pair_credits(catalog, result.evidence, by_id)
+    result.evidence = _assign_promos(catalog, result.evidence, by_id)
     return result
+
+
+PAIR_DAYS = 45
+
+
+def _pair_credits(
+    catalog: Catalog, evidence: list[Evidence], txns: Mapping[str, Txn]
+) -> list[Evidence]:
+    """Move each issuer credit to the period of the purchase that it pays back.
+
+    An issuer can post a credit some days after the purchase, in the next period. The credit
+    goes to the latest earlier purchase for the same offer, within 45 days, that has no
+    credit yet.
+    """
+    offers = {o.id: o for o in catalog.offers}
+    purchases: dict[tuple[str, str], list[Evidence]] = defaultdict(list)
+    for e in evidence:
+        if e.kind is EvidenceKind.USAGE and e.txn_id in txns:
+            purchases[(e.offer_id, e.account_id)].append(e)
+    paired: set[str] = set()
+    out: list[Evidence] = []
+    credits = sorted(
+        (e for e in evidence if e.kind is EvidenceKind.CREDIT and e.txn_id in txns),
+        key=lambda e: txns[e.txn_id].date,
+    )
+    moved: dict[int, Evidence] = {}
+    for credit in credits:
+        offer = offers.get(credit.offer_id)
+        if offer is None or offer.detect.usage is None:
+            continue
+        day = txns[credit.txn_id].date
+        options = [
+            p
+            for p in purchases[(credit.offer_id, credit.account_id)]
+            if p.txn_id not in paired and 0 <= (day - txns[p.txn_id].date).days <= PAIR_DAYS
+        ]
+        if not options:
+            continue
+        purchase = max(options, key=lambda p: txns[p.txn_id].date)
+        paired.add(purchase.txn_id)
+        if purchase.period_start != credit.period_start:
+            moved[id(credit)] = replace(credit, period_start=purchase.period_start)
+    for e in evidence:
+        out.append(moved.get(id(e), e))
+    return out
+
+
+def _assign_promos(
+    catalog: Catalog, evidence: list[Evidence], txns: Mapping[str, Txn]
+) -> list[Evidence]:
+    """Give each purchase to one promo of an offer that is made of promos.
+
+    Each purchase, in date order, takes the first free promo whose ``payee`` matches it. A
+    promo without ``payee`` takes a purchase only when no specific promo matches.
+    """
+    offers = {o.id: o for o in catalog.offers if o.promos}
+    if not offers:
+        return evidence
+    groups: dict[tuple[str, str, date], list[Evidence]] = defaultdict(list)
+    for e in evidence:
+        if e.kind is EvidenceKind.USAGE and e.offer_id in offers:
+            groups[(e.offer_id, e.account_id, e.period_start)].append(e)
+    assigned: dict[int, Evidence] = {}
+    for (offer_id, _, _), items in groups.items():
+        promos = list(offers[offer_id].promos)
+        free = [True] * len(promos)
+        for e in sorted(
+            items, key=lambda e: (txns[e.txn_id].date if e.txn_id in txns else date.min, e.txn_id)
+        ):
+            txn = txns.get(e.txn_id)
+            fields = (txn.payee, txn.description) if txn else ()
+            choice = next(
+                (i for i, p in enumerate(promos) if free[i] and p.payee and p.accepts(fields)),
+                None,
+            )
+            if choice is None:
+                choice = next(
+                    (i for i, p in enumerate(promos) if free[i] and p.payee is None), None
+                )
+            if choice is not None:
+                free[choice] = False
+                assigned[id(e)] = replace(e, promo_cents=promos[choice].value_cents)
+    return [assigned.get(id(e), e) for e in evidence]
 
 
 def _allocate(catalog: Catalog, evidence: list[Evidence]) -> list[Evidence]:
@@ -249,6 +345,8 @@ def offer_status(
     items = tuple(evidence)
     credits = sum(e.amount_cents for e in items if e.kind is EvidenceKind.CREDIT)
     uses = len({e.txn_id for e in items if e.kind is EvidenceKind.USAGE})
+    if offer.promos:
+        uses = sum(1 for e in items if e.kind is EvidenceKind.USAGE and e.promo_cents)
 
     def status(state: State, captured: int) -> OfferStatus:
         return OfferStatus(inst, window, state, captured, items, override)
@@ -264,13 +362,15 @@ def offer_status(
     if override is OverrideStatus.USED:
         return status(State.USED, offer.value_cents)
     if credits >= offer.value_cents - 1:
-        return status(State.CREDITED, offer.value_cents)
+        return status(State.CREDITED, min(credits, offer.value_cents))
     if credits > 0:
         return status(State.PARTIAL, credits)
     if uses and offer.detect.credit is not None:
         return status(State.PENDING, 0)
     if uses >= offer.uses:
         return status(State.USED, offer.value_cents)
+    if uses and offer.promos:
+        return status(State.PARTIAL, sum(e.promo_cents for e in items))
     if uses:
         return status(State.PARTIAL, offer.value_cents * uses // offer.uses)
     return status(State.UNUSED, 0)
@@ -307,9 +407,20 @@ def statuses(
         end = min(last, offer.valid_to) if offer.valid_to else last
         if start > end:
             continue
-        for window in windows_between(offer.period, start, end, anniversary.get(inst.account.id)):
+        if offer.period is Period.ONCE:
+            first_window = window_for(offer.period, start, None, offer.valid_from)
+            windows = [first_window]
+        else:
+            windows = windows_between(offer.period, start, end, anniversary.get(inst.account.id))
+        for window in windows:
             key = (offer.id, inst.account.id, window.start)
-            out.append(offer_status(inst, window, grouped.get(key, ()), overrides.get(key)))
+            if offer.valid_to and window.end > offer.valid_to + timedelta(days=1):
+                window = Window(window.start, offer.valid_to + timedelta(days=1))
+            row = offer_status(inst, window, grouped.get(key, ()), overrides.get(key))
+            seen = coverage.get(inst.account.id)
+            if seen and (seen - max(window.start, offer.valid_from or window.start)).days > 7:
+                row = replace(row, data_from=seen)
+            out.append(row)
     return out
 
 

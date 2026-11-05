@@ -43,8 +43,57 @@ def test_rejects_bad_regex_and_missing_value() -> None:
         _catalog([CARD], [{"id": "o", "card": "c", "name": "O", "period": "monthly"}])
 
 
-def test_fingerprint_changes_with_definition(catalog: Catalog) -> None:
+def test_fingerprint_follows_the_meaning_of_the_offer(catalog: Catalog) -> None:
     offer = catalog.offer("gold-coffee")
     assert offer is not None
-    changed = offer.model_copy(update={"value": 8})
+    assert offer.fingerprint() == offer.model_copy(update={"value": 8}).fingerprint()
+    changed = offer.model_copy(update={"how_to_use": "Only at the airport store."})
     assert offer.fingerprint() != changed.fingerprint()
+
+
+def test_promos_set_value_and_uses() -> None:
+    catalog = _catalog(
+        [CARD],
+        [
+            {
+                "id": "o",
+                "card": "c",
+                "name": "O",
+                "period": "monthly",
+                "promos": [{"name": "a", "value": 5}, {"name": "b", "value": 10, "payee": "x"}],
+            }
+        ],
+    )
+    offer = catalog.offers[0]
+    assert (offer.value, offer.uses) == (15, 2)
+    with pytest.raises(ValidationError, match="sum of the promos"):
+        _catalog(
+            [CARD],
+            [
+                {
+                    "id": "o",
+                    "card": "c",
+                    "name": "O",
+                    "value": 9,
+                    "period": "monthly",
+                    "promos": [{"name": "a", "value": 5}],
+                }
+            ],
+        )
+
+
+def test_uber_cash_rule_skips_the_uber_one_fee() -> None:
+    offer = load_catalog(REPO_CATALOG).offer("amex-gold-uber-cash")
+    assert offer is not None and offer.detect.usage is not None
+    rule = offer.detect.usage
+    assert rule.matches(("Uber", "UBER *TRIP"), -20)
+    assert rule.matches(("Uber Eats", ""), -30)
+    assert not rule.matches(("UBER *ONE MEMBERSHIP", ""), -9.99)
+    assert not rule.matches(("Uber One", ""), -9.99)
+
+
+def test_once_offer_needs_a_start() -> None:
+    with pytest.raises(ValidationError, match="needs valid_from"):
+        _catalog(
+            [CARD], [{"id": "o", "card": "c", "name": "O", "kind": "activation", "period": "once"}]
+        )

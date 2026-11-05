@@ -13,6 +13,8 @@ from offers.store import Store
 
 logger = logging.getLogger(__name__)
 
+MAX_AI_FAILURES = 3
+
 
 def evaluate(
     store: Store,
@@ -35,15 +37,20 @@ def evaluate(
 
     result = run()
     if matcher and result.pending_ai:
-        budget = settings.ai_max_calls
-        asked = 0
-        for candidate in result.pending_ai[:budget]:
+        asked = failures = 0
+        newest_first = sorted(result.pending_ai, key=lambda c: c.txn.date, reverse=True)
+        for candidate in newest_first[: settings.ai_max_calls]:
             offer = catalog.offer(candidate.offer_id)
             if offer is None:
                 continue
             decision = matcher.decide(candidate, offer, catalog.card(offer.card))
             if decision is None:
-                break
+                failures += 1
+                if failures >= MAX_AI_FAILURES:
+                    logger.warning("The AI failed %d times in a row; the rest waits", failures)
+                    break
+                continue
+            failures = 0
             store.save_ai_decision(candidate, decision, matcher.model)
             asked += 1
         logger.info("Asked the AI about %d of %d candidates", asked, len(result.pending_ai))

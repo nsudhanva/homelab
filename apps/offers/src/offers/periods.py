@@ -11,6 +11,10 @@ class Period(StrEnum):
     SEMIANNUAL = "semiannual"
     ANNUAL = "annual"
     CARDMEMBER_YEAR = "cardmember_year"
+    ONCE = "once"
+
+
+ONCE_END = date(9999, 1, 1)
 
 
 @dataclass(frozen=True, order=True)
@@ -26,6 +30,8 @@ class Window:
 
     @property
     def label(self) -> str:
+        if self.end == ONCE_END:
+            return f"From {self.start.strftime('%b %Y')}"
         last = date.fromordinal(self.end.toordinal() - 1)
         if (self.start.year, self.start.month) == (last.year, last.month):
             return self.start.strftime("%b %Y")
@@ -37,12 +43,19 @@ def _add_months(day: date, months: int) -> date:
     return date(index // 12, index % 12 + 1, 1)
 
 
-def window_for(period: Period, day: date, anniversary_month: int | None = None) -> Window:
+def window_for(
+    period: Period,
+    day: date,
+    anniversary_month: int | None = None,
+    once_from: date | None = None,
+) -> Window:
     """Return the period window that contains ``day``.
 
     A card-member year starts in ``anniversary_month``. Without a known anniversary month,
     it is the calendar year.
     """
+    if period is Period.ONCE:
+        return Window(once_from or date(day.year, 1, 1), ONCE_END)
     if period is Period.MONTHLY:
         start = date(day.year, day.month, 1)
         return Window(start, _add_months(start, 1))
@@ -63,6 +76,8 @@ def windows_between(
     period: Period, first: date, last: date, anniversary_month: int | None = None
 ) -> list[Window]:
     """Return every window that overlaps the inclusive range ``first`` to ``last``."""
+    if period is Period.ONCE:
+        return [window_for(period, first)]
     windows: list[Window] = []
     current = window_for(period, first, anniversary_month)
     while current.start <= last:

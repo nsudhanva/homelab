@@ -83,6 +83,37 @@ class Detect(BaseModel):
     ai_hint: str | None = None
 
 
+class Promo(BaseModel):
+    """One promo of an offer that is made of separate promos, for example DoorDash promos.
+
+    ``payee`` limits the promo to matching purchases. A promo without ``payee`` takes any
+    qualifying purchase.
+    """
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    name: str
+    value: float = Field(gt=0)
+    payee: str | None = None
+
+    @field_validator("payee")
+    @classmethod
+    def _compiles(cls, value: str | None) -> str | None:
+        return value if value is None else _check_pattern(value)
+
+    @property
+    def value_cents(self) -> int:
+        return round(self.value * 100)
+
+    def accepts(self, fields: Iterable[str]) -> bool:
+        if self.payee is None:
+            return True
+        return any(re.search(self.payee, f, re.IGNORECASE) for f in fields if f)
+
+
+CREDIT_GRACE_DAYS = 60
+
+
 class Offer(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
@@ -98,12 +129,25 @@ class Offer(BaseModel):
     uses: int = Field(default=1, ge=1)
     group: str | None = Field(default=None, pattern=SLUG)
     how_to_use: str | None = None
+    promos: tuple[Promo, ...] = ()
     detect: Detect = Detect()
+
+    @model_validator(mode="before")
+    @classmethod
+    def _from_promos(cls, data: object) -> object:
+        if isinstance(data, dict) and data.get("promos"):
+            total = sum(float(p["value"]) for p in data["promos"])
+            data = {**data, "value": data.get("value", total), "uses": len(data["promos"])}
+        return data
 
     @model_validator(mode="after")
     def _check(self) -> "Offer":
+        if self.promos and round(sum(p.value for p in self.promos), 2) != round(self.value, 2):
+            raise ValueError(f"{self.id}: value must equal the sum of the promos")
         if self.valid_from and self.valid_to and self.valid_to < self.valid_from:
             raise ValueError(f"{self.id}: valid_to is before valid_from")
+        if self.period is Period.ONCE and self.valid_from is None:
+            raise ValueError(f"{self.id}: a once offer needs valid_from")
         if self.kind is Kind.CREDIT and self.value <= 0:
             raise ValueError(f"{self.id}: a credit offer needs a value")
         return self
@@ -113,13 +157,23 @@ class Offer(BaseModel):
             return False
         return not (self.valid_to and day > self.valid_to)
 
+    def accepts_credit_on(self, day: date) -> bool:
+        """Issuers post some credits after the purchase, so a credit can arrive after the end."""
+        if self.valid_from and day < self.valid_from:
+            return False
+        return not (self.valid_to and (day - self.valid_to).days > CREDIT_GRACE_DAYS)
+
     @property
     def value_cents(self) -> int:
         return round(self.value * 100)
 
     def fingerprint(self) -> str:
-        """Changes when the offer definition changes, so cached AI decisions expire."""
-        return hashlib.sha256(self.model_dump_json().encode()).hexdigest()[:16]
+        """Changes when the meaning of the offer for the AI changes, so cached AI decisions
+        expire. A change to a value, a date, or a rule keeps the cached decisions."""
+        meaning = self.model_dump_json(
+            include={"card", "name", "kind", "how_to_use", "promos"}
+        ) + self.detect.model_dump_json(include={"keywords", "ai_hint"})
+        return hashlib.sha256(meaning.encode()).hexdigest()[:16]
 
 
 class Card(BaseModel):

@@ -72,7 +72,7 @@ def build(store: Store, catalog: Catalog, today: date) -> Dashboard:
             (r for r in mine if r.window.contains(today)),
             key=lambda r: (r.state not in OPEN_STATES, r.window.end, r.instance.offer.name),
         )
-        year = [r for r in mine if r.window.end > year_start]
+        year = [r for r in mine if r.window.start >= year_start]
         finished = [r for r in year if r.window.end <= today]
         cards.append(
             CardSummary(

@@ -54,6 +54,7 @@ class Evidence:
     amount_cents: int
     confidence: float
     reason: str
+    promo_cents: int = 0
 
 
 @dataclass(frozen=True)

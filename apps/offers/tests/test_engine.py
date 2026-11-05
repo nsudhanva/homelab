@@ -201,3 +201,93 @@ def test_anniversary_month_fallback(catalog: Catalog, accounts: list[Account]) -
     )
     fallback = Catalog(cards=cards, offers=catalog.offers)
     assert engine.anniversaries(fallback, accounts, []) == {"a-gold": 7}
+
+
+def _offer(**kw) -> Offer:
+    base = {"id": "x", "card": "gold", "name": "X", "period": Period.MONTHLY}
+    return Offer.model_validate({**base, **kw})
+
+
+def test_credit_in_next_month_pays_back_the_purchase(catalog: Catalog, accounts) -> None:
+    txns = [
+        txn("p", "a-gold", date(2026, 1, 30), -12, "Coffee Co"),
+        txn("c", "a-gold", date(2026, 2, 2), 7, "Coffee Co"),
+    ]
+    result = _collect(catalog, accounts, txns)
+    credit = next(e for e in result.evidence if e.txn_id == "c" and e.offer_id == "gold-coffee")
+    assert credit.period_start == date(2026, 1, 1)
+    jan = _state(catalog, accounts, txns, result.evidence, "gold-coffee", date(2026, 1, 31))
+    feb = _state(catalog, accounts, txns, result.evidence, "gold-coffee", date(2026, 2, 20))
+    assert (jan.state, feb.state) == (State.CREDITED, State.UNUSED)
+
+
+def test_credit_after_the_end_date_still_counts(catalog: Catalog, accounts) -> None:
+    ended = _offer(
+        id="promo",
+        value=10,
+        valid_to=date(2026, 10, 19),
+        detect=Detect(credit=Rule(payee="stream"), usage=Rule(payee="stream")),
+    )
+    cat = Catalog(cards=catalog.cards, offers=(ended,))
+    txns = [
+        txn("p", "a-gold", date(2026, 10, 18), -10, "Stream"),
+        txn("c", "a-gold", date(2026, 10, 21), 10, "Stream"),
+    ]
+    result = _collect(cat, accounts, txns)
+    assert {(e.txn_id, e.period_start) for e in result.evidence} == {
+        ("p", date(2026, 10, 1)),
+        ("c", date(2026, 10, 1)),
+    }
+
+
+def test_window_stops_at_the_end_date(catalog: Catalog, accounts) -> None:
+    ended = _offer(
+        id="promo",
+        value=40,
+        period=Period.ANNUAL,
+        valid_to=date(2026, 10, 19),
+        detect=Detect(credit=Rule(payee="stream")),
+    )
+    cat = Catalog(cards=catalog.cards, offers=(ended,))
+    rows = engine.statuses(cat, accounts, [], [], {}, date(2026, 1, 1), date(2026, 11, 5))
+    assert rows[0].window.end == date(2026, 10, 20)
+    assert not rows[0].window.contains(date(2026, 11, 5))
+
+
+def test_one_credit_counts_for_one_offer(catalog: Catalog, accounts) -> None:
+    a = _offer(id="a", value=250, period=Period.ANNUAL, detect=Detect(credit=Rule(payee="hotel")))
+    b = _offer(id="b", value=500, period=Period.ANNUAL, detect=Detect(credit=Rule(payee="credit")))
+    cat = Catalog(cards=catalog.cards, offers=(a, b))
+    result = _collect(cat, accounts, [txn("c", "a-gold", date(2026, 5, 1), 250, "Hotel credit")])
+    assert [e.offer_id for e in result.evidence] == ["a"]
+
+
+def test_promos_take_matching_orders(catalog: Catalog, accounts) -> None:
+    dash = _offer(
+        id="dash",
+        promos=[
+            {"name": "Store", "value": 10, "payee": "via deliverydash"},
+            {"name": "Store", "value": 10, "payee": "via deliverydash"},
+            {"name": "Restaurant", "value": 5, "payee": "^deliverydash$"},
+        ],
+        detect=Detect(usage=Rule(payee="deliverydash")),
+    )
+    cat = Catalog(cards=catalog.cards, offers=(dash,))
+    txns = [
+        txn("r1", "a-gold", date(2026, 9, 16), -21, "DeliveryDash"),
+        txn("r2", "a-gold", date(2026, 9, 22), -10, "DeliveryDash"),
+        txn("s1", "a-gold", date(2026, 9, 24), -20, "Pharmacy via DeliveryDash"),
+    ]
+    result = _collect(cat, accounts, txns)
+    row = _state(cat, accounts, txns, result.evidence, "dash", date(2026, 9, 25))
+    assert row.state is State.PARTIAL
+    assert (row.captured_cents, row.remaining_cents) == (1500, 1000)
+
+
+def test_period_before_the_data_is_flagged(catalog: Catalog, accounts) -> None:
+    txns = [txn("t1", "a-gold", date(2026, 7, 20), -4, "Grocer")]
+    rows = engine.statuses(catalog, accounts, txns, [], {}, date(2026, 1, 1), date(2026, 8, 31))
+    travel = next(r for r in rows if r.instance.offer.id == "gold-travel")
+    coffee = [r for r in rows if r.instance.offer.id == "gold-coffee"]
+    assert travel.data_from == date(2026, 7, 20)
+    assert coffee[0].data_from == date(2026, 7, 20) and coffee[1].data_from is None

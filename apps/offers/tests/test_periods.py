@@ -25,3 +25,12 @@ def test_cardmember_year_uses_anniversary() -> None:
 def test_windows_between() -> None:
     windows = windows_between(Period.MONTHLY, date(2026, 1, 20), date(2026, 3, 1))
     assert [w.start.month for w in windows] == [1, 2, 3]
+
+
+def test_once_window() -> None:
+    w = window_for(Period.ONCE, date(2026, 5, 1), once_from=date(2026, 1, 1))
+    assert w.start == date(2026, 1, 1) and w.contains(date(2029, 1, 1))
+    assert w.label == "From Jan 2026"
+    assert windows_between(Period.ONCE, date(2026, 1, 1), date(2027, 1, 1)) == [
+        window_for(Period.ONCE, date(2026, 1, 1))
+    ]

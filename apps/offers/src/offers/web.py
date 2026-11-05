@@ -14,7 +14,7 @@ from pydantic import BaseModel
 from offers import views
 from offers.catalog import Catalog, load_catalog
 from offers.config import Settings
-from offers.engine import OfferStatus
+from offers.engine import OfferStatus, instances
 from offers.models import Account, OverrideStatus, Txn
 from offers.store import Store
 from offers.sync import evaluate
@@ -145,6 +145,67 @@ class ReviewIn(BaseModel):
     match: bool
 
 
+class Cell(BaseModel):
+    month: str
+    offer_id: str | None
+    span: int
+    state: str | None
+    value: float
+    captured: float
+    remaining: float
+    uses: int
+    used: int
+    period_start: date | None
+    period_label: str | None
+    days_left: int | None
+    current: bool
+    elsewhere: int
+    data_from: date | None = None
+
+
+class TrackerRow(BaseModel):
+    offer_id: str
+    name: str
+    kind: str
+    in_app: bool
+    value: float
+    period: str
+    uses: int
+    how_to_use: str | None
+    enrollment: bool
+    cells: list[Cell]
+
+
+class TrackerCard(BaseModel):
+    card_id: str
+    name: str
+    issuer: str
+    annual_fee: float
+    account: AccountOut
+    year_captured: float
+    rows: list[TrackerRow]
+
+
+class MonthSummary(BaseModel):
+    month: str
+    available: float
+    captured: float
+    open: float
+    missed: float
+    used_count: int
+    open_count: int
+    ending_soon: int
+
+
+class TrackerOut(BaseModel):
+    today: date
+    latest_txn: date | None
+    months: list[str]
+    current: MonthSummary
+    last_run: RunOut | None
+    cards: list[TrackerCard]
+
+
 class OverrideIn(BaseModel):
     offer_id: str
     account_id: str
@@ -199,6 +260,180 @@ def txn_out(t: Txn, accounts: dict[str, Account]) -> TxnOut:
         payee=t.payee,
         description=t.description,
         account=account_out(account) if account else None,
+    )
+
+
+def month_key(day: date) -> str:
+    return f"{day.year}-{day.month:02d}"
+
+
+def month_start(key: str) -> date:
+    year, month = map(int, key.split("-"))
+    return date(year, month, 1)
+
+
+def tracker(store: Store, catalog: Catalog, today: date, months_back: int) -> TrackerOut:
+    txns = store.transactions()
+    accounts = store.accounts()
+    rows = views.all_statuses(store, catalog, today)
+    run = store.last_run()
+    months = month_list(views.history_start(txns, today), today)[-months_back:] or [
+        month_key(today)
+    ]
+    current_key = month_key(today)
+
+    grouped: dict[tuple[str, str], list[OfferStatus]] = {}
+    for r in rows:
+        grouped.setdefault((r.instance.offer.id, r.instance.account.id), []).append(r)
+
+    def elsewhere(r: OfferStatus) -> int:
+        rule = r.instance.offer.detect.usage
+        if rule is None or rule.scope == "any":
+            return 0
+        return sum(
+            1
+            for t in txns
+            if t.account_id != r.instance.account.id
+            and t.amount_cents < 0
+            and r.window.contains(t.date)
+            and rule.matches((t.payee, t.description), t.amount)
+        )
+
+    lines: dict[tuple[str, str, str], list] = {}
+    for inst in instances(catalog, accounts):
+        lines.setdefault((inst.card.id, inst.account.id, inst.offer.name), []).append(inst)
+
+    cards: dict[tuple[str, str], TrackerCard] = {}
+    for versions in lines.values():
+        inst = max(versions, key=lambda v: v.offer.valid_from or date.min)
+        offer = inst.offer
+        statuses = [r for v in versions for r in grouped.get((v.offer.id, v.account.id), [])]
+        cells: list[Cell] = []
+        index = 0
+        while index < len(months):
+            key = months[index]
+            start = month_start(key)
+            options = [
+                r
+                for r in statuses
+                if r.window.start <= start < r.window.end
+                or (r.window.start > start and month_key(r.window.start) == key)
+            ]
+            match = max(
+                options, key=lambda r: r.instance.offer.valid_from or date.min, default=None
+            )
+            if match is None:
+                cells.append(
+                    Cell(
+                        month=key,
+                        offer_id=None,
+                        span=1,
+                        state=None,
+                        value=0,
+                        captured=0,
+                        remaining=0,
+                        uses=offer.uses,
+                        used=0,
+                        period_start=None,
+                        period_label=None,
+                        days_left=None,
+                        current=key == current_key,
+                        elsewhere=0,
+                    )
+                )
+                index += 1
+                continue
+            span = 1
+            while (
+                index + span < len(months) and month_start(months[index + span]) < match.window.end
+            ):
+                span += 1
+            used = 0
+            matched = match.instance.offer
+            if matched.promos:
+                used = sum(1 for e in match.evidence if e.promo_cents)
+            elif matched.uses > 1 and matched.value_cents:
+                used = round(match.captured_cents * matched.uses / matched.value_cents)
+            cells.append(
+                Cell(
+                    month=key,
+                    offer_id=match.instance.offer.id,
+                    span=span,
+                    state=match.state.value,
+                    value=matched.value,
+                    captured=match.captured_cents / 100,
+                    remaining=match.remaining_cents / 100,
+                    uses=matched.uses,
+                    used=used,
+                    period_start=match.window.start,
+                    period_label=match.window.label,
+                    days_left=match.window.days_left(today)
+                    if match.window.contains(today)
+                    else None,
+                    current=match.window.contains(today),
+                    elsewhere=elsewhere(match),
+                    data_from=match.data_from,
+                )
+            )
+            index += span
+        if all(c.state is None for c in cells):
+            continue
+        key = (inst.card.id, inst.account.id)
+        if key not in cards:
+            cards[key] = TrackerCard(
+                card_id=inst.card.id,
+                name=inst.card.name,
+                issuer=inst.card.issuer,
+                annual_fee=inst.card.annual_fee,
+                account=account_out(inst.account),
+                year_captured=sum(
+                    r.captured_cents / 100
+                    for r in rows
+                    if r.instance.account.id == inst.account.id
+                    and r.instance.card.id == inst.card.id
+                    and r.window.start >= date(today.year, 1, 1)
+                ),
+                rows=[],
+            )
+        cards[key].rows.append(
+            TrackerRow(
+                offer_id=offer.id,
+                name=offer.name,
+                kind=offer.kind.value,
+                in_app=offer.detect.credit is None and offer.kind.value == "credit",
+                value=offer.value,
+                period=offer.period.value,
+                uses=offer.uses,
+                how_to_use=offer.how_to_use,
+                enrollment=offer.enrollment,
+                cells=cells,
+            )
+        )
+
+    now = [r for r in rows if r.window.contains(today) and r.instance.offer.kind.value == "credit"]
+    last_month = [
+        r
+        for r in rows
+        if r.window.end == month_start(current_key) and r.instance.offer.kind.value == "credit"
+    ]
+    return TrackerOut(
+        today=today,
+        latest_txn=max((t.date for t in txns), default=None),
+        months=months,
+        current=MonthSummary(
+            month=current_key,
+            available=sum(r.instance.offer.value for r in now),
+            captured=sum(r.captured_cents for r in now) / 100,
+            open=sum(r.remaining_cents for r in now) / 100,
+            missed=sum(r.remaining_cents for r in last_month) / 100,
+            used_count=sum(1 for r in now if r.captured_cents > 0),
+            open_count=sum(1 for r in now if r.remaining_cents > 0),
+            ending_soon=sum(
+                1 for r in now if r.remaining_cents > 0 and r.window.days_left(today) <= 7
+            ),
+        ),
+        last_run=RunOut(**run.__dict__) if run else None,
+        cards=list(cards.values()),
     )
 
 
@@ -276,6 +511,14 @@ def create_app(
             unlinked=[txn_out(t, board.accounts) for t in board.unlinked],
         )
 
+    @app.get("/api/tracker")
+    def tracker_view(months: int = 6) -> TrackerOut:
+        s = store()
+        try:
+            return tracker(s, catalog, today(), max(1, min(months, 24)))
+        finally:
+            s.close()
+
     @app.get("/api/offers/{offer_id}/{account_id}")
     def offer_detail(offer_id: str, account_id: str) -> OfferDetailOut:
         offer = catalog.offer(offer_id)
@@ -284,11 +527,16 @@ def create_app(
         day = today()
         s = store()
         try:
-            rows = [
-                r
-                for r in views.all_statuses(s, catalog, day)
-                if r.instance.offer.id == offer_id and r.instance.account.id == account_id
-            ]
+            rows = sorted(
+                (
+                    r
+                    for r in views.all_statuses(s, catalog, day)
+                    if r.instance.account.id == account_id
+                    and r.instance.card.id == offer.card
+                    and r.instance.offer.name == offer.name
+                ),
+                key=lambda r: r.window.start,
+            )
             accounts = {a.id: a for a in s.accounts()}
             txns = {t.id: t for t in s.transactions()}
         finally:
@@ -327,7 +575,6 @@ def create_app(
         try:
             items = s.review()
             accounts = {a.id: a for a in s.accounts()}
-            counted = {(e.txn_id, e.offer_id) for e in s.evidence()}
         finally:
             s.close()
         out = []
@@ -340,7 +587,7 @@ def create_app(
                     offer_name=offer.name if offer else i.offer_id,
                     card_name=catalog.card(offer.card).name if offer else "",
                     kind=i.kind.value,
-                    ai_match=(i.txn.id, i.offer_id) in counted,
+                    ai_match=i.ai_match,
                     confidence=i.confidence,
                     reason=i.reason,
                 )
@@ -370,6 +617,12 @@ def create_app(
             raise HTTPException(404, "unknown offer")
         s = store()
         try:
+            periods = {
+                (r.instance.offer.id, r.instance.account.id, r.window.start)
+                for r in views.all_statuses(s, catalog, today())
+            }
+            if body.status and (body.offer_id, body.account_id, body.period_start) not in periods:
+                raise HTTPException(404, "no such offer period for this account")
             s.set_override(
                 body.offer_id,
                 body.account_id,

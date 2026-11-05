@@ -130,3 +130,67 @@ export const keys = {
   review: ["review"] as const,
   offer: (offerId: string, accountId: string) => ["offer", offerId, accountId] as const,
 };
+
+export type Cell = {
+  month: string;
+  offer_id: string | null;
+  data_from: string | null;
+  span: number;
+  state: State | null;
+  value: number;
+  captured: number;
+  remaining: number;
+  uses: number;
+  used: number;
+  period_start: string | null;
+  period_label: string | null;
+  days_left: number | null;
+  current: boolean;
+  elsewhere: number;
+};
+
+export type TrackerRow = {
+  offer_id: string;
+  name: string;
+  kind: "credit" | "activation";
+  in_app: boolean;
+  value: number;
+  period: string;
+  uses: number;
+  how_to_use: string | null;
+  enrollment: boolean;
+  cells: Cell[];
+};
+
+export type TrackerCard = {
+  card_id: string;
+  name: string;
+  issuer: string;
+  annual_fee: number;
+  account: Account;
+  year_captured: number;
+  rows: TrackerRow[];
+};
+
+export type Tracker = {
+  today: string;
+  latest_txn: string | null;
+  months: string[];
+  current: {
+    month: string;
+    available: number;
+    captured: number;
+    open: number;
+    missed: number;
+    used_count: number;
+    open_count: number;
+    ending_soon: number;
+  };
+  last_run: Dashboard["last_run"];
+  cards: TrackerCard[];
+};
+
+export const trackerApi = {
+  get: (months: number) => request<Tracker>(`/api/tracker?months=${months}`),
+  key: (months: number) => ["dashboard", "tracker", months] as const,
+};

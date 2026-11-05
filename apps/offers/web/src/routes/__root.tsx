@@ -1,8 +1,8 @@
 import type { QueryClient } from "@tanstack/react-query";
 import { useQuery } from "@tanstack/react-query";
 import { Link, Outlet, createRootRouteWithContext } from "@tanstack/react-router";
-import { CreditCard, ListChecks, Sparkles, TicketPercent } from "lucide-react";
-import { api, keys } from "@/lib/api";
+import { CreditCard, LayoutGrid, Sparkles, TicketPercent } from "lucide-react";
+import { trackerApi } from "@/lib/api";
 import { relativeTime } from "@/lib/format";
 import { cn } from "@/lib/utils";
 
@@ -11,19 +11,19 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 });
 
 const NAV = [
-  { to: "/", label: "Offers", icon: ListChecks },
+  { to: "/", label: "Tracker", icon: LayoutGrid },
   { to: "/review", label: "AI log", icon: Sparkles },
   { to: "/cards", label: "Cards", icon: CreditCard },
 ] as const;
 
 function Layout() {
-  const { data } = useQuery({ queryKey: keys.dashboard(), queryFn: () => api.dashboard() });
+  const { data } = useQuery({ queryKey: trackerApi.key(6), queryFn: () => trackerApi.get(6) });
   const run = data?.last_run;
 
   return (
     <div className="min-h-dvh bg-background">
       <header className="sticky top-0 z-30 border-b bg-background/80 backdrop-blur-md">
-        <div className="mx-auto flex h-14 max-w-5xl items-center gap-6 px-4 sm:px-6">
+        <div className="mx-auto flex h-14 max-w-6xl items-center gap-6 px-4 sm:px-6">
           <Link to="/" className="flex items-center gap-2 font-semibold tracking-tight">
             <span className="grid size-7 place-items-center rounded-lg bg-primary text-primary-foreground">
               <TicketPercent className="size-4" />
@@ -58,7 +58,7 @@ function Layout() {
         </div>
       </header>
 
-      <main className="mx-auto max-w-5xl px-4 pt-5 pb-28 sm:px-6 sm:pb-12">
+      <main className="mx-auto max-w-6xl px-4 pt-5 pb-28 sm:px-6 sm:pb-12">
         <Outlet />
       </main>
 
