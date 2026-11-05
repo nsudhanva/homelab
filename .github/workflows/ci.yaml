@@ -70,6 +70,34 @@ jobs:
       run: bun --bun run build
       working-directory: docs
 
+  offers-web:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v7
+    - name: Detect Offers frontend changes
+      id: changes
+      uses: dorny/paths-filter@v4
+      with:
+        filters: |
+          web:
+            - "apps/offers/web/**"
+            - ".github/workflows/ci.yaml"
+    - name: Set up Bun
+      if: steps.changes.outputs.web == 'true'
+      uses: oven-sh/setup-bun@v2
+      with:
+        bun-version: latest
+    - name: Install dependencies
+      if: steps.changes.outputs.web == 'true'
+      run: bun install --frozen-lockfile
+      working-directory: apps/offers/web
+    - name: Type check and build
+      if: steps.changes.outputs.web == 'true'
+      run: bun run build
+      working-directory: apps/offers/web
+
   docs-push:
     if: github.event_name == 'push'
     runs-on: ubuntu-latest
@@ -173,7 +201,7 @@ jobs:
     - name: Checkout
       uses: actions/checkout@v7
     - name: Install uv
-      uses: astral-sh/setup-uv@v7
+      uses: astral-sh/setup-uv@v10.3.3
       with:
         version: "latest"
     - name: Set up Python
