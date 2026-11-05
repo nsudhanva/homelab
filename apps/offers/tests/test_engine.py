@@ -71,7 +71,8 @@ def test_ai_candidates_threshold_and_user_decision(
 
     unsure = {("t1", "gold-delivery", fp): AIDecision(True, 0.5, "maybe")}
     result = _collect(catalog, accounts, [fuzzy], ai=unsure)
-    assert not result.evidence and len(result.review) == 1
+    assert [e.source for e in result.evidence] == [Source.AI]
+    assert len(result.review) == 1
 
     result = _collect(catalog, accounts, [fuzzy], ai=unsure, user={("t1", "gold-delivery"): True})
     assert [e.source for e in result.evidence] == [Source.MANUAL]

@@ -11,7 +11,7 @@ from offers.source import Snapshot
 from offers.store import Store
 from offers.sync import sync
 from offers.views import build
-from offers.web import create_app
+from offers.web import account_out, create_app, month_list
 
 
 class FakeMatcher:
@@ -55,8 +55,17 @@ def test_sync_asks_ai_once_and_caches(store, catalog, settings, accounts) -> Non
     assert {e.offer_id for e in store.evidence()} == {"gold-coffee", "gold-delivery"}
 
 
-def test_sync_without_ai_sends_candidates_to_review(store, catalog, settings, accounts) -> None:
-    sync(store, catalog, settings, _snapshot(accounts), date(2026, 11, 5), None, None)
+def test_sync_without_ai_leaves_candidates_undecided(store, catalog, settings, accounts) -> None:
+    message = sync(store, catalog, settings, _snapshot(accounts), date(2026, 11, 5), None, None)
+    assert "1 undecided" in message
+    assert not store.review()
+    assert "gold-delivery" not in {e.offer_id for e in store.evidence()}
+
+
+def test_low_confidence_ai_still_decides(store, catalog, settings, accounts) -> None:
+    matcher = FakeMatcher(AIDecision(True, 0.5, "maybe a restaurant"))
+    sync(store, catalog, settings, _snapshot(accounts), date(2026, 11, 5), matcher, None)
+    assert "gold-delivery" in {e.offer_id for e in store.evidence()}
     assert [(i.txn.id, i.offer_id) for i in store.review()] == [("t2", "gold-delivery")]
 
 
@@ -70,7 +79,7 @@ def test_notifications_are_sent_once(store, catalog, settings, accounts) -> None
     sender = FakeSender()
     sync(store, catalog, settings, _snapshot(accounts), date(2026, 11, 27), None, sender)
     assert any("end soon" in m and "Ride cash" in m for m in sender.messages)
-    assert any("to review" in m for m in sender.messages)
+    assert not any("review" in m for m in sender.messages)
     count = len(sender.messages)
     assert notify(store, catalog, settings, date(2026, 11, 28), sender) == []
     assert len(sender.messages) == count
@@ -101,35 +110,61 @@ def test_store_reopens_without_migrating_again(settings: Settings) -> None:
     s.close()
 
 
-def test_web_pages_and_actions(store, catalog: Catalog, settings, accounts) -> None:
-    sync(store, catalog, settings, _snapshot(accounts), date(2026, 11, 5), None, None)
-    client = TestClient(create_app(settings, catalog))
+def test_api_and_actions(store, catalog: Catalog, settings, accounts, tmp_path) -> None:
+    matcher = FakeMatcher(AIDecision(True, 0.5, "maybe a restaurant"))
+    sync(store, catalog, settings, _snapshot(accounts), date(2026, 11, 5), matcher, None)
+    dist = tmp_path / "dist"
+    (dist / "assets").mkdir(parents=True)
+    (dist / "index.html").write_text("<div id=root></div>")
+    client = TestClient(create_app(settings, catalog, web_dist=dist))
     assert client.get("/healthz").text == "ok"
-    page = client.get("/")
-    assert page.status_code == 200 and "Gold Card" in page.text
-    assert "DD *DeliveryDash Thai" in client.get("/review").text
-    assert client.get("/offer/gold-coffee/a-gold").status_code == 200
-    assert client.get("/offer/nope/a-gold").status_code == 404
+    assert client.get("/review").text == "<div id=root></div>"
+    assert client.get("/api/nope").status_code == 404
 
+    assert client.get("/api/dashboard?month=2026-11").json()["months"] == ["2026-11"]
+    board = client.get("/api/dashboard").json()
+    assert (board["month"], board["as_of"]) == ("2026-11", "2026-11-05")
+    gold = next(c for c in board["cards"] if c["account"]["id"] == "a-gold")
+    assert gold["card_id"] == "gold"
+    states = {o["offer_id"]: o["state"] for o in gold["offers"]}
+    assert states["gold-coffee"] == "pending"
+    assert [t["id"] for t in board["unlinked"]] == ["t3"]
+    assert board["totals"]["to_review"] == 1
+
+    detail = client.get("/api/offers/gold-coffee/a-gold").json()
+    assert detail["history"][0]["evidence"][0]["txn"]["payee"] == "Coffee Co"
+    assert client.get("/api/offers/nope/a-gold").status_code == 404
+
+    items = client.get("/api/review").json()
+    assert [(i["txn"]["id"], i["offer_id"], i["ai_match"]) for i in items] == [
+        ("t2", "gold-delivery", True)
+    ]
+    assert "gold-delivery" in {e.offer_id for e in store.evidence()}
     resp = client.post(
-        "/review",
-        data={"txn_id": "t2", "offer_id": "gold-delivery", "match": "true"},
-        follow_redirects=False,
+        "/api/review", json={"txn_id": "t2", "offer_id": "gold-delivery", "match": False}
     )
-    assert resp.status_code == 303
-    assert store.user_decisions() == {("t2", "gold-delivery"): True}
-    assert not store.review()
+    assert resp.status_code == 204
+    assert store.user_decisions() == {("t2", "gold-delivery"): False}
+    assert client.get("/api/review").json() == []
+    assert "gold-delivery" not in {e.offer_id for e in store.evidence()}
 
-    client.post(
-        "/override",
-        data={
-            "offer_id": "gold-rides",
-            "account_id": "a-gold",
-            "period_start": "2026-11-01",
-            "status": "used",
-        },
-    )
+    body = {
+        "offer_id": "gold-rides",
+        "account_id": "a-gold",
+        "period_start": "2026-11-01",
+        "status": "used",
+    }
+    assert client.post("/api/override", json=body).status_code == 204
     assert store.overrides() == {("gold-rides", "a-gold", date(2026, 11, 1)): OverrideStatus.USED}
+    assert client.post("/api/override", json={**body, "status": None}).status_code == 204
+    assert store.overrides() == {}
+
+
+def test_account_display_fields() -> None:
+    out = account_out(Account("x", "[Pat] Example Card (1234)"))
+    assert (out.holder, out.last4) == ("Pat", "1234")
+    plain = account_out(Account("y", "Example Card"))
+    assert (plain.holder, plain.last4) == (None, None)
 
 
 def test_history_goes_back_to_the_first_transaction(store, catalog, settings, accounts) -> None:
@@ -144,3 +179,12 @@ def test_history_goes_back_to_the_first_transaction(store, catalog, settings, ac
     ]
     assert coffee[0].window.start == date(2025, 6, 1)
     assert len(coffee) == 18
+
+
+def test_month_list() -> None:
+    assert month_list(date(2026, 11, 20), date(2027, 2, 1)) == [
+        "2026-11",
+        "2026-12",
+        "2027-01",
+        "2027-02",
+    ]

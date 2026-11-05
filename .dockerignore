@@ -21,3 +21,7 @@ bw_*.json
 **/.coverage
 **/htmlcov
 **/.DS_Store
+
+**/node_modules
+apps/offers/web/dist
+apps/offers/src/offers/web_dist

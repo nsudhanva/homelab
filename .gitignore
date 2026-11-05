@@ -56,3 +56,6 @@ bw_*.json
 .ruff_cache/
 .env
 *.env
+
+# Offers frontend build output
+apps/offers/src/offers/web_dist/

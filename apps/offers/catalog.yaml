@@ -84,6 +84,23 @@ offers:
       credit:
         payee: \bresy\b
 
+  - id: amex-offer-paramount-plus
+    card: amex-gold
+    name: "Amex Offer: Paramount+"
+    value: 13.99
+    period: monthly
+    valid_from: 2026-05-06
+    valid_to: 2026-10-20
+    enrollment: true
+    how_to_use: >-
+      An Amex Offer added to the Gold Card. Spend $13.99 or more at Paramount+ and get $13.99
+      back, up to 3 times. Amex Offers are targeted, so check the Amex app for a new round.
+    detect:
+      credit:
+        payee: paramount
+      usage:
+        payee: paramount
+
   - id: csr-travel
     card: chase-sapphire-reserve
     name: Travel credit
@@ -129,6 +146,7 @@ offers:
     name: Exclusive Tables dining credit
     value: 150
     period: semiannual
+    valid_to: 2030-06-30
     how_to_use: >-
       Pay with the Sapphire Reserve at a Sapphire Reserve Exclusive Tables restaurant. Find
       the restaurants on OpenTable. January to June, and July to December.
@@ -199,7 +217,7 @@ offers:
     value: 20
     period: monthly
     uses: 2
-    valid_to: 2027-12-31
+    valid_to: 2029-12-31
     group: doordash
     how_to_use: >-
       Two promos of $10 in the DoorDash app with DashPass. Use them on orders from stores,
@@ -218,7 +236,7 @@ offers:
     value: 15
     period: monthly
     valid_from: 2026-10-01
-    valid_to: 2027-12-31
+    valid_to: 2029-12-31
     group: doordash
     how_to_use: >-
       The promo is in the DoorDash app with DashPass. Use it on any eligible order. Each promo
@@ -234,6 +252,21 @@ offers:
     period: quarterly
     enrollment: true
     how_to_use: Activate this quarter's 5% categories in the Chase app.
+
+  - id: freedom-flex-doordash
+    card: chase-freedom-flex
+    name: DoorDash store promo
+    value: 10
+    period: quarterly
+    valid_to: 2029-12-31
+    enrollment: true
+    group: doordash
+    how_to_use: >-
+      A $10 promo each quarter in the DoorDash app, with the DashPass that the card activates.
+      Use it on an order from a store, for example grocery, convenience, or pharmacy.
+    detect:
+      usage:
+        payee: via doordash|dashmart
 
   - id: discover-it-5-percent
     card: discover-it

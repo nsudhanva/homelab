@@ -5,7 +5,8 @@ Offers tracks credit card and subscription credits against the transactions in A
 - `catalog.yaml`: the cards and their offers
 - `src/offers/engine.py`: the rules, the AI candidates, and the offer states
 - `src/offers/sync.py`: the daily job
-- `src/offers/web.py`: the dashboard
+- `src/offers/web.py`: the JSON API, and the server for the single-page app
+- `web/`: the single-page app (React, TanStack Router and Query, shadcn/ui, Tailwind CSS). Run `bun install` and `bun run dev` in `web/`, with `offers serve` on port 8000
 
 For the full guide, refer to `docs/src/content/docs/how-to/offers.md`.
 

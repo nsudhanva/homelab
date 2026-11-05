@@ -27,7 +27,8 @@ flowchart LR
 
 - Catalog: `apps/offers/catalog.yaml` lists the cards and their offers. Kustomize puts the file in the ConfigMap `offers-catalog`. A change to the file restarts the dashboard, and the next sync uses it.
 - Sync: The `offers-sync` CronJob runs each day at 06:30 America/Los_Angeles. It reads the on-budget accounts and all their transactions from Actual Budget. To read fewer days, set `OFFERS_LOOKBACK_DAYS`. It does not change Actual Budget.
-- Dashboard: The `offers` Deployment serves the dashboard from the SQLite file. It writes only your review answers and your overrides.
+- Dashboard: The `offers` Deployment serves a single-page app (React, TanStack Router and Query, shadcn/ui) and a JSON API under `/api` from the SQLite file. It writes only your corrections. The app source is in `apps/offers/web/`, and the container build compiles it.
+- No manual work: The sync decides every offer state. The dashboard shows the result. You correct a state only when it is wrong.
 - Card accounts: The `account` pattern of a card matches the names of Actual accounts. Each matched account gets its own copy of each offer.
 
 ## Daily Sync
@@ -58,9 +59,9 @@ sequenceDiagram
 Offers decides each transaction in this order:
 
 - Step 1: A rule in the catalog decides a clear match. A rule match is final.
-- Step 2: Your answer on the Review page decides a transaction that the rules cannot decide.
-- Step 3: The AI decides the remaining transactions that contain a keyword of an offer. Offers applies the AI answer only if the confidence is `0.85` or more.
-- Step 4: Transactions with a lower AI confidence go to the Review page.
+- Step 2: Your correction in the AI log decides a transaction that the rules cannot decide.
+- Step 3: The AI decides the remaining transactions that contain a keyword of an offer. Offers applies every AI answer.
+- Step 4: The AI log lists the answers with a confidence below `0.85`, so that you can check them. You do not have to.
 
 ```mermaid
 flowchart TD
@@ -72,14 +73,14 @@ flowchart TD
   Other -- Yes --> Skip
   Other -- No --> Keyword{"Keyword match, or a credit<br/>equal to the offer value?"}
   Keyword -- No --> Skip
-  Keyword -- Yes --> Answer{"Your answer on the Review page?"}
-  Answer -- Yes --> Manual["Evidence (manual)"]
-  Answer -- No --> Skip
-  Answer -- "Not answered" --> Cached{"Cached AI answer for<br/>this offer version?"}
+  Keyword -- Yes --> Answer{"Your correction in the AI log?"}
+  Answer -- "Counts" --> Manual["Evidence (manual)"]
+  Answer -- "Does not count" --> Skip
+  Answer -- "No correction" --> Cached{"Cached AI answer for<br/>this offer version?"}
   Cached -- No --> Ask["Ask the AI in this sync"]
-  Cached -- "Confidence 0.85 or more, match" --> AIEvidence["Evidence (AI)"]
-  Cached -- "Confidence 0.85 or more, no match" --> Skip
-  Cached -- "Confidence below 0.85" --> Review["Review page"]
+  Cached -- Match --> AIEvidence["Evidence (AI)"]
+  Cached -- "No match" --> Skip
+  AIEvidence -. "Confidence below 0.85" .-> Log["Also listed in the AI log"]
 ```
 
 Offers in the same `group` share one pool of orders. After the decisions, each purchase in a group stays with one offer only.
@@ -98,7 +99,7 @@ The AI prompt contains the card name, the offer, and the date, amount, payee, an
 | Used | A qualifying purchase exists for an offer that the issuer applies in an app, for example Uber Cash or a Lyft credit. Or you marked the offer as used |
 | Unused | No evidence in this period |
 | Skipped | You skipped the offer for this period |
-| Activate | An activation offer, for example quarterly 5% categories, that you did not mark as activated |
+| Activate | An activation offer, for example quarterly 5% categories. Transactions cannot show an activation, so the dashboard shows it as a reminder, not as an open offer |
 
 Offers computes the state of each offer in each period from the evidence and your mark:
 
@@ -109,8 +110,8 @@ flowchart TD
   Marked -- Yes --> Activated["Activated"]
   Marked -- No --> Activate["Activate"]
   Kind -- No --> Mark{"Your mark?"}
-  Mark -- Skip --> Skipped["Skipped"]
-  Mark -- "Mark used" --> UsedMark["Used, full value"]
+  Mark -- "Not interested" --> Skipped["Skipped"]
+  Mark -- "I used it" --> UsedMark["Used, full value"]
   Mark -- None --> Credit{"Issuer credits in the period?"}
   Credit -- "Full value" --> Credited["Credited"]
   Credit -- "Part of the value" --> Partial["Partly credited"]
@@ -123,23 +124,26 @@ flowchart TD
 
 The history of each offer starts at the first transaction of its account in Actual Budget. A period before that date does not count as missed. The card totals on the dashboard count the current calendar year. The offer pages show the full history.
 
-## Step 1: Use the Dashboard
+## Step 1: Read the Dashboard
 
-- Open `https://offers.sudhanva.me`.
-- For each card, read the offers of the current period, the days left, and the amount left.
-- Select **Mark used** when you used an offer that Actual Budget cannot show. For example, Uber Cash that paid a full trip has no card transaction.
-- Select **Skip** for an offer that you do not want this period.
-- Select **Undo** to remove a mark.
+- Open `https://offers.sudhanva.me`. The month name and the arrows at the top select the month. Each past month keeps its result.
+- **Unused** lists the offers with no evidence in the period, ordered by deadline. A circle marks each one.
+- **Awaiting credit** lists the purchases that wait for an issuer credit.
+- **Used** lists the used and credited offers. A green check mark marks each one.
+- The holder buttons show one person's cards. **By card** groups the offers by card.
+- The **Cards** page compares the captured credits of the year with each annual fee, and lists the credits that no offer explains.
 - Select an offer name to see its history and the transactions that count for it.
 
-The section **Credits not linked to an offer** lists credits on card accounts that no offer explains. Some are refunds. Others are offers to add to the catalog.
+The quarterly activations show as reminders above the list.
 
-## Step 2: Review Unclear Transactions
+## Step 2: Correct a State
 
-- Open **Review**.
-- For each transaction, select **Yes, it counts** or **No**.
+You do not have to do anything. Correct a state only when it is wrong:
 
-Your answer is final for that transaction and offer. Offers keeps each answer in the `user_decisions` table. Use these answers as test cases when you change the AI instructions.
+- In the **…** menu of an offer, select **I used it** for a use that Actual Budget cannot show. For example, Uber Cash that paid a full trip has no card transaction.
+- Select **Not interested this period** to remove an offer from the unused list.
+- Select **Undo** to remove a correction.
+- The **AI log** lists the AI answers with a low confidence. Select **Wrong? Flip it** to reverse one. Offers keeps each correction in the `user_decisions` table as a test case.
 
 ## Step 3: Get Telegram Reminders
 
@@ -149,13 +153,12 @@ The sync sends these messages to the Telegram chat in `TELEGRAM_CHAT_ID`. The bo
 | --- | --- |
 | Offers that end soon | An offer is unused or partly credited, and its period ends in 5 days or less (`OFFERS_REMINDER_DAYS`). For an activation offer, in the first 5 days of its period |
 | Monthly summary | On the first sync of days 1 to 3 of a month, for the periods that ended in the previous month |
-| Transactions to review | Once each week, when the Review page has items |
 
 The `notifications` table keeps a key for each message, so a message goes out one time only.
 
 ## Step 4: Change the Catalog
 
-Add an offer when a card gets a new benefit, or when **Credits not linked to an offer** shows a credit that repeats. Change an offer when its value, period, merchants, or end date changes. To retire an offer, set `valid_to`. Do not delete it, because the history of past periods uses it.
+Add an offer when a card gets a new benefit, when you add an Amex Offer or a Chase Offer to a card, or when **Credits not linked to an offer** shows a credit that repeats. A merchant offer, for example `amex-offer-paramount-plus`, is an offer with `valid_from` and `valid_to` set to the dates of the offer. Change an offer when its value, period, merchants, or end date changes. To retire an offer, set `valid_to`. Do not delete it, because the history of past periods uses it.
 
 ```mermaid
 flowchart LR

@@ -3,7 +3,7 @@
 from dataclasses import dataclass
 from datetime import date
 
-from offers.catalog import Catalog
+from offers.catalog import Card, Catalog
 from offers.engine import OfferStatus, statuses, unlinked_credits
 from offers.models import Account, State, Txn
 from offers.store import Store
@@ -13,6 +13,7 @@ OPEN_STATES = (State.UNUSED, State.PARTIAL, State.TO_ACTIVATE)
 
 @dataclass(frozen=True)
 class CardSummary:
+    card: Card
     card_name: str
     account: Account
     annual_fee_cents: int
@@ -75,6 +76,7 @@ def build(store: Store, catalog: Catalog, today: date) -> Dashboard:
         finished = [r for r in year if r.window.end <= today]
         cards.append(
             CardSummary(
+                card=row.instance.card,
                 card_name=row.instance.card.name,
                 account=row.instance.account,
                 annual_fee_cents=round(row.instance.card.annual_fee * 100),

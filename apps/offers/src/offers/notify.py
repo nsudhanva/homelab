@@ -113,15 +113,4 @@ def notify(
                 store.mark_sent(summary_key)
                 sent.append(summary_key)
 
-    review_count = len(store.review())
-    iso = today.isocalendar()
-    review_key = f"review:{iso.year}-W{iso.week:02d}"
-    if review_count and not store.was_sent(review_key):
-        text = (
-            f"<b>{review_count} transaction{'s' if review_count != 1 else ''} to review</b>\n"
-            "The AI was not sure if these count toward an offer."
-        )
-        if sender.send(text + link.replace(settings.public_url, f"{settings.public_url}/review")):
-            store.mark_sent(review_key)
-            sent.append(review_key)
     return sent

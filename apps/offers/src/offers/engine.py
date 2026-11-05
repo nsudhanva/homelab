@@ -3,9 +3,10 @@
 The decision order is fixed:
 
 1. Rules decide clear matches.
-2. A user decision decides a candidate.
-3. A cached AI decision decides a candidate when its confidence is at or above the threshold.
-4. Everything else is a candidate for the AI, or goes to the review list.
+2. A user correction decides a candidate.
+3. The cached AI decision decides every other candidate, so no manual work is needed.
+   A decision below the confidence threshold is also listed for an optional check.
+4. A candidate without an AI decision waits for the next sync.
 
 The AI never overrules a rule: it only sees transactions that no rule matched.
 """
@@ -174,11 +175,14 @@ def collect(
         decision = ai_decisions.get((txn.id, offer.id, candidate.fingerprint))
         if decision is None:
             result.pending_ai.append(candidate)
-        elif decision.confidence < threshold:
-            result.review.append((candidate, decision))
-        elif decision.match:
-            reason = f"AI: {decision.reason}"
-            result.evidence.append(make_evidence(candidate, Source.AI, decision.confidence, reason))
+        else:
+            if decision.match:
+                reason = f"AI: {decision.reason}"
+                result.evidence.append(
+                    make_evidence(candidate, Source.AI, decision.confidence, reason)
+                )
+            if decision.confidence < threshold:
+                result.review.append((candidate, decision))
     result.evidence = _allocate(catalog, result.evidence)
     return result
 

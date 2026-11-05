@@ -1,3 +1,11 @@
+FROM oven/bun:1.4.4 AS web
+
+WORKDIR /web
+COPY apps/offers/web/package.json apps/offers/web/bun.lock ./
+RUN bun install --frozen-lockfile
+COPY apps/offers/web ./
+RUN bun run build
+
 FROM ghcr.io/astral-sh/uv:python3.12-bookworm-slim AS builder
 
 ENV UV_COMPILE_BYTECODE=1 \
@@ -7,6 +15,7 @@ WORKDIR /build
 
 COPY packages/homelab-ai /build/packages/homelab-ai
 COPY apps/offers /build/apps/offers
+COPY --from=web /src/offers/web_dist /build/apps/offers/src/offers/web_dist
 WORKDIR /build/apps/offers
 
 RUN --mount=type=cache,target=/root/.cache/uv \
