@@ -2,7 +2,8 @@
 answers and overrides."""
 
 import re
-from datetime import date, datetime, timedelta
+from collections.abc import Callable
+from datetime import date, datetime
 from pathlib import Path
 from typing import Literal
 
@@ -12,9 +13,9 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
 from offers import rewards, views
-from offers.catalog import Catalog, load_catalog
+from offers.catalog import Catalog, Kind, load_catalog
 from offers.config import Settings
-from offers.engine import OfferStatus, anniversaries, card_accounts, instances
+from offers.engine import OfferStatus, anniversaries, card_accounts, instances, unlinked_credits
 from offers.models import Account, OverrideStatus, Txn
 from offers.store import Store
 from offers.sync import evaluate
@@ -45,27 +46,13 @@ class StatusOut(BaseModel):
     kind: str
     value: float
     uses: int
-    enrollment: bool
     how_to_use: str | None
-    valid_to: date | None
     account: AccountOut
     period: PeriodOut
     state: str
     captured: float
     remaining: float
     override: str | None
-    evidence_count: int
-
-
-class CardOut(BaseModel):
-    card_id: str
-    name: str
-    issuer: str
-    account: AccountOut
-    annual_fee: float
-    year_captured: float
-    year_missed: float
-    offers: list[StatusOut]
 
 
 class TxnOut(BaseModel):
@@ -82,26 +69,6 @@ class RunOut(BaseModel):
     finished_at: str | None
     status: str
     message: str
-
-
-class Totals(BaseModel):
-    open_now: float
-    captured_now: float
-    to_review: int
-    captured_year: float
-    missed_year: float
-    annual_fees: float
-
-
-class DashboardOut(BaseModel):
-    today: date
-    as_of: date
-    month: str
-    months: list[str]
-    last_run: RunOut | None
-    totals: Totals
-    cards: list[CardOut]
-    unlinked: list[TxnOut]
 
 
 class EvidenceOut(BaseModel):
@@ -176,7 +143,6 @@ class TrackerRow(BaseModel):
     period: str
     uses: int
     how_to_use: str | None
-    enrollment: bool
     cells: list[Cell]
 
 
@@ -219,7 +185,6 @@ class RewardsOut(BaseModel):
     rules: list[RuleOut]
     note: str | None
     months: list[RewardMonthOut]
-    fee_year_value: float
     year_value: float
 
 
@@ -255,6 +220,7 @@ class TrackerOut(BaseModel):
     cards: list[TrackerCard]
     rewards_month: float = 0
     unmatched_accounts: list[str] = []
+    unlinked: list[TxnOut] = []
 
 
 class OverrideIn(BaseModel):
@@ -284,9 +250,7 @@ def status_out(r: OfferStatus, today: date) -> StatusOut:
         kind=offer.kind.value,
         value=offer.value,
         uses=offer.uses,
-        enrollment=offer.enrollment,
         how_to_use=offer.how_to_use,
-        valid_to=offer.valid_to,
         account=account_out(r.instance.account),
         period=PeriodOut(
             start=r.window.start,
@@ -298,7 +262,6 @@ def status_out(r: OfferStatus, today: date) -> StatusOut:
         captured=r.captured_cents / 100,
         remaining=r.remaining_cents / 100,
         override=r.override.value if r.override else None,
-        evidence_count=len(r.evidence),
     )
 
 
@@ -321,6 +284,17 @@ def month_key(day: date) -> str:
 def month_start(key: str) -> date:
     year, month = map(int, key.split("-"))
     return date(year, month, 1)
+
+
+def fee_out(info: views.FeeInfo, captured: float) -> FeeOut:
+    return FeeOut(
+        fee_date=info.fee_date,
+        anniversary_month=info.anniversary_month,
+        source=info.source,
+        year_start=info.year_start,
+        year_end=info.year_end,
+        year_captured=captured,
+    )
 
 
 def tracker(store: Store, catalog: Catalog, today: date, months_back: int) -> TrackerOut:
@@ -454,27 +428,17 @@ def tracker(store: Store, catalog: Catalog, today: date, months_back: int) -> Tr
                 annual_fee=inst.card.annual_fee,
                 account=account_out(inst.account),
                 year_captured=sum(
-                    r.captured_cents / 100
-                    for r in rows
-                    if r.instance.account.id == inst.account.id
-                    and r.instance.card.id == inst.card.id
-                    and r.window.start >= date(today.year, 1, 1)
+                    r.captured_cents / 100 for r in mine if r.window.start >= date(today.year, 1, 1)
                 ),
-                fee=FeeOut(
-                    fee_date=info.fee_date,
-                    anniversary_month=info.anniversary_month,
-                    source=info.source,
-                    year_start=info.year_start,
-                    year_end=info.year_end,
-                    year_captured=(
-                        sum(
-                            views.captured_between(r, by_id, info.year_start, info.year_end)
-                            for r in mine
-                        )
-                        / 100
-                        if info.year_start and info.year_end
-                        else 0
-                    ),
+                fee=fee_out(
+                    info,
+                    sum(
+                        views.captured_between(r, by_id, info.year_start, info.year_end)
+                        for r in mine
+                    )
+                    / 100
+                    if info.year_start and info.year_end
+                    else 0,
                 ),
                 rows=[],
             )
@@ -485,12 +449,11 @@ def tracker(store: Store, catalog: Catalog, today: date, months_back: int) -> Tr
                 cycle=views.cycle_text(offer, info),
                 next_reset=next((r.window.end for r in statuses if r.window.contains(today)), None),
                 kind=offer.kind.value,
-                in_app=offer.detect.credit is None and offer.kind.value == "credit",
+                in_app=offer.detect.credit is None and offer.kind is Kind.CREDIT,
                 value=offer.value,
                 period=offer.period.value,
                 uses=offer.uses,
                 how_to_use=offer.how_to_use,
-                enrollment=offer.enrollment,
                 cells=cells,
             )
         )
@@ -500,8 +463,6 @@ def tracker(store: Store, catalog: Catalog, today: date, months_back: int) -> Tr
         key = (card.id, account.id)
         if key in cards:
             continue
-        info = views.fee_info(card, account, txns, today)
-        fees[key] = info
         cards[key] = TrackerCard(
             card_id=card.id,
             name=card.name,
@@ -509,14 +470,7 @@ def tracker(store: Store, catalog: Catalog, today: date, months_back: int) -> Tr
             annual_fee=card.annual_fee,
             account=account_out(account),
             year_captured=0,
-            fee=FeeOut(
-                fee_date=info.fee_date,
-                anniversary_month=info.anniversary_month,
-                source=info.source,
-                year_start=info.year_start,
-                year_end=info.year_end,
-                year_captured=0,
-            ),
+            fee=fee_out(views.fee_info(card, account, txns, today), 0),
             rows=[],
         )
     order = {(c.id, a.id): i for i, (c, a) in enumerate(pairs)}
@@ -535,7 +489,6 @@ def tracker(store: Store, catalog: Catalog, today: date, months_back: int) -> Tr
         program = catalog.card(card_id).rewards
         if program is None:
             continue
-        info = fees.get((card_id, account_id))
         mine = [e for e in earned if e.account_id == account_id]
         months_out = []
         for key in months:
@@ -566,26 +519,14 @@ def tracker(store: Store, catalog: Catalog, today: date, months_back: int) -> Tr
             ],
             note=program.note,
             months=months_out,
-            fee_year_value=round(
-                sum(
-                    e.value_cents
-                    for e in mine
-                    if info
-                    and info.year_start
-                    and info.year_end
-                    and info.year_start <= e.day < info.year_end
-                )
-                / 100,
-                2,
-            ),
             year_value=round(sum(e.value_cents for e in mine if e.day.year == today.year) / 100, 2),
         )
 
-    now = [r for r in rows if r.window.contains(today) and r.instance.offer.kind.value == "credit"]
+    now = [r for r in rows if r.window.contains(today) and r.instance.offer.kind is Kind.CREDIT]
     last_month = [
         r
         for r in rows
-        if r.window.end == month_start(current_key) and r.instance.offer.kind.value == "credit"
+        if r.window.end == month_start(current_key) and r.instance.offer.kind is Kind.CREDIT
     ]
     return TrackerOut(
         today=today,
@@ -622,6 +563,10 @@ def tracker(store: Store, catalog: Catalog, today: date, months_back: int) -> Tr
                 and re.search(catalog.ignore_accounts, a.name, re.IGNORECASE)
             )
         ],
+        unlinked=[
+            txn_out(t, {a.id: a for a in accounts})
+            for t in unlinked_credits(catalog, accounts, txns, store.evidence())[:20]
+        ],
     )
 
 
@@ -629,7 +574,7 @@ def month_list(first: date, last: date) -> list[str]:
     months = []
     year, month = first.year, first.month
     while (year, month) <= (last.year, last.month):
-        months.append(f"{year}-{month:02d}")
+        months.append(month_key(date(year, month, 1)))
         year, month = (year + 1, 1) if month == 12 else (year, month + 1)
     return months
 
@@ -638,6 +583,7 @@ def create_app(
     settings: Settings | None = None,
     catalog: Catalog | None = None,
     web_dist: Path = WEB_DIST,
+    clock: Callable[[], date] | None = None,
 ) -> FastAPI:
     settings = settings or Settings()
     catalog = catalog or load_catalog(settings.catalog_path)
@@ -647,57 +593,11 @@ def create_app(
         return Store(settings.db_path)
 
     def today() -> date:
-        return datetime.now(settings.tz).date()
+        return clock() if clock else datetime.now(settings.tz).date()
 
     @app.get("/healthz", response_class=PlainTextResponse)
     def healthz() -> str:
         return "ok"
-
-    @app.get("/api/dashboard")
-    def dashboard(month: str | None = None) -> DashboardOut:
-        now = today()
-        s = store()
-        try:
-            first = views.history_start(s.transactions(), now)
-            months = month_list(first, now)
-            selected = month if month in months else months[-1]
-            year, number = map(int, selected.split("-"))
-            month_end = date(year + number // 12, number % 12 + 1, 1) - timedelta(days=1)
-            day = min(now, month_end)
-            board = views.build(s, catalog, day)
-            run = s.last_run()
-        finally:
-            s.close()
-        cards = [
-            CardOut(
-                card_id=c.card.id,
-                name=c.card_name,
-                issuer=c.card.issuer,
-                account=account_out(c.account),
-                annual_fee=c.annual_fee_cents / 100,
-                year_captured=c.year_captured_cents / 100,
-                year_missed=c.year_missed_cents / 100,
-                offers=[status_out(r, day) for r in c.current],
-            )
-            for c in board.cards
-        ]
-        return DashboardOut(
-            today=now,
-            as_of=day,
-            month=selected,
-            months=months,
-            last_run=RunOut(**run.__dict__) if run else None,
-            totals=Totals(
-                open_now=board.open_cents / 100,
-                captured_now=board.captured_this_period_cents / 100,
-                to_review=board.review_count,
-                captured_year=sum(c.year_captured for c in cards),
-                missed_year=sum(c.year_missed for c in cards),
-                annual_fees=sum(c.annual_fee for c in cards),
-            ),
-            cards=cards,
-            unlinked=[txn_out(t, board.accounts) for t in board.unlinked],
-        )
 
     @app.get("/api/tracker")
     def tracker_view(months: int = 6) -> TrackerOut:

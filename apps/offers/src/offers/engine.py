@@ -194,7 +194,6 @@ def collect(
             if decision.confidence < threshold:
                 result.review.append((candidate, decision))
     by_id = {t.id: t for t in txns}
-    result.evidence = _allocate(catalog, result.evidence)
     result.evidence = _pair_credits(catalog, result.evidence, by_id)
     result.evidence = _assign_promos(catalog, result.evidence, by_id)
     return result
@@ -281,44 +280,6 @@ def _assign_promos(
                 free[choice] = False
                 assigned[id(e)] = replace(e, promo_cents=promos[choice].value_cents)
     return [assigned.get(id(e), e) for e in evidence]
-
-
-def _allocate(catalog: Catalog, evidence: list[Evidence]) -> list[Evidence]:
-    """Give each purchase to one offer in a group.
-
-    Offers in the same ``group`` are separate promos that one order cannot share, for example
-    the DoorDash promos of a card. A purchase goes to the first offer in catalog order that
-    matches it and has a use left in its period.
-    """
-    order = {o.id: i for i, o in enumerate(catalog.offers)}
-    group_of = {o.id: o.group for o in catalog.offers if o.group}
-    uses_of = {o.id: o.uses for o in catalog.offers}
-    shared = [e for e in evidence if e.kind is EvidenceKind.USAGE and e.offer_id in group_of]
-    if not shared:
-        return evidence
-    by_txn: dict[tuple[str, str, str], list[Evidence]] = defaultdict(list)
-    for e in shared:
-        by_txn[(e.account_id, group_of[e.offer_id], e.txn_id)].append(e)
-    order_key = {e.txn_id: (e.period_start, e.txn_id) for e in shared}
-    used: dict[tuple[str, str, date], int] = defaultdict(int)
-    keep: set[int] = set()
-    for key in sorted(by_txn, key=lambda k: order_key[k[2]]):
-        options = sorted(by_txn[key], key=lambda e: order[e.offer_id])
-        chosen = next(
-            (
-                e
-                for e in options
-                if used[(e.offer_id, e.account_id, e.period_start)] < uses_of[e.offer_id]
-            ),
-            options[0],
-        )
-        used[(chosen.offer_id, chosen.account_id, chosen.period_start)] += 1
-        keep.add(id(chosen))
-    return [
-        e
-        for e in evidence
-        if e.offer_id not in group_of or e.kind is EvidenceKind.CREDIT or id(e) in keep
-    ]
 
 
 def make_evidence(candidate: Candidate, source: Source, confidence: float, reason: str) -> Evidence:

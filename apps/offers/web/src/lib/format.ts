@@ -1,4 +1,4 @@
-import type { Account, State } from "./api";
+import type { Account, TrackerCard } from "./api";
 
 const money0 = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 });
 const money2 = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" });
@@ -13,12 +13,6 @@ export function signedMoney(value: number): string {
 
 export function shortDate(iso: string): string {
   return new Date(`${iso}T00:00:00`).toLocaleDateString("en-US", { month: "short", day: "numeric" });
-}
-
-export function lastDay(endIso: string): string {
-  const end = new Date(`${endIso}T00:00:00`);
-  end.setDate(end.getDate() - 1);
-  return end.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
 export function relativeTime(iso: string): string {
@@ -36,28 +30,9 @@ export function holderLabel(account: Account): string {
   return parts.join(" · ") || account.name;
 }
 
-export const OPEN: State[] = ["unused", "partial", "to_activate"];
-export const WAITING: State[] = ["pending"];
-export const DONE: State[] = ["credited", "used", "activated", "ignored"];
-
-export function bucket(state: State): "todo" | "pending" | "done" {
-  if (OPEN.includes(state)) return "todo";
-  if (WAITING.includes(state)) return "pending";
-  return "done";
-}
-
-export type Urgency = "calm" | "soon" | "urgent";
-
-export function urgency(daysLeft: number): Urgency {
-  if (daysLeft <= 2) return "urgent";
-  if (daysLeft <= 7) return "soon";
-  return "calm";
-}
-
-export function deadlineText(daysLeft: number): string {
-  if (daysLeft <= 0) return "Ends today";
-  if (daysLeft === 1) return "Ends tomorrow";
-  return `${daysLeft} days left`;
+/** Credits captured in the card's fee year, or in this calendar year when the fee year is unknown. */
+export function feeYearCaptured(card: TrackerCard): number {
+  return card.fee.year_start ? card.fee.year_captured : card.year_captured;
 }
 
 const ISSUER_ACCENT: Record<string, string> = {

@@ -3,9 +3,10 @@ import { createFileRoute } from "@tanstack/react-router";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
-import { api, keys, trackerApi } from "@/lib/api";
+import { trackerApi } from "@/lib/api";
 import {
   MONTH_NAMES,
+  feeYearCaptured,
   holderLabel,
   issuerAccent,
   longDate,
@@ -19,14 +20,13 @@ import {
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/cards")({
-  loader: ({ context }) => context.queryClient.ensureQueryData({ queryKey: keys.dashboard(), queryFn: () => api.dashboard() }),
+  loader: ({ context }) => context.queryClient.ensureQueryData({ queryKey: trackerApi.key(6), queryFn: () => trackerApi.get(6) }),
   pendingComponent: () => <Skeleton className="h-60 rounded-xl" />,
   component: Cards,
 });
 
 function Cards() {
-  const { data } = useQuery({ queryKey: keys.dashboard(), queryFn: () => api.dashboard() });
-  const { data: tracker } = useQuery({ queryKey: trackerApi.key(6), queryFn: () => trackerApi.get(6) });
+  const { data } = useQuery({ queryKey: trackerApi.key(6), queryFn: () => trackerApi.get(6) });
   if (!data) return null;
   return (
     <div className="space-y-6">
@@ -39,9 +39,9 @@ function Cards() {
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">
-        {(tracker?.cards ?? []).map((card) => {
+        {data.cards.map((card) => {
           const f = card.fee;
-          const captured = f.year_start ? f.year_captured : card.year_captured;
+          const captured = feeYearCaptured(card);
           const coverage = card.annual_fee ? (captured / card.annual_fee) * 100 : 0;
           return (
             <Card key={`${card.card_id}:${card.account.id}`} className="gap-0 overflow-hidden py-0">

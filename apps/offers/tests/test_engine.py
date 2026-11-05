@@ -168,32 +168,6 @@ def test_multi_use_offer_is_partial_until_all_uses(
     assert rides.state is State.USED and rides.captured_cents == 1000
 
 
-def test_group_gives_each_order_to_one_promo(catalog: Catalog, accounts: list[Account]) -> None:
-    def promo(oid: str, value: float, uses: int, payee: str) -> Offer:
-        return Offer(
-            id=oid,
-            card="gold",
-            name=oid,
-            value=value,
-            uses=uses,
-            period=Period.MONTHLY,
-            group="dash",
-            detect=Detect(usage=Rule(payee=payee)),
-        )
-
-    grouped = Catalog(
-        cards=catalog.cards,
-        offers=(promo("store", 20, 2, "via deliverydash"), promo("any", 15, 1, "deliverydash")),
-    )
-    orders = [
-        txn(f"t{i}", "a-gold", date(2026, 10, i), -20, "Pharmacy via DeliveryDash")
-        for i in (1, 2, 3)
-    ]
-    result = _collect(grouped, accounts, orders)
-    owners = sorted((e.txn_id, e.offer_id) for e in result.evidence)
-    assert owners == [("t1", "store"), ("t2", "store"), ("t3", "any")]
-
-
 def test_anniversary_month_fallback(catalog: Catalog, accounts: list[Account]) -> None:
     cards = tuple(
         c.model_copy(update={"anniversary_month": 7, "fee_payee": None}) if c.id == "gold" else c

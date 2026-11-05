@@ -272,9 +272,6 @@ class Store:
     def replace_evidence(self, evidence: Iterable[Evidence]) -> None:
         self._write([("DELETE FROM evidence", ()), (EVIDENCE_INSERT, [_row(e) for e in evidence])])
 
-    def add_evidence(self, evidence: Evidence) -> None:
-        self._write([(EVIDENCE_INSERT, _row(evidence))])
-
     def evidence(self) -> list[Evidence]:
         return [
             Evidence(

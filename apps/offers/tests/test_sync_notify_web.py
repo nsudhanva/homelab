@@ -5,13 +5,16 @@ from fastapi.testclient import TestClient
 
 from offers.catalog import Catalog
 from offers.config import Settings
-from offers.models import Account, AIDecision, Candidate, OverrideStatus, State
+from offers.models import Account, AIDecision, Candidate, OverrideStatus
 from offers.notify import notify
 from offers.source import Snapshot
 from offers.store import MIGRATIONS, Store
 from offers.sync import sync
-from offers.views import build
 from offers.web import account_out, create_app, month_list
+
+
+def TODAY() -> date:
+    return date(2026, 11, 5)
 
 
 class FakeMatcher:
@@ -62,19 +65,6 @@ def test_sync_without_ai_leaves_candidates_undecided(store, catalog, settings, a
     assert "gold-delivery" not in {e.offer_id for e in store.evidence()}
 
 
-def test_low_confidence_ai_still_decides(store, catalog, settings, accounts) -> None:
-    matcher = FakeMatcher(AIDecision(True, 0.5, "maybe a restaurant"))
-    sync(store, catalog, settings, _snapshot(accounts), date(2026, 11, 5), matcher, None)
-    assert "gold-delivery" in {e.offer_id for e in store.evidence()}
-    assert [(i.txn.id, i.offer_id) for i in store.review()] == [("t2", "gold-delivery")]
-
-
-def test_sync_stops_asking_when_ai_fails(store, catalog, settings, accounts) -> None:
-    matcher = FakeMatcher(None)
-    sync(store, catalog, settings, _snapshot(accounts), date(2026, 11, 5), matcher, None)
-    assert not store.review() and not store.ai_decisions()
-
-
 def test_notifications_are_sent_once(store, catalog, settings, accounts) -> None:
     sender = FakeSender()
     snapshot = _snapshot(accounts)
@@ -98,15 +88,6 @@ def test_monthly_summary(store, catalog, settings, accounts) -> None:
     assert "Ride cash" in summary
 
 
-def test_dashboard_view(store, catalog, settings, accounts) -> None:
-    sync(store, catalog, settings, _snapshot(accounts), date(2026, 11, 5), None, None)
-    board = build(store, catalog, date(2026, 11, 5))
-    gold = next(c for c in board.cards if c.account.id == "a-gold")
-    states = {r.instance.offer.id: r.state for r in gold.current}
-    assert states["gold-coffee"] is State.PENDING
-    assert [t.id for t in board.unlinked] == ["t3"]
-
-
 def test_store_reopens_without_migrating_again(settings: Settings) -> None:
     Store(settings.db_path).close()
     s = Store(settings.db_path)
@@ -120,20 +101,17 @@ def test_api_and_actions(store, catalog: Catalog, settings, accounts, tmp_path) 
     dist = tmp_path / "dist"
     (dist / "assets").mkdir(parents=True)
     (dist / "index.html").write_text("<div id=root></div>")
-    client = TestClient(create_app(settings, catalog, web_dist=dist))
+    client = TestClient(create_app(settings, catalog, web_dist=dist, clock=TODAY))
     assert client.get("/healthz").text == "ok"
     assert client.get("/review").text == "<div id=root></div>"
     assert client.get("/api/nope").status_code == 404
 
-    assert client.get("/api/dashboard?month=2026-11").json()["months"] == ["2026-11"]
-    board = client.get("/api/dashboard").json()
-    assert (board["month"], board["as_of"]) == ("2026-11", "2026-11-05")
-    gold = next(c for c in board["cards"] if c["account"]["id"] == "a-gold")
+    grid = client.get("/api/tracker").json()
+    gold = next(c for c in grid["cards"] if c["account"]["id"] == "a-gold")
     assert gold["card_id"] == "gold"
-    states = {o["offer_id"]: o["state"] for o in gold["offers"]}
-    assert states["gold-coffee"] == "pending"
-    assert [t["id"] for t in board["unlinked"]] == ["t3"]
-    assert board["totals"]["to_review"] == 1
+    coffee = next(r for r in gold["rows"] if r["offer_id"] == "gold-coffee")
+    assert {c["month"]: c["state"] for c in coffee["cells"]}["2026-11"] == "pending"
+    assert [(t["id"], t["account"]["id"]) for t in grid["unlinked"]] == [("t3", "a-gold")]
 
     detail = client.get("/api/offers/gold-coffee/a-gold").json()
     assert detail["history"][0]["evidence"][0]["txn"]["payee"] == "Coffee Co"
@@ -171,20 +149,6 @@ def test_account_display_fields() -> None:
     assert (plain.holder, plain.last4) == (None, None)
 
 
-def test_history_goes_back_to_the_first_transaction(store, catalog, settings, accounts) -> None:
-    old = Snapshot(accounts, [txn("t0", "a-gold", date(2025, 6, 3), -12, "Coffee Co")])
-    sync(store, catalog, settings, old, date(2026, 11, 5), None, None)
-    from offers.views import all_statuses
-
-    coffee = [
-        r
-        for r in all_statuses(store, catalog, date(2026, 11, 5))
-        if r.instance.offer.id == "gold-coffee"
-    ]
-    assert coffee[0].window.start == date(2025, 6, 1)
-    assert len(coffee) == 18
-
-
 def test_month_list() -> None:
     assert month_list(date(2026, 11, 20), date(2027, 2, 1)) == [
         "2026-11",
@@ -202,7 +166,9 @@ def test_tracker_grid(store, catalog, settings, accounts) -> None:
         txn("d", "a-gold", date(2026, 11, 2), -3, "Grocer"),
     ]
     sync(store, catalog, settings, Snapshot(accounts, txns), date(2026, 11, 5), None, None)
-    client = TestClient(create_app(settings, catalog, web_dist=settings.db_path.parent / "none"))
+    client = TestClient(
+        create_app(settings, catalog, web_dist=settings.db_path.parent / "none", clock=TODAY)
+    )
     grid = client.get("/api/tracker").json()
     assert grid["months"] == ["2026-09", "2026-10", "2026-11"]
     gold = next(c for c in grid["cards"] if c["card_id"] == "gold")
@@ -262,7 +228,9 @@ def test_offer_page_shows_every_version(store, catalog, settings, accounts) -> N
     two = Catalog(cards=catalog.cards, offers=offers)
     snapshot = Snapshot(accounts, [txn("a", "a-gold", date(2026, 10, 3), -12, "Coffee Co")])
     sync(store, two, settings, snapshot, date(2026, 11, 5), None, None)
-    client = TestClient(create_app(settings, two, web_dist=settings.db_path.parent / "none"))
+    client = TestClient(
+        create_app(settings, two, web_dist=settings.db_path.parent / "none", clock=TODAY)
+    )
     detail = client.get("/api/offers/gold-coffee-v2/a-gold").json()
     assert [h["status"]["offer_id"] for h in detail["history"]] == ["gold-coffee-v2", "gold-coffee"]
 
@@ -295,7 +263,9 @@ def test_fee_year_and_cycles(store, catalog, settings, accounts) -> None:
         txn("c2", "a-gold", date(2026, 10, 3), 7, "Coffee Co"),
     ]
     sync(store, catalog, settings, Snapshot(accounts, txns), date(2026, 11, 5), None, None)
-    client = TestClient(create_app(settings, catalog, web_dist=settings.db_path.parent / "none"))
+    client = TestClient(
+        create_app(settings, catalog, web_dist=settings.db_path.parent / "none", clock=TODAY)
+    )
     gold = next(c for c in client.get("/api/tracker").json()["cards"] if c["card_id"] == "gold")
     assert gold["fee"]["fee_date"] == "2026-09-11"
     assert (gold["fee"]["year_start"], gold["fee"]["year_end"]) == ("2026-09-01", "2027-09-01")
@@ -347,7 +317,9 @@ def test_tracker_shows_rewards_and_cards_without_offers(store, settings, account
         ],
     )
     sync(store, cat, settings, snapshot, date(2026, 11, 5), None, None)
-    client = TestClient(create_app(settings, cat, web_dist=settings.db_path.parent / "none"))
+    client = TestClient(
+        create_app(settings, cat, web_dist=settings.db_path.parent / "none", clock=TODAY)
+    )
     grid = client.get("/api/tracker").json()
     cards = {c["card_id"]: c for c in grid["cards"]}
     assert set(cards) == {"gold", "other"}

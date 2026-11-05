@@ -127,7 +127,6 @@ class Offer(BaseModel):
     valid_to: date | None = None
     enrollment: bool = False
     uses: int = Field(default=1, ge=1)
-    group: str | None = Field(default=None, pattern=SLUG)
     how_to_use: str | None = None
     promos: tuple[Promo, ...] = ()
     detect: Detect = Detect()

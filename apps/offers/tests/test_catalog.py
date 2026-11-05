@@ -8,11 +8,6 @@ from offers.catalog import Catalog, load_catalog
 REPO_CATALOG = Path(__file__).resolve().parents[1] / "catalog.yaml"
 
 
-def test_repository_catalog_is_valid() -> None:
-    catalog = load_catalog(REPO_CATALOG)
-    assert catalog.cards and catalog.offers
-
-
 def test_repository_catalog_has_no_account_numbers() -> None:
     text = REPO_CATALOG.read_text()
     assert "(" not in "".join(line for line in text.splitlines() if "account:" in line)
@@ -83,7 +78,9 @@ def test_promos_set_value_and_uses() -> None:
 
 
 def test_uber_cash_rule_skips_the_uber_one_fee() -> None:
-    offer = load_catalog(REPO_CATALOG).offer("amex-gold-uber-cash")
+    catalog = load_catalog(REPO_CATALOG)
+    assert catalog.cards and catalog.offers
+    offer = catalog.offer("amex-gold-uber-cash")
     assert offer is not None and offer.detect.usage is not None
     rule = offer.detect.usage
     assert rule.matches(("Uber", "UBER *TRIP"), -20)

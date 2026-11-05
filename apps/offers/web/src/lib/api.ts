@@ -17,27 +17,13 @@ export type OfferStatus = {
   kind: "credit" | "activation";
   value: number;
   uses: number;
-  enrollment: boolean;
   how_to_use: string | null;
-  valid_to: string | null;
   account: Account;
   period: { start: string; end: string; label: string; days_left: number };
   state: State;
   captured: number;
   remaining: number;
   override: "used" | "ignored" | null;
-  evidence_count: number;
-};
-
-export type Card = {
-  card_id: string;
-  name: string;
-  issuer: string;
-  account: Account;
-  annual_fee: number;
-  year_captured: number;
-  year_missed: number;
-  offers: OfferStatus[];
 };
 
 export type Txn = {
@@ -47,24 +33,6 @@ export type Txn = {
   payee: string;
   description: string;
   account: Account | null;
-};
-
-export type Dashboard = {
-  today: string;
-  as_of: string;
-  month: string;
-  months: string[];
-  last_run: { started_at: string; finished_at: string | null; status: string; message: string } | null;
-  totals: {
-    open_now: number;
-    captured_now: number;
-    to_review: number;
-    captured_year: number;
-    missed_year: number;
-    annual_fees: number;
-  };
-  cards: Card[];
-  unlinked: Txn[];
 };
 
 export type Evidence = {
@@ -115,7 +83,6 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 }
 
 export const api = {
-  dashboard: (month?: string) => request<Dashboard>(`/api/dashboard${month ? `?month=${month}` : ""}`),
   offer: (offerId: string, accountId: string) =>
     request<OfferDetail>(`/api/offers/${encodeURIComponent(offerId)}/${encodeURIComponent(accountId)}`),
   review: () => request<ReviewItem[]>("/api/review"),
@@ -127,7 +94,6 @@ export const api = {
 
 export const keys = {
   dashboards: ["dashboard"] as const,
-  dashboard: (month?: string) => ["dashboard", month ?? "current"] as const,
   review: ["review"] as const,
   offer: (offerId: string, accountId: string) => ["offer", offerId, accountId] as const,
 };
@@ -162,7 +128,6 @@ export type TrackerRow = {
   period: string;
   uses: number;
   how_to_use: string | null;
-  enrollment: boolean;
   cells: Cell[];
 };
 
@@ -202,7 +167,6 @@ export type CardRewards = {
   rules: { name: string; rate: number; detail: string }[];
   note: string | null;
   months: RewardMonth[];
-  fee_year_value: number;
   year_value: number;
 };
 
@@ -220,10 +184,11 @@ export type Tracker = {
     open_count: number;
     ending_soon: number;
   };
-  last_run: Dashboard["last_run"];
+  last_run: { started_at: string; finished_at: string | null; status: string; message: string } | null;
   cards: TrackerCard[];
   rewards_month: number;
   unmatched_accounts: string[];
+  unlinked: Txn[];
 };
 
 export const trackerApi = {

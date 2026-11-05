@@ -17,6 +17,7 @@ import {
 } from "@/lib/api";
 import {
   MONTH_NAMES,
+  feeYearCaptured,
   holderLabel,
   issuerAccent,
   longDate,
@@ -324,7 +325,7 @@ function RewardsLine({ rewards: r, last }: { rewards: CardRewards; last: string 
 
 function FeeYear({ card }: { card: TrackerCard }) {
   const f = card.fee;
-  const captured = f.year_start ? f.year_captured : card.year_captured;
+  const captured = feeYearCaptured(card);
   return (
     <div className="w-full text-left sm:w-60 sm:text-right">
       <div className="text-xs text-muted-foreground">
