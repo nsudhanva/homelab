@@ -18,7 +18,6 @@ from offers.config import Settings
 from offers.engine import OfferStatus, card_accounts, instances, unlinked_credits
 from offers.models import Account, OverrideStatus, Txn
 from offers.store import Store
-from offers.sync import evaluate
 
 WEB_DIST = Path(__file__).parent / "web_dist"
 HOLDER = re.compile(r"^\[(?P<holder>[^\]]+)\]\s*")
@@ -665,6 +664,8 @@ def create_app(
             if item is None or offer is None:
                 raise HTTPException(404, "not in the review list")
             s.save_user_decision(body.txn_id, body.offer_id, body.match)
+            from offers.sync import evaluate
+
             evaluate(s, catalog, settings, None)
         finally:
             s.close()
