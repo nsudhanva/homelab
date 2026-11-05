@@ -30,6 +30,29 @@ flowchart LR
 - Dashboard: The `offers` Deployment serves the dashboard from the SQLite file. It writes only your review answers and your overrides.
 - Card accounts: The `account` pattern of a card matches the names of Actual accounts. Each matched account gets its own copy of each offer.
 
+## Daily Sync
+
+```mermaid
+sequenceDiagram
+  participant Cron as offers-sync CronJob
+  participant Actual as Actual Budget
+  participant DB as SQLite
+  participant AI as homelab-ai
+  participant TG as Telegram
+  Cron->>Actual: Read accounts and transactions
+  Cron->>DB: Replace the snapshot
+  Cron->>Cron: Apply the catalog rules
+  Cron->>DB: Read cached AI answers and your answers
+  loop Each new candidate, 40 at most
+    Cron->>AI: Does this transaction count for this offer?
+    AI-->>Cron: match, confidence, reason
+    Cron->>DB: Cache the answer with the offer fingerprint
+  end
+  Cron->>DB: Write the evidence and the review list
+  Cron->>TG: Send due reminders, the monthly summary, and the review prompt
+  Cron->>DB: Record the sent message keys and the run
+```
+
 ## Decision Order
 
 Offers decides each transaction in this order:
@@ -38,6 +61,28 @@ Offers decides each transaction in this order:
 - Step 2: Your answer on the Review page decides a transaction that the rules cannot decide.
 - Step 3: The AI decides the remaining transactions that contain a keyword of an offer. Offers applies the AI answer only if the confidence is `0.85` or more.
 - Step 4: Transactions with a lower AI confidence go to the Review page.
+
+```mermaid
+flowchart TD
+  T["Transaction on a matched account"] --> Active{"Offer active on this date?"}
+  Active -- No --> Skip["Ignored"]
+  Active -- Yes --> Rule{"Catalog rule matches?"}
+  Rule -- Yes --> Evidence["Evidence (rule)"]
+  Rule -- No --> Other{"Another offer's rule matched it,<br/>or it is a payment or transfer?"}
+  Other -- Yes --> Skip
+  Other -- No --> Keyword{"Keyword match, or a credit<br/>equal to the offer value?"}
+  Keyword -- No --> Skip
+  Keyword -- Yes --> Answer{"Your answer on the Review page?"}
+  Answer -- Yes --> Manual["Evidence (manual)"]
+  Answer -- No --> Skip
+  Answer -- "Not answered" --> Cached{"Cached AI answer for<br/>this offer version?"}
+  Cached -- No --> Ask["Ask the AI in this sync"]
+  Cached -- "Confidence 0.85 or more, match" --> AIEvidence["Evidence (AI)"]
+  Cached -- "Confidence 0.85 or more, no match" --> Skip
+  Cached -- "Confidence below 0.85" --> Review["Review page"]
+```
+
+Offers in the same `group` share one pool of orders. After the decisions, each purchase in a group stays with one offer only.
 
 The AI never overrules a rule. It sees a transaction only when no rule matched it. Offers keeps each AI answer in SQLite with the offer fingerprint. The AI sees each transaction once for each version of an offer. When you change an offer in the catalog, the AI decides its transactions again. Each sync asks the AI a maximum of 40 times (`OFFERS_AI_MAX_CALLS`). If the AI is not available, the transactions wait for the next sync.
 
@@ -54,6 +99,27 @@ The AI prompt contains the card name, the offer, and the date, amount, payee, an
 | Unused | No evidence in this period |
 | Skipped | You skipped the offer for this period |
 | Activate | An activation offer, for example quarterly 5% categories, that you did not mark as activated |
+
+Offers computes the state of each offer in each period from the evidence and your mark:
+
+```mermaid
+flowchart TD
+  Start["Offer in one period"] --> Kind{"Activation offer?"}
+  Kind -- Yes --> Marked{"Marked activated?"}
+  Marked -- Yes --> Activated["Activated"]
+  Marked -- No --> Activate["Activate"]
+  Kind -- No --> Mark{"Your mark?"}
+  Mark -- Skip --> Skipped["Skipped"]
+  Mark -- "Mark used" --> UsedMark["Used, full value"]
+  Mark -- None --> Credit{"Issuer credits in the period?"}
+  Credit -- "Full value" --> Credited["Credited"]
+  Credit -- "Part of the value" --> Partial["Partly credited"]
+  Credit -- None --> Purchase{"Qualifying purchases?"}
+  Purchase -- None --> Unused["Unused"]
+  Purchase -- "Yes, and the offer has a credit rule" --> Pending["Used, credit pending"]
+  Purchase -- "Yes, as many as uses" --> Used["Used"]
+  Purchase -- "Yes, fewer than uses" --> PartUse["Partly credited"]
+```
 
 The history of each offer starts at the first transaction of its account in Actual Budget. A period before that date does not count as missed. The card totals on the dashboard count the current calendar year. The offer pages show the full history.
 
@@ -89,7 +155,22 @@ The `notifications` table keeps a key for each message, so a message goes out on
 
 ## Step 4: Change the Catalog
 
-Edit `apps/offers/catalog.yaml` and push the change. Each card has these fields:
+Add an offer when a card gets a new benefit, or when **Credits not linked to an offer** shows a credit that repeats. Change an offer when its value, period, merchants, or end date changes. To retire an offer, set `valid_to`. Do not delete it, because the history of past periods uses it.
+
+```mermaid
+flowchart LR
+  Find["New benefit, or a repeating<br/>unlinked credit"] --> Edit["Edit apps/offers/catalog.yaml"]
+  Edit --> Check["uv run offers check-catalog<br/>uv run pytest"]
+  Check --> Push["Push to master"]
+  Push --> CI["CI: pre-commit and tests"]
+  Push --> Argo["ArgoCD: new offers-catalog<br/>ConfigMap name"]
+  Argo --> Restart["Dashboard restarts<br/>with the new catalog"]
+  Argo --> NextSync["Next sync: 06:30, or a Job<br/>from the CronJob"]
+  NextSync --> Fingerprint["Changed offers get a new fingerprint,<br/>so the AI decides them again"]
+  Fingerprint --> Dashboard["Dashboard shows the new<br/>offer for every period"]
+```
+
+Each card has these fields:
 
 | Field | Meaning |
 | --- | --- |
