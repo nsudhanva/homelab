@@ -12,6 +12,7 @@ cards:
     annual_fee: 795
     account: sapphire reserve
     fee_payee: annual (membership )?fee
+    anniversary_month: 7
 
   - id: chase-freedom-flex
     name: Chase Freedom Flex
@@ -31,12 +32,12 @@ offers:
     period: monthly
     how_to_use: >-
       Uber Cash loads into the Uber app each month while the Gold Card is a payment method
-      there. Uber uses it first for rides and Uber Eats in the U.S. A trip that Uber Cash pays
-      in full does not show in Actual, so mark that month as used.
+      there. It applies only to rides and Uber Eats orders in the U.S. that an Amex card pays
+      for. A trip that Uber Cash pays in full does not show in Actual, so mark that month as
+      used.
     detect:
       usage:
         payee: \buber\b
-        scope: any
 
   - id: amex-gold-dining
     card: amex-gold
@@ -45,17 +46,17 @@ offers:
     period: monthly
     enrollment: true
     how_to_use: >-
-      Pay with the Gold Card at Grubhub, Seamless, The Cheesecake Factory, Goldbelly,
-      Wine.com, or Five Guys.
+      Pay with the Gold Card at Grubhub, Seamless, The Cheesecake Factory, Five Guys,
+      Buffalo Wild Wings, or Wonder.
     detect:
       credit:
-        payee: grubhub|seamless|cheesecake|goldbelly|wine\.com|five guys|dining credit
+        payee: grubhub|seamless|cheesecake|five guys|buffalo wild wings|\bwonder\b|dining credit
       usage:
-        payee: grubhub|seamless|cheesecake|goldbelly|wine\.com|five guys
-      keywords: [grubhub, seamless, cheesecake, goldbelly, five guys]
+        payee: grubhub|seamless|cheesecake|five guys|buffalo wild wings|\bwonder\b
+      keywords: [grubhub, seamless, cheesecake, five guys, buffalo wild wings, bww, wonder]
       ai_hint: >-
-        Eligible merchants: Grubhub (including Seamless), The Cheesecake Factory, Goldbelly,
-        Wine.com, and Five Guys, in the U.S. Other restaurants do not count.
+        Eligible merchants in the U.S.: Grubhub (including Seamless), The Cheesecake Factory,
+        Five Guys, Buffalo Wild Wings, and Wonder. Other restaurants do not count.
 
   - id: amex-gold-dunkin
     card: amex-gold
@@ -115,7 +116,8 @@ offers:
     period: annual
     valid_from: 2026-01-01
     valid_to: 2026-12-31
-    how_to_use: Book a prepaid stay at a select hotel brand through Chase Travel.
+    how_to_use: >-
+      Book a prepaid stay of two nights or more at a select hotel brand through Chase Travel.
     detect:
       credit:
         payee: hotel credit
@@ -128,8 +130,8 @@ offers:
     value: 150
     period: semiannual
     how_to_use: >-
-      Dine at a Sapphire Reserve Exclusive Tables restaurant booked on OpenTable.
-      January to June, and July to December.
+      Pay with the Sapphire Reserve at a Sapphire Reserve Exclusive Tables restaurant. Find
+      the restaurants on OpenTable. January to June, and July to December.
     detect:
       credit:
         payee: dining credit|exclusive tables
@@ -156,7 +158,8 @@ offers:
     value: 10
     period: monthly
     valid_to: 2027-12-31
-    how_to_use: Pay for an eligible Peloton membership with the Sapphire Reserve.
+    enrollment: true
+    how_to_use: Activate it in the Chase app, then pay for a Peloton membership with the card.
     detect:
       credit:
         payee: peloton
@@ -179,7 +182,8 @@ offers:
     name: DoorDash restaurant promo
     value: 5
     period: monthly
-    valid_to: 2027-12-31
+    valid_to: 2026-09-30
+    group: doordash
     how_to_use: The promo is in the DoorDash app with DashPass. Use it on a restaurant order.
     detect:
       usage:
@@ -194,7 +198,9 @@ offers:
     name: DoorDash store promos
     value: 20
     period: monthly
+    uses: 2
     valid_to: 2027-12-31
+    group: doordash
     how_to_use: >-
       Two promos of $10 in the DoorDash app with DashPass. Use them on orders from stores,
       for example grocery, convenience, or pharmacy.
@@ -205,6 +211,21 @@ offers:
       ai_hint: >-
         A DoorDash order from a store, for example a grocery store, a pharmacy, a convenience
         store, or DashMart. Restaurant orders do not count.
+
+  - id: csr-doordash-any-order
+    card: chase-sapphire-reserve
+    name: DoorDash order promo
+    value: 15
+    period: monthly
+    valid_from: 2026-10-01
+    valid_to: 2027-12-31
+    group: doordash
+    how_to_use: >-
+      The promo is in the DoorDash app with DashPass. Use it on any eligible order. Each promo
+      needs its own order.
+    detect:
+      usage:
+        payee: doordash|dashmart
 
   - id: freedom-flex-5-percent
     card: chase-freedom-flex

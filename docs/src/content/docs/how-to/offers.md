@@ -48,7 +48,7 @@ The AI prompt contains the card name, the offer, and the date, amount, payee, an
 | State | Meaning |
 | --- | --- |
 | Credited | The issuer posted the full credit |
-| Partly credited | The issuer posted part of the credit |
+| Partly credited | The issuer posted part of the credit, or you used some of the promos of a multi-use offer |
 | Used, credit pending | A qualifying purchase exists, and the credit is not posted yet |
 | Used | A qualifying purchase exists for an offer that the issuer applies in an app, for example Uber Cash or a Lyft credit. Or you marked the offer as used |
 | Unused | No evidence in this period |
@@ -98,6 +98,7 @@ Edit `apps/offers/catalog.yaml` and push the change. Each card has these fields:
 | `annual_fee` | The fee in dollars. The dashboard compares the captured credits with it |
 | `account` | A case-insensitive regular expression for the Actual account names of this card. Use the product name only. Do not put account numbers in the catalog |
 | `fee_payee` | Optional. A regular expression for the annual fee transaction. The month of the latest fee sets the card-member year |
+| `anniversary_month` | Optional. The first month of the card-member year, used when Actual Budget has no annual fee transaction |
 
 Each offer has these fields:
 
@@ -109,6 +110,8 @@ Each offer has these fields:
 | `kind` | `credit` (default) or `activation` |
 | `valid_from`, `valid_to` | Optional dates. Past periods keep the offer as it was |
 | `enrollment` | `true` if the offer needs enrollment or activation |
+| `uses` | The number of uses in a period, for an offer made of more than one promo. For example, two promos of $10 have `value: 20` and `uses: 2`. One qualifying purchase then shows the offer as partly used |
+| `group` | Optional. Offers in the same group are separate promos that one order cannot share. Each purchase counts for the first offer in catalog order that matches it and has a use left |
 | `how_to_use` | A short instruction for the dashboard and the AI |
 | `detect.credit` | A rule for the credit that the issuer posts on the card |
 | `detect.usage` | A rule for a qualifying purchase. Set `scope: any` if a purchase on any account counts |

@@ -95,6 +95,8 @@ class Offer(BaseModel):
     valid_from: date | None = None
     valid_to: date | None = None
     enrollment: bool = False
+    uses: int = Field(default=1, ge=1)
+    group: str | None = Field(default=None, pattern=SLUG)
     how_to_use: str | None = None
     detect: Detect = Detect()
 
@@ -124,7 +126,8 @@ class Card(BaseModel):
     """A card product. ``account`` matches the names of the Actual accounts for this card.
 
     One card can match more than one account, for example two people with the same card.
-    Each account gets its own copy of every offer.
+    Each account gets its own copy of every offer. The card-member year starts in the month of
+    the latest ``fee_payee`` transaction, or in ``anniversary_month`` when no fee is found.
     """
 
     model_config = ConfigDict(extra="forbid", frozen=True)
@@ -135,6 +138,7 @@ class Card(BaseModel):
     annual_fee: float = Field(default=0, ge=0)
     account: str
     fee_payee: str | None = None
+    anniversary_month: int | None = Field(default=None, ge=1, le=12)
 
     @field_validator("account", "fee_payee")
     @classmethod

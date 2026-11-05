@@ -3,8 +3,9 @@ from datetime import date
 from conftest import txn
 
 from offers import engine
-from offers.catalog import Catalog
+from offers.catalog import Catalog, Detect, Offer, Rule
 from offers.models import Account, AIDecision, EvidenceKind, OverrideStatus, Source, State
+from offers.periods import Period
 
 
 def _collect(catalog: Catalog, accounts: list[Account], txns, ai=None, user=None):
@@ -146,3 +147,56 @@ def test_history_starts_with_the_account_data(catalog: Catalog, accounts: list[A
     rows = engine.statuses(catalog, accounts, txns, [], {}, date(2026, 1, 1), date(2026, 8, 31))
     coffee = [r.window.start.month for r in rows if r.instance.offer.id == "gold-coffee"]
     assert coffee == [7, 8]
+
+
+def test_multi_use_offer_is_partial_until_all_uses(
+    catalog: Catalog, accounts: list[Account]
+) -> None:
+    offers = tuple(
+        o.model_copy(update={"uses": 2}) if o.id == "gold-rides" else o for o in catalog.offers
+    )
+    two_uses = Catalog(cards=catalog.cards, offers=offers)
+    one = [txn("t1", "a-other", date(2026, 8, 7), -20, "Rides")]
+    result = _collect(two_uses, accounts, one)
+    rides = _state(two_uses, accounts, one, result.evidence, "gold-rides", date(2026, 8, 20))
+    assert rides.state is State.PARTIAL
+    assert (rides.captured_cents, rides.remaining_cents) == (500, 500)
+    both = [*one, txn("t2", "a-other", date(2026, 8, 9), -8, "Rides")]
+    result = _collect(two_uses, accounts, both)
+    rides = _state(two_uses, accounts, both, result.evidence, "gold-rides", date(2026, 8, 20))
+    assert rides.state is State.USED and rides.captured_cents == 1000
+
+
+def test_group_gives_each_order_to_one_promo(catalog: Catalog, accounts: list[Account]) -> None:
+    def promo(oid: str, value: float, uses: int, payee: str) -> Offer:
+        return Offer(
+            id=oid,
+            card="gold",
+            name=oid,
+            value=value,
+            uses=uses,
+            period=Period.MONTHLY,
+            group="dash",
+            detect=Detect(usage=Rule(payee=payee)),
+        )
+
+    grouped = Catalog(
+        cards=catalog.cards,
+        offers=(promo("store", 20, 2, "via deliverydash"), promo("any", 15, 1, "deliverydash")),
+    )
+    orders = [
+        txn(f"t{i}", "a-gold", date(2026, 10, i), -20, "Pharmacy via DeliveryDash")
+        for i in (1, 2, 3)
+    ]
+    result = _collect(grouped, accounts, orders)
+    owners = sorted((e.txn_id, e.offer_id) for e in result.evidence)
+    assert owners == [("t1", "store"), ("t2", "store"), ("t3", "any")]
+
+
+def test_anniversary_month_fallback(catalog: Catalog, accounts: list[Account]) -> None:
+    cards = tuple(
+        c.model_copy(update={"anniversary_month": 7, "fee_payee": None}) if c.id == "gold" else c
+        for c in catalog.cards
+    )
+    fallback = Catalog(cards=cards, offers=catalog.offers)
+    assert engine.anniversaries(fallback, accounts, []) == {"a-gold": 7}

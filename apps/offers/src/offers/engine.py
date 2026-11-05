@@ -94,16 +94,18 @@ def anniversaries(
     txns = list(txns)
     months: dict[str, int] = {}
     for card, account in card_accounts(catalog, accounts):
-        if not card.fee_payee:
-            continue
-        pattern = re.compile(card.fee_payee, re.IGNORECASE)
-        fees = [
-            t
-            for t in txns
-            if t.account_id == account.id and t.amount_cents < 0 and pattern.search(t.text)
-        ]
+        fees = []
+        if card.fee_payee:
+            pattern = re.compile(card.fee_payee, re.IGNORECASE)
+            fees = [
+                t
+                for t in txns
+                if t.account_id == account.id and t.amount_cents < 0 and pattern.search(t.text)
+            ]
         if fees:
             months[account.id] = max(fees, key=lambda t: t.date).date.month
+        elif card.anniversary_month:
+            months[account.id] = card.anniversary_month
     return months
 
 
@@ -177,7 +179,46 @@ def collect(
         elif decision.match:
             reason = f"AI: {decision.reason}"
             result.evidence.append(make_evidence(candidate, Source.AI, decision.confidence, reason))
+    result.evidence = _allocate(catalog, result.evidence)
     return result
+
+
+def _allocate(catalog: Catalog, evidence: list[Evidence]) -> list[Evidence]:
+    """Give each purchase to one offer in a group.
+
+    Offers in the same ``group`` are separate promos that one order cannot share, for example
+    the DoorDash promos of a card. A purchase goes to the first offer in catalog order that
+    matches it and has a use left in its period.
+    """
+    order = {o.id: i for i, o in enumerate(catalog.offers)}
+    group_of = {o.id: o.group for o in catalog.offers if o.group}
+    uses_of = {o.id: o.uses for o in catalog.offers}
+    shared = [e for e in evidence if e.kind is EvidenceKind.USAGE and e.offer_id in group_of]
+    if not shared:
+        return evidence
+    by_txn: dict[tuple[str, str, str], list[Evidence]] = defaultdict(list)
+    for e in shared:
+        by_txn[(e.account_id, group_of[e.offer_id], e.txn_id)].append(e)
+    order_key = {e.txn_id: (e.period_start, e.txn_id) for e in shared}
+    used: dict[tuple[str, str, date], int] = defaultdict(int)
+    keep: set[int] = set()
+    for key in sorted(by_txn, key=lambda k: order_key[k[2]]):
+        options = sorted(by_txn[key], key=lambda e: order[e.offer_id])
+        chosen = next(
+            (
+                e
+                for e in options
+                if used[(e.offer_id, e.account_id, e.period_start)] < uses_of[e.offer_id]
+            ),
+            options[0],
+        )
+        used[(chosen.offer_id, chosen.account_id, chosen.period_start)] += 1
+        keep.add(id(chosen))
+    return [
+        e
+        for e in evidence
+        if e.offer_id not in group_of or e.kind is EvidenceKind.CREDIT or id(e) in keep
+    ]
 
 
 def make_evidence(candidate: Candidate, source: Source, confidence: float, reason: str) -> Evidence:
@@ -203,7 +244,7 @@ def offer_status(
     offer = inst.offer
     items = tuple(evidence)
     credits = sum(e.amount_cents for e in items if e.kind is EvidenceKind.CREDIT)
-    used = any(e.kind is EvidenceKind.USAGE for e in items)
+    uses = len({e.txn_id for e in items if e.kind is EvidenceKind.USAGE})
 
     def status(state: State, captured: int) -> OfferStatus:
         return OfferStatus(inst, window, state, captured, items, override)
@@ -222,10 +263,12 @@ def offer_status(
         return status(State.CREDITED, offer.value_cents)
     if credits > 0:
         return status(State.PARTIAL, credits)
-    if used:
-        if offer.detect.credit is not None:
-            return status(State.PENDING, 0)
+    if uses and offer.detect.credit is not None:
+        return status(State.PENDING, 0)
+    if uses >= offer.uses:
         return status(State.USED, offer.value_cents)
+    if uses:
+        return status(State.PARTIAL, offer.value_cents * uses // offer.uses)
     return status(State.UNUSED, 0)
 
 
