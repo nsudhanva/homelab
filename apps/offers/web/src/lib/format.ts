@@ -77,3 +77,23 @@ export function shortCard(name: string): string {
     .replace(/^Chase /, "")
     .replace(/ Cash Back$/, "");
 }
+
+export function longDate(iso: string): string {
+  return new Date(`${iso}T00:00:00`).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+}
+
+export function monthYear(iso: string): string {
+  return new Date(`${iso}T00:00:00`).toLocaleDateString("en-US", { month: "short", year: "numeric" });
+}
+
+/** The last month inside a half-open range that ends on ``endIso``. */
+export function monthBefore(endIso: string): string {
+  const d = new Date(`${endIso}T00:00:00`);
+  d.setDate(0);
+  return d.toLocaleDateString("en-US", { month: "short", year: "numeric" });
+}
+
+export const MONTH_NAMES = [
+  "January", "February", "March", "April", "May", "June",
+  "July", "August", "September", "October", "November", "December",
+];

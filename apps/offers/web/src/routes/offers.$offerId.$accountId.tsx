@@ -77,6 +77,7 @@ function OfferPage() {
           {data.value > 0 && ` · ${money(data.value)} each ${data.period.replace("_", " ")} period`}
         </p>
       </div>
+      <p className="rounded-lg border bg-muted/40 px-4 py-2.5 text-sm text-muted-foreground">{data.cycle}</p>
       {current?.how_to_use && (
         <Card className="gap-0 py-0">
           <CardContent className="p-4 text-sm text-muted-foreground">{current.how_to_use}</CardContent>

@@ -284,3 +284,26 @@ def test_activation_reminder_is_sent_with_stale_data(store, catalog, settings, a
     sent = notify(store, catalog, settings, date(2027, 1, 2), sender)
     assert any(k.startswith("remind:flex-activate") for k in sent)
     assert any(k.startswith("stale:") for k in sent)
+
+
+def test_fee_year_and_cycles(store, catalog, settings, accounts) -> None:
+    txns = [
+        txn("fee", "a-gold", date(2026, 9, 11), -300, "Annual Fee"),
+        txn("p", "a-gold", date(2026, 8, 20), -12, "Coffee Co"),
+        txn("c", "a-gold", date(2026, 8, 21), 7, "Coffee Co"),
+        txn("p2", "a-gold", date(2026, 10, 2), -12, "Coffee Co"),
+        txn("c2", "a-gold", date(2026, 10, 3), 7, "Coffee Co"),
+    ]
+    sync(store, catalog, settings, Snapshot(accounts, txns), date(2026, 11, 5), None, None)
+    client = TestClient(create_app(settings, catalog, web_dist=settings.db_path.parent / "none"))
+    gold = next(c for c in client.get("/api/tracker").json()["cards"] if c["card_id"] == "gold")
+    assert gold["fee"]["fee_date"] == "2026-09-11"
+    assert (gold["fee"]["year_start"], gold["fee"]["year_end"]) == ("2026-09-01", "2027-09-01")
+    assert gold["fee"]["year_captured"] == 7
+    rows = {r["offer_id"]: r for r in gold["rows"]}
+    assert rows["gold-coffee"]["cycle"].startswith("Calendar month")
+    assert rows["gold-coffee"]["next_reset"] == "2026-12-01"
+    assert "Resets in September" in rows["gold-travel"]["cycle"]
+    assert "annual fee posted" in rows["gold-travel"]["cycle"]
+    detail = client.get("/api/offers/gold-travel/a-gold").json()
+    assert detail["cycle"] == rows["gold-travel"]["cycle"]

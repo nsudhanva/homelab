@@ -8,7 +8,17 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { trackerApi, type Cell, type Tracker, type TrackerCard, type TrackerRow } from "@/lib/api";
-import { holderLabel, issuerAccent, money, shortCard } from "@/lib/format";
+import {
+  MONTH_NAMES,
+  holderLabel,
+  issuerAccent,
+  longDate,
+  money,
+  monthBefore,
+  monthYear,
+  shortCard,
+  shortDate,
+} from "@/lib/format";
 import { useCellMark } from "@/lib/mutations";
 import { cn } from "@/lib/utils";
 
@@ -27,6 +37,7 @@ function TrackerPage() {
   return (
     <div className="space-y-6">
       <Hero data={data} />
+      <Resets cards={data.cards} />
       <Legend />
       {data.cards.map((card) => (
         <CardGrid key={`${card.card_id}:${card.account.id}`} card={card} months={data.months} />
@@ -91,6 +102,54 @@ function Hero({ data }: { data: Tracker }) {
   );
 }
 
+function Resets({ cards }: { cards: TrackerCard[] }) {
+  const withFee = cards.filter((c) => c.annual_fee > 0);
+  return (
+    <details className="group rounded-xl border bg-card px-4 py-3 text-sm sm:px-5">
+      <summary className="flex cursor-pointer list-none items-center justify-between font-medium">
+        When do credits reset?
+        <ChevronRight className="size-4 text-muted-foreground transition-transform group-open:rotate-90" />
+      </summary>
+      <div className="mt-3 space-y-3 text-muted-foreground">
+        <p>
+          Most credits follow the <span className="text-foreground">calendar</span>: a monthly credit resets on the
+          1st, a half-year credit on January 1 and July 1, and a yearly credit on January 1. The date that you pay the
+          annual fee does not change them.
+        </p>
+        <p>
+          A few credits follow the <span className="text-info">card-member year</span>. It starts on the account
+          anniversary, which is when the annual fee posts, and runs for 12 months. These rows say{" "}
+          <span className="text-info">Card year</span>.
+        </p>
+        <ul className="space-y-1.5">
+          {withFee.map((c) => {
+            const cardYear = c.rows.filter((r) => r.period === "cardmember_year").map((r) => r.name);
+            const f = c.fee;
+            return (
+              <li key={`${c.card_id}:${c.account.id}`}>
+                <span className="font-medium text-foreground">{shortCard(c.name)}</span>
+                {" · "}
+                {f.source === "fee" && f.fee_date
+                  ? `$${c.annual_fee} fee posted ${longDate(f.fee_date)}, so the fee year runs ${monthYear(f.year_start!)} – ${monthBefore(f.year_end!)}.`
+                  : f.anniversary_month
+                    ? `The fee is not in your data. The card year most likely starts in ${MONTH_NAMES[f.anniversary_month - 1]}.`
+                    : "The fee date is not in your data."}{" "}
+                {cardYear.length
+                  ? `${cardYear.join(", ")} ${cardYear.length === 1 ? "follows" : "follow"} the card year. Everything else follows the calendar.`
+                  : "All its credits follow the calendar."}
+              </li>
+            );
+          })}
+        </ul>
+        <p>
+          The <span className="text-foreground">fee year</span> on each card counts the credits that you captured
+          between two annual fees, because that is what the fee pays for.
+        </p>
+      </div>
+    </details>
+  );
+}
+
 function Pill({ look: l, text }: { look: Look; text: string }) {
   return (
     <span className="inline-flex items-center gap-2 rounded-full border bg-background px-3 py-1">
@@ -140,20 +199,7 @@ function CardGrid({ card, months }: { card: TrackerCard; months: string[] }) {
           <div className="font-semibold">{shortCard(card.name)}</div>
           <div className="text-xs text-muted-foreground">{holderLabel(card.account)}</div>
         </div>
-        {fee > 0 && (
-          <div className="w-44 text-right">
-            <div className="text-xs text-muted-foreground">
-              <span className="tabular font-medium text-success">{money(card.year_captured)}</span> of{" "}
-              <span className="tabular">{money(fee)}</span> fee this year
-            </div>
-            <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-muted">
-              <div
-                className="h-full rounded-full bg-success"
-                style={{ width: `${Math.min(100, (card.year_captured / fee) * 100)}%` }}
-              />
-            </div>
-          </div>
-        )}
+        {fee > 0 && <FeeYear card={card} />}
       </header>
       <div className="overflow-x-auto">
         <table className="w-full border-separate border-spacing-0 text-sm">
@@ -187,13 +233,47 @@ function CardGrid({ card, months }: { card: TrackerCard; months: string[] }) {
   );
 }
 
+function FeeYear({ card }: { card: TrackerCard }) {
+  const f = card.fee;
+  const captured = f.year_start ? f.year_captured : card.year_captured;
+  return (
+    <div className="w-full text-left sm:w-60 sm:text-right">
+      <div className="text-xs text-muted-foreground">
+        {f.year_start && f.year_end
+          ? `Fee year ${monthYear(f.year_start)} – ${monthBefore(f.year_end)}`
+          : "This calendar year"}
+      </div>
+      <div className="text-sm">
+        <span className="tabular font-semibold text-success">{money(captured)}</span>
+        <span className="text-muted-foreground">
+          {" "}
+          of <span className="tabular">{money(card.annual_fee)}</span> fee earned back
+        </span>
+      </div>
+      <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-muted">
+        <div
+          className="h-full rounded-full bg-success"
+          style={{ width: `${Math.min(100, (captured / card.annual_fee) * 100)}%` }}
+        />
+      </div>
+      <div className="mt-1 text-[11px] text-muted-foreground">
+        {f.source === "fee" && f.fee_date
+          ? `Annual fee posted ${longDate(f.fee_date)}`
+          : f.source === "catalog" && f.anniversary_month
+            ? `Card year starts in ${MONTH_NAMES[f.anniversary_month - 1]} (estimated)`
+            : "Annual fee date not found"}
+      </div>
+    </div>
+  );
+}
+
 function OfferLine({ row, card, last }: { row: TrackerRow; card: TrackerCard; last: string }) {
   const Kind = row.kind === "activation" ? KeyRound : row.in_app ? Smartphone : ReceiptText;
   return (
     <tr className="group">
       <td className="sticky left-0 z-10 border-t bg-card px-4 py-3 align-middle sm:px-5">
         <Link to="/offers/$offerId/$accountId" params={{ offerId: row.offer_id, accountId: card.account.id }} className="block">
-          <div className="flex items-center gap-1.5 font-medium leading-tight">
+          <div className="flex items-center gap-1.5 font-medium leading-tight" title={row.cycle}>
             <Kind className="size-3.5 shrink-0 text-muted-foreground" />
             <span className="hover:underline">{row.name}</span>
           </div>
@@ -202,6 +282,12 @@ function OfferLine({ row, card, last }: { row: TrackerRow; card: TrackerCard; la
               ? "Activation reminder"
               : `${money(row.value)} / ${PER[row.period] ?? row.period}${row.uses > 1 ? ` · ${row.uses} uses` : ""}`}
           </div>
+          {row.next_reset && row.period !== "once" && (
+            <div className={cn("mt-0.5 text-[11px]", row.period === "cardmember_year" ? "text-info" : "text-muted-foreground/80")}>
+              {row.period === "cardmember_year" ? "Card year · " : ""}resets {shortDate(row.next_reset)}
+              {row.period !== "monthly" && `, ${new Date(`${row.next_reset}T00:00:00`).getFullYear()}`}
+            </div>
+          )}
         </Link>
       </td>
       {row.cells.map((cell) => (
@@ -277,6 +363,7 @@ function CellView({ cell, row, card, highlight }: { cell: Cell; row: TrackerRow;
                 {cell.remaining > 0 && ` · ${money(cell.remaining)} ${l === "missed" ? "missed" : "left"}`}
               </span>
             </div>
+            <p className="rounded-md bg-muted px-2.5 py-1.5 text-xs text-muted-foreground">{row.cycle}</p>
             {cell.override && <p className="text-xs text-muted-foreground">You marked this period yourself.</p>}
             {cell.data_from && (
               <p className="text-xs text-muted-foreground">

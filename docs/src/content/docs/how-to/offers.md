@@ -103,6 +103,23 @@ The AI never overrules a rule. It sees a transaction only when no rule matched i
 
 The AI prompt contains the card name, the offer, and the date, amount, payee, and bank description of the transaction. It does not contain the account name.
 
+## Calendar Cycles and Card-Member Years
+
+Each offer resets on a fixed cycle. The cycle does not depend on the date that you pay the annual fee, except for a card-member year.
+
+| `period` | Resets |
+| --- | --- |
+| `monthly` | On the 1st of each month |
+| `quarterly` | On January 1, April 1, July 1, and October 1 |
+| `semiannual` | On January 1 and July 1 |
+| `annual` | On January 1 |
+| `cardmember_year` | On the account anniversary, which is the month in which the annual fee posts |
+| `once` | It does not reset. It runs from `valid_from` to `valid_to` |
+
+Offers finds the annual fee with the `fee_payee` rule of the card. The month of the latest fee starts the card-member year and the fee year of the card. When Actual Budget has no fee transaction, `anniversary_month` in the catalog sets the month, and the dashboard marks it as estimated.
+
+The fee year is the 12 months between two annual fees. The card header compares the credits captured in the fee year with the fee. A posted credit counts on its posting date. A use without a credit counts in the period in which it starts.
+
 ## Offer States
 
 | State | Meaning |
@@ -154,13 +171,16 @@ Open `https://offers.sudhanva.me`. The tracker shows each card with its offers a
 | Clock | A purchase waits for its credit |
 | Dash | You marked it not interested |
 
+- Each offer row shows its next reset date. A row that follows the card-member year says **Card year**.
+- The card header shows the fee year, the credits captured in it, and the date that the annual fee posted.
+- **When do credits reset?** above the legend explains the cycles for your cards.
 - An offer with a longer period, for example a half-year credit, shows one wide cell across its months.
 - An amber dot on a cell means that matching orders were paid with another card. Pay with this card to use the credit.
 - The summary at the top shows the credits used this month, the amount still open, and the amount missed last month.
 - A banner shows when Actual Budget has no transactions in the last 4 days.
-- Select a cell to open a small panel in place. It shows the state, the notes, and the correction buttons. Its **History and transactions** link opens the offer page.
+- Select a cell to open a small panel in place. It shows the state, the cycle of the offer, the notes, and the correction buttons. Its **History and transactions** link opens the offer page.
 - Select an offer name to see each period with the transactions that count for it.
-- The **Cards** page compares the captured credits of the year with each annual fee, and lists the credits that no offer explains.
+- The **Cards** page shows the fee year of each card, the cycle of each offer, and the credits that no offer explains.
 
 ## Step 2: Correct a State
 

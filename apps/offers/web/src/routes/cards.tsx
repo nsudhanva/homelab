@@ -3,9 +3,19 @@ import { createFileRoute } from "@tanstack/react-router";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Skeleton } from "@/components/ui/skeleton";
-import { StateIcon } from "@/components/state";
-import { api, keys } from "@/lib/api";
-import { holderLabel, issuerAccent, money, shortCard, shortDate, signedMoney } from "@/lib/format";
+import { api, keys, trackerApi } from "@/lib/api";
+import {
+  MONTH_NAMES,
+  holderLabel,
+  issuerAccent,
+  longDate,
+  money,
+  monthBefore,
+  monthYear,
+  shortCard,
+  shortDate,
+  signedMoney,
+} from "@/lib/format";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/cards")({
@@ -16,20 +26,23 @@ export const Route = createFileRoute("/cards")({
 
 function Cards() {
   const { data } = useQuery({ queryKey: keys.dashboard(), queryFn: () => api.dashboard() });
+  const { data: tracker } = useQuery({ queryKey: trackerApi.key(6), queryFn: () => trackerApi.get(6) });
   if (!data) return null;
-  const year = new Date(`${data.today}T00:00:00`).getFullYear();
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-xl font-semibold tracking-tight">Cards</h1>
         <p className="text-sm text-muted-foreground">
-          Tracked credits captured in {year}, compared with each card's annual fee.
+          Credits captured in each card's fee year, the 12 months between two annual fees, compared with the fee.
+          Each offer says when it resets.
         </p>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2">
-        {data.cards.map((card) => {
-          const coverage = card.annual_fee ? (card.year_captured / card.annual_fee) * 100 : 0;
+        {(tracker?.cards ?? []).map((card) => {
+          const f = card.fee;
+          const captured = f.year_start ? f.year_captured : card.year_captured;
+          const coverage = card.annual_fee ? (captured / card.annual_fee) * 100 : 0;
           return (
             <Card key={`${card.card_id}:${card.account.id}`} className="gap-0 overflow-hidden py-0">
               <div className={cn("h-1.5 bg-gradient-to-r", issuerAccent(card.issuer))} />
@@ -49,34 +62,43 @@ function Cards() {
 
                 {card.annual_fee > 0 ? (
                   <div className="space-y-1.5">
+                    <div className="text-xs text-muted-foreground">
+                      {f.year_start && f.year_end
+                        ? `Fee year ${monthYear(f.year_start)} – ${monthBefore(f.year_end)}`
+                        : "This calendar year"}
+                    </div>
                     <div className="flex items-baseline justify-between">
-                      <span className="tabular text-2xl font-semibold text-success">{money(card.year_captured)}</span>
-                      <span className="tabular text-xs text-muted-foreground">
-                        {Math.round(coverage)}% of the fee
-                      </span>
+                      <span className="tabular text-2xl font-semibold text-success">{money(captured)}</span>
+                      <span className="tabular text-xs text-muted-foreground">{Math.round(coverage)}% of the fee</span>
                     </div>
                     <Progress value={Math.min(100, coverage)} className="h-2" />
                     <div className="text-xs text-muted-foreground">
-                      <span className="tabular text-warning">{money(card.year_missed)}</span> missed in finished
-                      periods
+                      {f.source === "fee" && f.fee_date
+                        ? `Annual fee posted ${longDate(f.fee_date)}.`
+                        : f.anniversary_month
+                          ? `Card year starts in ${MONTH_NAMES[f.anniversary_month - 1]} (estimated; the fee is not in your data).`
+                          : "The annual fee date is not in your data."}
                     </div>
                   </div>
                 ) : (
                   <div className="text-sm text-muted-foreground">No annual fee.</div>
                 )}
 
-                <div className="flex flex-wrap gap-1.5">
-                  {card.offers.map((o) => (
-                    <span
-                      key={o.offer_id}
-                      title={o.name}
-                      className="inline-flex items-center gap-1.5 rounded-full border py-0.5 pr-2.5 pl-0.5 text-xs"
-                    >
-                      <StateIcon state={o.state} className="size-5" />
-                      {o.name}
-                    </span>
+                <ul className="space-y-2 border-t pt-3">
+                  {card.rows.map((r) => (
+                    <li key={r.offer_id} className="text-xs">
+                      <div className="font-medium text-foreground">
+                        {r.name}
+                        {r.kind !== "activation" && (
+                          <span className="tabular font-normal text-muted-foreground"> · {money(r.value)}</span>
+                        )}
+                      </div>
+                      <div className={r.period === "cardmember_year" ? "text-info" : "text-muted-foreground"}>
+                        {r.cycle}
+                      </div>
+                    </li>
                   ))}
-                </div>
+                </ul>
               </CardContent>
             </Card>
           );

@@ -121,6 +121,7 @@ class HistoryRow(BaseModel):
 class OfferDetailOut(BaseModel):
     offer_id: str
     name: str
+    cycle: str
     card_name: str
     account: AccountOut
     value: float
@@ -167,6 +168,8 @@ class Cell(BaseModel):
 class TrackerRow(BaseModel):
     offer_id: str
     name: str
+    cycle: str
+    next_reset: date | None
     kind: str
     in_app: bool
     value: float
@@ -177,6 +180,15 @@ class TrackerRow(BaseModel):
     cells: list[Cell]
 
 
+class FeeOut(BaseModel):
+    fee_date: date | None
+    anniversary_month: int | None
+    source: str | None
+    year_start: date | None
+    year_end: date | None
+    year_captured: float
+
+
 class TrackerCard(BaseModel):
     card_id: str
     name: str
@@ -184,6 +196,7 @@ class TrackerCard(BaseModel):
     annual_fee: float
     account: AccountOut
     year_captured: float
+    fee: FeeOut
     rows: list[TrackerRow]
 
 
@@ -304,6 +317,15 @@ def tracker(store: Store, catalog: Catalog, today: date, months_back: int) -> Tr
     for inst in instances(catalog, accounts):
         lines.setdefault((inst.card.id, inst.account.id, inst.offer.name), []).append(inst)
 
+    by_id = {t.id: t for t in txns}
+    fees: dict[tuple[str, str], views.FeeInfo] = {}
+
+    def fee_for(inst) -> views.FeeInfo:
+        key = (inst.card.id, inst.account.id)
+        if key not in fees:
+            fees[key] = views.fee_info(inst.card, inst.account, txns, today)
+        return fees[key]
+
     cards: dict[tuple[str, str], TrackerCard] = {}
     for versions in lines.values():
         inst = max(versions, key=lambda v: v.offer.valid_from or date.min)
@@ -381,7 +403,13 @@ def tracker(store: Store, catalog: Catalog, today: date, months_back: int) -> Tr
         if all(c.state is None for c in cells):
             continue
         key = (inst.card.id, inst.account.id)
+        info = fee_for(inst)
         if key not in cards:
+            mine = [
+                r
+                for r in rows
+                if r.instance.account.id == inst.account.id and r.instance.card.id == inst.card.id
+            ]
             cards[key] = TrackerCard(
                 card_id=inst.card.id,
                 name=inst.card.name,
@@ -395,12 +423,30 @@ def tracker(store: Store, catalog: Catalog, today: date, months_back: int) -> Tr
                     and r.instance.card.id == inst.card.id
                     and r.window.start >= date(today.year, 1, 1)
                 ),
+                fee=FeeOut(
+                    fee_date=info.fee_date,
+                    anniversary_month=info.anniversary_month,
+                    source=info.source,
+                    year_start=info.year_start,
+                    year_end=info.year_end,
+                    year_captured=(
+                        sum(
+                            views.captured_between(r, by_id, info.year_start, info.year_end)
+                            for r in mine
+                        )
+                        / 100
+                        if info.year_start and info.year_end
+                        else 0
+                    ),
+                ),
                 rows=[],
             )
         cards[key].rows.append(
             TrackerRow(
                 offer_id=offer.id,
                 name=offer.name,
+                cycle=views.cycle_text(offer, info),
+                next_reset=next((r.window.end for r in statuses if r.window.contains(today)), None),
                 kind=offer.kind.value,
                 in_app=offer.detect.credit is None and offer.kind.value == "credit",
                 value=offer.value,
@@ -545,9 +591,13 @@ def create_app(
             s.close()
         if not rows:
             raise HTTPException(404, "unknown account for this offer")
+        info = views.fee_info(
+            rows[0].instance.card, rows[0].instance.account, list(txns.values()), day
+        )
         return OfferDetailOut(
             offer_id=offer.id,
             name=offer.name,
+            cycle=views.cycle_text(offer, info),
             card_name=rows[0].instance.card.name,
             account=account_out(rows[0].instance.account),
             value=offer.value,

@@ -79,6 +79,7 @@ export type Evidence = {
 export type OfferDetail = {
   offer_id: string;
   name: string;
+  cycle: string;
   card_name: string;
   account: Account;
   value: number;
@@ -153,6 +154,8 @@ export type Cell = {
 export type TrackerRow = {
   offer_id: string;
   name: string;
+  cycle: string;
+  next_reset: string | null;
   kind: "credit" | "activation";
   in_app: boolean;
   value: number;
@@ -170,6 +173,14 @@ export type TrackerCard = {
   annual_fee: number;
   account: Account;
   year_captured: number;
+  fee: {
+    fee_date: string | null;
+    anniversary_month: number | null;
+    source: "fee" | "catalog" | null;
+    year_start: string | null;
+    year_end: string | null;
+    year_captured: number;
+  };
   rows: TrackerRow[];
 };
 
