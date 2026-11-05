@@ -335,3 +335,21 @@ def test_tracker_shows_rates_totals_and_cards_without_offers(
     assert by_id["gold"]["total"] == {"captured": 7.0, "since": "2026-09-03", "months": 3}
     assert grid["captured_total"] == 7.0
     assert grid["unmatched_accounts"] == ["New Card"]
+
+
+def test_rates_show_only_current_bonuses(store, catalog, settings, accounts) -> None:
+    old = Bonus(name="Old", rate=5, valid_to=date(2026, 9, 30), note="ended")
+    now = Bonus(name="Now", rate=5, valid_from=date(2026, 10, 1), note="current")
+    cards = tuple(
+        c.model_copy(update={"rewards": Rewards(base=1, bonuses=(old, now))})
+        if c.id == "gold"
+        else c
+        for c in catalog.cards
+    )
+    cat = Catalog(cards=cards, offers=catalog.offers)
+    sync(store, cat, settings, Snapshot(accounts, []), date(2026, 11, 5), None, None)
+    client = TestClient(
+        create_app(settings, cat, web_dist=settings.db_path.parent / "none", clock=TODAY)
+    )
+    gold = next(c for c in client.get("/api/tracker").json()["cards"] if c["card_id"] == "gold")
+    assert [r["name"] for r in gold["rewards"]["rules"]] == ["Now"]

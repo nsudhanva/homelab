@@ -487,7 +487,10 @@ def tracker(store: Store, catalog: Catalog, today: date, months_back: int) -> Tr
                 program=program.program,
                 base=program.base,
                 rules=[
-                    RuleOut(name=b.name, rate=b.rate, detail=describe(b)) for b in program.bonuses
+                    RuleOut(name=b.name, rate=b.rate, detail=describe(b))
+                    for b in program.bonuses
+                    if (b.valid_from is None or b.valid_from <= today)
+                    and (b.valid_to is None or today <= b.valid_to)
                 ],
                 note=program.note,
             )
