@@ -257,6 +257,19 @@ These apps share the `jellyfin-media` volume:
 | Workload Type | Kubernetes CronJob | `actual-classifier`, daily at 03:00 |
 | Vault Path | `kv/actual`, `kv/anthropic`, `kv/openrouter` | Actual server password, and model API keys through `homelab-ai-credentials` |
 
+### Offers
+
+| Property | Value | Notes |
+| --- | --- | --- |
+| Namespace | `offers` | Dedicated namespace |
+| ArgoCD App | `apps/offers/app.yaml` | Application manifest |
+| Container Image | `ghcr.io/nsudhanva/homelab-offers:latest` | CI builds the image. ArgoCD Image Updater pins the digest |
+| Workload Type | Deployment and CronJob | Deployment `offers` serves the dashboard. CronJob `offers-sync` runs daily at 06:30 |
+| External URL | `https://offers.sudhanva.me` | Tailscale Gateway HTTPS route |
+| Storage | `offers-data` (1Gi) | `local-path` volume with the SQLite file `/data/offers.db` |
+| Catalog | `apps/offers/catalog.yaml` | Kustomize puts it in the ConfigMap `offers-catalog`, mounted at `/config` |
+| Vault Path | `kv/actual`, `kv/telegram/bot`, `kv/anthropic`, `kv/openrouter` | Actual server password and Telegram bot token through `offers-secrets`, and model API keys through `homelab-ai-credentials` |
+
 ### Alert Summarizer
 
 | Property | Value | Notes |

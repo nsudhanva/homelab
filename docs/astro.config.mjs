@@ -150,6 +150,7 @@ export default defineConfig({
                 { label: 'Add an AI Job', slug: 'how-to/add-ai-app' },
                 { label: 'Add a Google Account', slug: 'how-to/add-google-account' },
                 { label: 'Actual Classifier', slug: 'how-to/actual-classifier' },
+                { label: 'Offers', slug: 'how-to/offers' },
                 { label: 'Drive Organizer', slug: 'how-to/drive-organizer' },
               ],
             },

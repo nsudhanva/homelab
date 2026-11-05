@@ -33,7 +33,7 @@ This guide tells how GitHub Actions runs CI and how ArgoCD runs CD.
 | `python-test (<path>)` | Runs `uv run ruff check`, `uv run ruff format --check`, `uv run ty check`, and `uv run pytest` for each selected project | When `python-changes` selects a project |
 | `image-push (<path>)` | Builds the image of each selected project that has a `Dockerfile`, with the repo root as the build context, and pushes `ghcr.io/nsudhanva/homelab-<name>` with the tags `latest` and the short SHA | Pushes to `master`, after the tests pass |
 
-kubeconform runs only in the `pre-commit` job. The local hook calls `scripts/run-kubeconform.sh`. The script downloads kubeconform `v0.7.0` and checks its checksum. It validates each YAML file under `apps/`, `infrastructure/`, and `bootstrap/` against Kubernetes `1.37.0`. It skips `app.yaml`, `apps/accounts.yaml`, and the `.argocd-source-*.yaml` files.
+kubeconform runs only in the `pre-commit` job. The local hook calls `scripts/run-kubeconform.sh`. The script downloads kubeconform `v0.7.0` and checks its checksum. It validates each YAML file under `apps/`, `infrastructure/`, and `bootstrap/` against Kubernetes `1.37.0`. It skips `app.yaml`, `apps/accounts.yaml`, `apps/offers/catalog.yaml`, and the `.argocd-source-*.yaml` files.
 
 `<path>` is the project directory, for example `apps/gmail-classifier`. `<name>` is the last part of the path. If no project changed, GitHub shows the skipped jobs as `python-test` and `image-push`.
 

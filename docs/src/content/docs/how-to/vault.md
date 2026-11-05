@@ -222,17 +222,18 @@ This table lists every ExternalSecret in the repository. All paths are under the
 | `kv/telegram/bot` | `token`, `chat_id` | `monitoring/alertmanager-telegram` | `infrastructure/prometheus/external-secret-telegram.yaml` |
 | `kv/telegram/bot` | `token` | `gmail-classifier/gmail-credentials-personal`, `gmail-classifier/gmail-credentials-family` | `apps/gmail-classifier/secret-personal.yaml`, `apps/gmail-classifier/secret-family.yaml` |
 | `kv/telegram/bot` | `token` | `drive-organizer/drive-credentials-personal`, `drive-organizer/drive-credentials-family` | `apps/drive-organizer/secret-personal.yaml`, `apps/drive-organizer/secret-family.yaml` |
+| `kv/telegram/bot` | `token` | `offers/offers-secrets` | `apps/offers/secret.yaml` |
 | `kv/gmail/credentials` | `client_id`, `client_secret`, `refresh_token` | `gmail-classifier/gmail-credentials-personal` | `apps/gmail-classifier/secret-personal.yaml` |
 | `kv/gmail/credentials` | `client_id`, `client_secret`, `refresh_token` | `drive-organizer/drive-credentials-personal` | `apps/drive-organizer/secret-personal.yaml` |
 | `kv/google/accounts/family` | `client_id`, `client_secret`, `refresh_token` | `gmail-classifier/gmail-credentials-family` | `apps/gmail-classifier/secret-family.yaml` |
 | `kv/google/accounts/family` | `client_id`, `client_secret`, `refresh_token` | `drive-organizer/drive-credentials-family` | `apps/drive-organizer/secret-family.yaml` |
-| `kv/actual` | `password` | `actual-classifier/actual-classifier-secrets` | `apps/actual-classifier/secret.yaml` |
+| `kv/actual` | `password` | `actual-classifier/actual-classifier-secrets`, `offers/offers-secrets` | `apps/actual-classifier/secret.yaml`, `apps/offers/secret.yaml` |
 | `kv/filebrowser/auth` | `username`, `password_hash` | `media/filebrowser-auth` | `apps/filebrowser/external-secret-auth.yaml` |
 | `kv/qbittorrent/vpn` | `private_key`, `public_key`, `endpoint_ip`, `endpoint_port`, `addresses` | `media/qbittorrent-vpn` | `apps/qbittorrent/external-secret-vpn.yaml` |
 | `kv/technitium/admin` | `admin-user`, `admin-password` | `technitium/technitium-admin` | `apps/technitium/external-secret.yaml` |
 | `kv/sarvam` | `api_key` | `home-assistant/sarvam-api` | `apps/home-assistant/external-secret-sarvam.yaml` |
-| `kv/openrouter` | `api_key` | `<namespace>/homelab-ai-credentials` in `actual-classifier`, `monitoring`, `drive-organizer`, and `gmail-classifier` | `packages/homelab-ai/kustomize/externalsecret.yaml` |
-| `kv/anthropic` | `api_key`, `workspace_id` | `<namespace>/homelab-ai-credentials` in `actual-classifier`, `monitoring`, `drive-organizer`, and `gmail-classifier` | `packages/homelab-ai/kustomize/externalsecret.yaml` |
+| `kv/openrouter` | `api_key` | `<namespace>/homelab-ai-credentials` in `actual-classifier`, `monitoring`, `drive-organizer`, `gmail-classifier`, and `offers` | `packages/homelab-ai/kustomize/externalsecret.yaml` |
+| `kv/anthropic` | `api_key`, `workspace_id` | `<namespace>/homelab-ai-credentials` in `actual-classifier`, `monitoring`, `drive-organizer`, `gmail-classifier`, and `offers` | `packages/homelab-ai/kustomize/externalsecret.yaml` |
 
 Terraform also reads two paths. No ExternalSecret syncs them into the cluster. The script `scripts/tailscale-terraform.sh` reads them at run time and copies them to GitHub Actions secrets.
 
