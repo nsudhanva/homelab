@@ -26,4 +26,4 @@ ENV PATH="/app/.venv/bin:$PATH" \
 
 USER appuser
 
-ENTRYPOINT ["offers"]
+ENTRYPOINT ["python", "-m", "offers.cli"]
