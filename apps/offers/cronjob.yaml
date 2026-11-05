@@ -1,0 +1,95 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: offers-sync
+  namespace: offers
+spec:
+  schedule: "30 6 * * *"
+  timeZone: America/Los_Angeles
+  suspend: false
+  concurrencyPolicy: Forbid
+  startingDeadlineSeconds: 3600
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      activeDeadlineSeconds: 1800
+      ttlSecondsAfterFinished: 86400
+      template:
+        metadata:
+          labels:
+            app.kubernetes.io/name: offers-sync
+        spec:
+          restartPolicy: OnFailure
+          automountServiceAccountToken: false
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 10001
+            runAsGroup: 10001
+            fsGroup: 10001
+            seccompProfile:
+              type: RuntimeDefault
+          containers:
+            - name: offers-sync
+              image: ghcr.io/nsudhanva/homelab-offers:latest
+              imagePullPolicy: Always
+              args:
+                - sync
+              securityContext:
+                runAsNonRoot: true
+                readOnlyRootFilesystem: true
+                allowPrivilegeEscalation: false
+                capabilities:
+                  drop:
+                    - ALL
+              envFrom:
+                - configMapRef:
+                    name: homelab-ai
+                - secretRef:
+                    name: homelab-ai-credentials
+                - secretRef:
+                    name: offers-secrets
+              env:
+                - name: ACTUAL_SERVER_URL
+                  value: http://actual-budget.actual-budget.svc.cluster.local:5006
+                - name: ACTUAL_BUDGET_NAME
+                  value: My Finances
+                - name: OFFERS_BANK_SYNC
+                  value: "false"
+                - name: OFFERS_DB_PATH
+                  value: /data/offers.db
+                - name: OFFERS_CATALOG_PATH
+                  value: /config/catalog.yaml
+                - name: OFFERS_TIMEZONE
+                  value: America/Los_Angeles
+                - name: OFFERS_PUBLIC_URL
+                  value: https://offers.sudhanva.me
+                - name: TELEGRAM_CHAT_ID
+                  value: "7341944813"
+                - name: HOME
+                  value: /tmp
+              resources:
+                requests:
+                  cpu: 100m
+                  memory: 192Mi
+                limits:
+                  cpu: 500m
+                  memory: 512Mi
+              volumeMounts:
+                - name: data
+                  mountPath: /data
+                - name: catalog
+                  mountPath: /config
+                  readOnly: true
+                - name: tmp
+                  mountPath: /tmp
+          volumes:
+            - name: data
+              persistentVolumeClaim:
+                claimName: offers-data
+            - name: catalog
+              configMap:
+                name: offers-catalog
+            - name: tmp
+              emptyDir: {}

@@ -44,6 +44,12 @@ spec:
           imageName: ghcr.io/nsudhanva/homelab-alert-summarizer:latest
           commonUpdateSettings:
             updateStrategy: digest
+    - namePattern: app-offers
+      images:
+        - alias: offers
+          imageName: ghcr.io/nsudhanva/homelab-offers:latest
+          commonUpdateSettings:
+            updateStrategy: digest
     - namePattern: app-docs
       images:
         - alias: docs

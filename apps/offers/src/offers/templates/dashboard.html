@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% from "_actions.html" import actions %}
+{% block content %}
+<section class="summary">
+  <div class="stat">
+    <span class="label">Left to claim now</span>
+    <span class="value warn">{{ board.open_cents | dollars }}</span>
+  </div>
+  <div class="stat">
+    <span class="label">Captured this period</span>
+    <span class="value good">{{ board.captured_this_period_cents | dollars }}</span>
+  </div>
+  <div class="stat">
+    <span class="label">To review</span>
+    <span class="value"><a href="/review">{{ board.review_count }}</a></span>
+  </div>
+</section>
+<p class="meta">
+  {{ board.today.strftime("%A, %B %-d, %Y") }}.
+  {% if run %}Last sync {{ run.started_at[:16].replace("T", " ") }} UTC: {{ run.status }}{% if run.message %} ({{ run.message }}){% endif %}.{% else %}No sync has run yet.{% endif %}
+</p>
+
+{% for c in board.cards %}
+<section class="card">
+  <header>
+    <h2>{{ c.card_name }}</h2>
+    <span class="account">{{ c.account.name }}</span>
+  </header>
+  <p class="year">
+    This year: <strong class="good">{{ c.year_captured_cents | dollars }}</strong> captured
+    {% if c.annual_fee_cents %} of a {{ c.annual_fee_cents | dollars }} annual fee{% endif %},
+    <strong class="warn">{{ c.year_missed_cents | dollars }}</strong> missed.
+  </p>
+  {% if c.annual_fee_cents %}
+  <div class="bar"><span style="width: {{ [100, (100 * c.year_captured_cents / c.annual_fee_cents) | round | int] | min }}%"></span></div>
+  {% endif %}
+  <table>
+    <thead><tr><th>Offer</th><th>Period</th><th>Value</th><th>Status</th><th></th></tr></thead>
+    <tbody>
+    {% for r in c.current %}
+      <tr class="state-{{ r.state.value }}">
+        <td>
+          <a href="/offer/{{ r.instance.offer.id }}/{{ r.instance.account.id }}">{{ r.instance.offer.name }}</a>
+          {% if r.instance.offer.how_to_use %}<div class="hint">{{ r.instance.offer.how_to_use }}</div>{% endif %}
+        </td>
+        <td>{{ r.window.label }}<div class="hint">{{ r.window.days_left(board.today) }} days left</div></td>
+        <td>{% if r.instance.offer.value %}{{ r.instance.offer.value_cents | dollars }}{% endif %}</td>
+        <td><span class="chip">{{ r.state | state_label }}</span>
+          {% if r.remaining_cents %}<div class="hint">{{ r.remaining_cents | dollars }} left</div>{% endif %}</td>
+        <td>{{ actions(r) }}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% else %}
+<p>No account in Actual matches a card in the catalog yet.</p>
+{% endfor %}
+
+{% if board.unlinked %}
+<section class="card">
+  <header><h2>Credits not linked to an offer</h2></header>
+  <p class="hint">These credits on your cards match no offer. Some are refunds. Others can be offers to add to the catalog.</p>
+  <table>
+    <thead><tr><th>Date</th><th>Payee</th><th>Account</th><th>Amount</th></tr></thead>
+    <tbody>
+    {% for t in board.unlinked %}
+      <tr><td>{{ t.date }}</td><td>{{ t.payee or t.description }}</td>
+        <td>{{ board.accounts[t.account_id].name if t.account_id in board.accounts else "" }}</td>
+        <td class="good">{{ t.amount_cents | dollars }}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,223 @@
+cards:
+  - id: amex-gold
+    name: American Express Gold Card
+    issuer: American Express
+    annual_fee: 325
+    account: amex gold
+    fee_payee: membership fee|annual fee
+
+  - id: chase-sapphire-reserve
+    name: Chase Sapphire Reserve
+    issuer: Chase
+    annual_fee: 795
+    account: sapphire reserve
+    fee_payee: annual (membership )?fee
+
+  - id: chase-freedom-flex
+    name: Chase Freedom Flex
+    issuer: Chase
+    account: freedom flex
+
+  - id: discover-it
+    name: Discover it Cash Back
+    issuer: Discover
+    account: discover it card
+
+offers:
+  - id: amex-gold-uber-cash
+    card: amex-gold
+    name: Uber Cash
+    value: 10
+    period: monthly
+    how_to_use: >-
+      Uber Cash loads into the Uber app each month while the Gold Card is a payment method
+      there. Uber uses it first for rides and Uber Eats in the U.S. A trip that Uber Cash pays
+      in full does not show in Actual, so mark that month as used.
+    detect:
+      usage:
+        payee: \buber\b
+        scope: any
+
+  - id: amex-gold-dining
+    card: amex-gold
+    name: Dining credit
+    value: 10
+    period: monthly
+    enrollment: true
+    how_to_use: >-
+      Pay with the Gold Card at Grubhub, Seamless, The Cheesecake Factory, Goldbelly,
+      Wine.com, or Five Guys.
+    detect:
+      credit:
+        payee: grubhub|seamless|cheesecake|goldbelly|wine\.com|five guys|dining credit
+      usage:
+        payee: grubhub|seamless|cheesecake|goldbelly|wine\.com|five guys
+      keywords: [grubhub, seamless, cheesecake, goldbelly, five guys]
+      ai_hint: >-
+        Eligible merchants: Grubhub (including Seamless), The Cheesecake Factory, Goldbelly,
+        Wine.com, and Five Guys, in the U.S. Other restaurants do not count.
+
+  - id: amex-gold-dunkin
+    card: amex-gold
+    name: Dunkin' credit
+    value: 7
+    period: monthly
+    enrollment: true
+    how_to_use: Pay with the Gold Card at a U.S. Dunkin' location or in the Dunkin' app.
+    detect:
+      credit:
+        payee: dunkin
+      usage:
+        payee: dunkin
+
+  - id: amex-gold-resy
+    card: amex-gold
+    name: Resy credit
+    value: 50
+    period: semiannual
+    enrollment: true
+    how_to_use: >-
+      Pay with the Gold Card at a U.S. restaurant on Resy, or for an eligible Resy purchase.
+      January to June, and July to December.
+    detect:
+      credit:
+        payee: \bresy\b
+
+  - id: csr-travel
+    card: chase-sapphire-reserve
+    name: Travel credit
+    value: 300
+    period: cardmember_year
+    how_to_use: Chase applies it automatically to the first travel purchases of each card-member year.
+    detect:
+      credit:
+        payee: travel credit
+
+  - id: csr-the-edit
+    card: chase-sapphire-reserve
+    name: The Edit hotel credit
+    value: 500
+    period: annual
+    valid_from: 2026-01-01
+    how_to_use: >-
+      Two credits of $250 for prepaid stays of two nights or more booked through The Edit
+      by Chase Travel.
+    detect:
+      credit:
+        payee: the edit|edit credit
+      keywords: [the edit]
+      ai_hint: A statement credit from Chase for a hotel stay booked through The Edit by Chase Travel.
+
+  - id: csr-chase-travel-hotel
+    card: chase-sapphire-reserve
+    name: Chase Travel hotel credit
+    value: 250
+    period: annual
+    valid_from: 2026-01-01
+    valid_to: 2026-12-31
+    how_to_use: Book a prepaid stay at a select hotel brand through Chase Travel.
+    detect:
+      credit:
+        payee: hotel credit
+      keywords: [hotel]
+      ai_hint: A statement credit from Chase for a select hotel booked through Chase Travel in 2026.
+
+  - id: csr-dining
+    card: chase-sapphire-reserve
+    name: Exclusive Tables dining credit
+    value: 150
+    period: semiannual
+    how_to_use: >-
+      Dine at a Sapphire Reserve Exclusive Tables restaurant booked on OpenTable.
+      January to June, and July to December.
+    detect:
+      credit:
+        payee: dining credit|exclusive tables
+      keywords: [dining, opentable]
+      ai_hint: A statement credit from Chase for a Sapphire Reserve Exclusive Tables restaurant.
+
+  - id: csr-stubhub
+    card: chase-sapphire-reserve
+    name: StubHub credit
+    value: 150
+    period: semiannual
+    valid_to: 2027-12-31
+    enrollment: true
+    how_to_use: Activate it in the Chase app, then buy tickets on StubHub or viagogo.
+    detect:
+      credit:
+        payee: stubhub|viagogo
+      usage:
+        payee: stubhub|viagogo
+
+  - id: csr-peloton
+    card: chase-sapphire-reserve
+    name: Peloton credit
+    value: 10
+    period: monthly
+    valid_to: 2027-12-31
+    how_to_use: Pay for an eligible Peloton membership with the Sapphire Reserve.
+    detect:
+      credit:
+        payee: peloton
+      usage:
+        payee: peloton
+
+  - id: csr-lyft
+    card: chase-sapphire-reserve
+    name: Lyft credit
+    value: 10
+    period: monthly
+    valid_to: 2027-09-30
+    how_to_use: The credit is in the Lyft app. Use it on a ride paid with the Sapphire Reserve.
+    detect:
+      usage:
+        payee: \blyft\b
+
+  - id: csr-doordash-restaurant
+    card: chase-sapphire-reserve
+    name: DoorDash restaurant promo
+    value: 5
+    period: monthly
+    valid_to: 2027-12-31
+    how_to_use: The promo is in the DoorDash app with DashPass. Use it on a restaurant order.
+    detect:
+      usage:
+        payee: ^doordash$
+      keywords: [doordash, "dd *"]
+      ai_hint: >-
+        A DoorDash order from a restaurant. Orders from stores, for example Walgreens, CVS,
+        DashMart, or a grocery store, do not count.
+
+  - id: csr-doordash-non-restaurant
+    card: chase-sapphire-reserve
+    name: DoorDash store promos
+    value: 20
+    period: monthly
+    valid_to: 2027-12-31
+    how_to_use: >-
+      Two promos of $10 in the DoorDash app with DashPass. Use them on orders from stores,
+      for example grocery, convenience, or pharmacy.
+    detect:
+      usage:
+        payee: via doordash|dashmart
+      keywords: [doordash, "dd *"]
+      ai_hint: >-
+        A DoorDash order from a store, for example a grocery store, a pharmacy, a convenience
+        store, or DashMart. Restaurant orders do not count.
+
+  - id: freedom-flex-5-percent
+    card: chase-freedom-flex
+    name: Activate the 5% categories
+    kind: activation
+    period: quarterly
+    enrollment: true
+    how_to_use: Activate this quarter's 5% categories in the Chase app.
+
+  - id: discover-it-5-percent
+    card: discover-it
+    name: Activate the 5% categories
+    kind: activation
+    period: quarterly
+    enrollment: true
+    how_to_use: Activate this quarter's 5% Cashback Bonus categories in the Discover app.
