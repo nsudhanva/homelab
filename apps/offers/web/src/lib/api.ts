@@ -147,6 +147,7 @@ export type Cell = {
   days_left: number | null;
   current: boolean;
   elsewhere: number;
+  override: "used" | "ignored" | null;
 };
 
 export type TrackerRow = {

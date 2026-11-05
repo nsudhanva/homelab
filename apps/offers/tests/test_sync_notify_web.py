@@ -213,6 +213,12 @@ def test_tracker_grid(store, catalog, settings, accounts) -> None:
     assert [c["span"] for c in travel["cells"]] == [3]
     rides = next(r for r in gold["rows"] if r["offer_id"] == "gold-rides")
     assert rides["in_app"] and rides["cells"][1]["state"] == "used"
+    body = {"offer_id": "gold-coffee", "account_id": "a-gold", "period_start": "2026-11-01"}
+    assert client.post("/api/override", json={**body, "status": "used"}).status_code == 204
+    grid = client.get("/api/tracker").json()
+    gold = next(c for c in grid["cards"] if c["card_id"] == "gold")
+    cell = next(r for r in gold["rows"] if r["offer_id"] == "gold-coffee")["cells"][-1]
+    assert (cell["state"], cell["override"]) == ("used", "used")
     assert grid["current"]["month"] == "2026-11"
     assert grid["latest_txn"] == "2026-11-02"
 

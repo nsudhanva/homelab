@@ -158,16 +158,18 @@ Open `https://offers.sudhanva.me`. The tracker shows each card with its offers a
 - An amber dot on a cell means that matching orders were paid with another card. Pay with this card to use the credit.
 - The summary at the top shows the credits used this month, the amount still open, and the amount missed last month.
 - A banner shows when Actual Budget has no transactions in the last 4 days.
-- Select a cell or an offer name to see each period with the transactions that count for it.
+- Select a cell to open a small panel in place. It shows the state, the notes, and the correction buttons. Its **History and transactions** link opens the offer page.
+- Select an offer name to see each period with the transactions that count for it.
 - The **Cards** page compares the captured credits of the year with each annual fee, and lists the credits that no offer explains.
 
 ## Step 2: Correct a State
 
 You do not have to do anything. Correct a period only when the transactions cannot show it:
 
-- On the offer page, select **I used it** for a period that an in-app credit paid in full. Select **I activated it** for an activation.
+- Select the cell of the period in the tracker. Select **I used it** for a use that the transactions cannot show, for example a hotel credit that has not posted yet, or an in-app credit that paid an order in full. Select **I activated it** for an activation.
 - Select **Not interested** to stop an open period from counting.
-- Select **Undo** to remove a correction.
+- Select the cell again and select **Undo my mark** to remove a correction. The **Undo** button on the confirmation message does the same.
+- The cell changes at once. A small hand icon marks the cells that you corrected. The offer page has the same buttons for each period.
 - The **AI log** lists the AI answers with a low confidence. Select **Wrong? Flip it** to reverse one. Offers keeps each correction in the `user_decisions` table as a test case.
 
 ## Step 3: Get Telegram Reminders

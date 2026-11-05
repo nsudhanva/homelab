@@ -161,6 +161,7 @@ class Cell(BaseModel):
     current: bool
     elsewhere: int
     data_from: date | None = None
+    override: str | None = None
 
 
 class TrackerRow(BaseModel):
@@ -373,6 +374,7 @@ def tracker(store: Store, catalog: Catalog, today: date, months_back: int) -> Tr
                     current=match.window.contains(today),
                     elsewhere=elsewhere(match),
                     data_from=match.data_from,
+                    override=match.override.value if match.override else None,
                 )
             )
             index += span
