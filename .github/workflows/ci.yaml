@@ -73,6 +73,7 @@ jobs:
   docs-push:
     if: github.event_name == 'push'
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     permissions:
       contents: read
       packages: write
@@ -90,9 +91,6 @@ jobs:
           docs:
             - "docs/**"
             - ".github/workflows/ci.yaml"
-    - name: Set up QEMU
-      if: steps.changes.outputs.docs == 'true'
-      uses: docker/setup-qemu-action@v4
     - name: Set up Docker Buildx
       if: steps.changes.outputs.docs == 'true'
       uses: docker/setup-buildx-action@v4
@@ -118,7 +116,7 @@ jobs:
       with:
         context: ./docs
         push: true
-        platforms: linux/amd64,linux/arm64
+        platforms: linux/amd64
         tags: ${{ steps.meta.outputs.tags }}
         labels: ${{ steps.meta.outputs.labels }}
 
@@ -157,21 +155,20 @@ jobs:
         PROJECTS: ${{ steps.discover.outputs.projects }}
       run: |
         projects=$(jq -c --argjson changed "$CHANGED" '[.[] | select(.name as $n | $changed | index($n))]' <<< "$PROJECTS")
-        echo "projects=$projects" >> "$GITHUB_OUTPUT"
-        echo "images=$(jq -c '[.[] | select(.image)]' <<< "$projects")" >> "$GITHUB_OUTPUT"
+        echo "projects=$(jq -c '[.[].path]' <<< "$projects")" >> "$GITHUB_OUTPUT"
+        echo "images=$(jq -c '[.[] | select(.image) | .path]' <<< "$projects")" >> "$GITHUB_OUTPUT"
 
   python-test:
-    name: test (${{ matrix.name }})
     needs: python-changes
     if: needs.python-changes.outputs.projects != '[]'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        include: ${{ fromJSON(needs.python-changes.outputs.projects) }}
+        project: ${{ fromJSON(needs.python-changes.outputs.projects) }}
     defaults:
       run:
-        working-directory: ${{ matrix.path }}
+        working-directory: ${{ matrix.project }}
     steps:
     - name: Checkout
       uses: actions/checkout@v7
@@ -191,20 +188,25 @@ jobs:
       run: uv run pytest
 
   image-push:
-    name: push (${{ matrix.name }})
     needs: [python-changes, python-test]
     if: github.event_name == 'push' && needs.python-changes.outputs.images != '[]'
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     permissions:
       contents: read
       packages: write
     strategy:
       fail-fast: false
       matrix:
-        include: ${{ fromJSON(needs.python-changes.outputs.images) }}
+        project: ${{ fromJSON(needs.python-changes.outputs.images) }}
     steps:
     - name: Checkout
       uses: actions/checkout@v7
+    - name: Set image name
+      id: image
+      env:
+        PROJECT: ${{ matrix.project }}
+      run: echo "name=${PROJECT##*/}" >> "$GITHUB_OUTPUT"
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v4
     - name: Log in to the Container registry
@@ -217,7 +219,7 @@ jobs:
       id: meta
       uses: docker/metadata-action@v6
       with:
-        images: ghcr.io/${{ github.repository }}-${{ matrix.name }}
+        images: ghcr.io/${{ github.repository }}-${{ steps.image.outputs.name }}
         tags: |
           type=raw,value=latest
           type=sha,format=short
@@ -225,7 +227,7 @@ jobs:
       uses: docker/build-push-action@v7
       with:
         context: .
-        file: ./${{ matrix.path }}/Dockerfile
+        file: ./${{ matrix.project }}/Dockerfile
         push: true
         platforms: linux/amd64
         tags: ${{ steps.meta.outputs.tags }}

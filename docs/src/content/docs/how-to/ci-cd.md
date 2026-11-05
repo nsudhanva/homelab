@@ -28,14 +28,18 @@ This guide tells how GitHub Actions runs CI and how ArgoCD runs CD.
 | `pre-commit` | Runs `pre-commit run --all-files`. The hooks include YAML checks, gitleaks, yamllint, markdownlint, ruff, and kubeconform | Every run |
 | `gitleaks` | Scans the full Git history with `gitleaks git --redact` | Every run |
 | `docs-build` | Builds the Astro Starlight site with Bun | When `docs/**` or `ci.yaml` changes |
-| `docs-push` | Builds the docs image from `docs/` for `linux/amd64` and `linux/arm64` and pushes `ghcr.io/nsudhanva/homelab-docs` with the tags `latest` and the short SHA | Pushes to `master`, when `docs/**` or `ci.yaml` changes |
+| `docs-push` | Builds the docs image from `docs/` for `linux/amd64` and pushes `ghcr.io/nsudhanva/homelab-docs` with the tags `latest` and the short SHA | Pushes to `master`, when `docs/**` or `ci.yaml` changes |
 | `python-changes` | Finds each `apps/*/pyproject.toml` and `packages/*/pyproject.toml`, and selects the projects whose directory, `packages/homelab-ai/`, or `ci.yaml` changed | Every run |
-| `test (<project>)` | Runs `uv run ruff check`, `uv run ruff format --check`, `uv run ty check`, and `uv run pytest` for each selected project | When `python-changes` selects a project |
-| `push (<app>)` | Builds the image of each selected project that has a `Dockerfile`, with the repo root as the build context, and pushes `ghcr.io/nsudhanva/homelab-<name>` with the tags `latest` and the short SHA | Pushes to `master`, after the tests pass |
+| `python-test (<path>)` | Runs `uv run ruff check`, `uv run ruff format --check`, `uv run ty check`, and `uv run pytest` for each selected project | When `python-changes` selects a project |
+| `image-push (<path>)` | Builds the image of each selected project that has a `Dockerfile`, with the repo root as the build context, and pushes `ghcr.io/nsudhanva/homelab-<name>` with the tags `latest` and the short SHA | Pushes to `master`, after the tests pass |
 
 kubeconform runs only in the `pre-commit` job. The local hook calls `scripts/run-kubeconform.sh`. The script downloads kubeconform `v0.7.0` and checks its checksum. It validates each YAML file under `apps/`, `infrastructure/`, and `bootstrap/` against Kubernetes `1.37.0`. It skips `app.yaml`, `apps/accounts.yaml`, and the `.argocd-source-*.yaml` files.
 
+`<path>` is the project directory, for example `apps/gmail-classifier`. `<name>` is the last part of the path. If no project changed, GitHub shows the skipped jobs as `python-test` and `image-push`.
+
 The image jobs use the repository root as the build context, so the root `.dockerignore` controls the contents of each image.
+
+The image jobs build for `linux/amd64` only, because the cluster node is `amd64`. `docs-push` and `image-push` stop after 20 minutes.
 
 ### `provision.yaml` (Ansible Provision)
 

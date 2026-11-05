@@ -24,7 +24,7 @@ The classifier gives each imported bank transaction a category and a one-word ta
 - Scope: The classifier processes only on-budget transactions that have no category or that have an `#Unknown` note. It skips transfers between accounts, off-budget accounts (brokerage and retirement), split parents, and starting balances.
 - Amount sign: A negative amount is an outflow, and a positive amount is an inflow. The classifier records a positive amount from a merchant as a refund in the category of that merchant.
 - Schedule: A Kubernetes CronJob runs the classifier each day at 03:00 (`0 3 * * *`), after the Gmail (01:00) and Drive (02:00) jobs. The CronJob uses `concurrencyPolicy: Forbid`, and each pod stops after its run.
-- Image: The `push (actual-classifier)` CI job builds the image and pushes it to `ghcr.io/nsudhanva/homelab-actual-classifier`.
+- Image: The `image-push (apps/actual-classifier)` CI job builds the image and pushes it to `ghcr.io/nsudhanva/homelab-actual-classifier`.
 
 ## Step 1: Review the Configuration and Secrets
 
