@@ -55,7 +55,6 @@ def test_sanitize_message_plain_text():
 
     email = sanitize_message(raw_msg, max_body_chars=1500)
     assert email.id == "msg-101"
-    assert email.thread_id == "th-202"
     assert email.subject == "Server Alert: Disk Full"
     assert email.sender == "alerts@infra.example.com"
     assert email.date == "Thu, 17 Sep 2026 12:00:00 GMT"

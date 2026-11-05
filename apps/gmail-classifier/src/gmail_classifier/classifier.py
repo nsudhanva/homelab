@@ -139,22 +139,14 @@ class EmailClassifier:
             f"Unmatched label '{raw_result.label}': {raw_result.reason}",
         )
 
-    def _prepare(
-        self, email: SanitizedEmail, candidate_labels: list[str]
-    ) -> tuple[tuple[str, str] | None, list[str]]:
+    def classify(self, email: SanitizedEmail, candidate_labels: list[str]) -> ClassificationResult:
+        """Classify an email. LLMConnectionError propagates so batch runs can abort."""
         curated = self.filter_candidate_labels(candidate_labels)
         if not curated and not self.allow_label_creation:
             logger.warning("No active curated user labels found. Falling back to quarantine.")
-            return None, curated
-        return self.build_prompt(email, curated), curated
-
-    def classify(self, email: SanitizedEmail, candidate_labels: list[str]) -> ClassificationResult:
-        """Classify an email. LLMConnectionError propagates so batch runs can abort."""
-        prompt, curated = self._prepare(email, candidate_labels)
-        if prompt is None:
             return self._quarantine(0.0, "No active curated user labels available")
+        labels, message = self.build_prompt(email, curated)
         try:
-            labels, message = prompt
             raw = self.task.run_sync(message, stable_prefix=labels)
         except LLMOutputError as exc:
             return self._quarantine(0.0, f"Model output error: {exc}")

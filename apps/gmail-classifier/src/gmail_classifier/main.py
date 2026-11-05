@@ -26,68 +26,55 @@ logger = logging.getLogger("gmail_classifier")
 
 
 def parse_arguments(args: list[str] | None = None) -> argparse.Namespace:
-    """Parse CLI arguments."""
     parser = argparse.ArgumentParser(
         description="Daily automated Gmail classifier and triage engine.",
     )
     parser.add_argument(
         "--date",
-        type=str,
-        default=None,
         help="Target date to process in YYYY-MM-DD format (defaults to yesterday UTC).",
     )
     parser.add_argument(
         "--days",
         type=int,
-        default=None,
         help="Number of days in the past to process sequentially (e.g. --days 7 for last week).",
     )
     parser.add_argument(
         "--inbox",
         action="store_true",
-        default=False,
         help="Process all unprocessed messages currently in the user's INBOX.",
     )
     parser.add_argument(
         "--dry-run",
         action="store_true",
-        default=False,
         help="Run classification without modifying Gmail labels.",
     )
     parser.add_argument(
         "--limit",
         type=int,
-        default=None,
         help="Maximum number of messages to process.",
     )
     parser.add_argument(
         "--concurrency",
         type=int,
-        default=None,
         help="Number of concurrent classification workers (defaults to Settings.concurrency).",
     )
     parser.add_argument(
         "--archive-days",
         type=int,
-        default=None,
         help="Override archive age threshold (defaults to Settings.archive_older_than_days).",
     )
     parser.add_argument(
         "--archive-only",
         action="store_true",
-        default=False,
         help="Run only the archive sweep for older emails without classifying new emails.",
     )
     parser.add_argument(
         "--mark-all-read",
         action="store_true",
-        default=False,
         help="Mark every unread email as read without classifying or archiving.",
     )
     parser.add_argument(
         "--account",
-        type=str,
-        default=None,
         help="Account identifier (e.g. personal, family). Overrides Settings.account_name.",
     )
     return parser.parse_args(args)
@@ -107,12 +94,7 @@ def run_archive_sweep(
         return 0
 
     if gmail is None:
-        gmail = GmailClient(
-            client_id=settings.gmail_client_id,
-            client_secret=settings.gmail_client_secret,
-            refresh_token=settings.gmail_refresh_token,
-            processed_label=settings.processed_label,
-        )
+        gmail = GmailClient.from_settings(settings)
 
     logger.info(
         f"[{settings.account_name}] Starting archive sweep for emails older than {days} days "
@@ -145,12 +127,7 @@ def run_mark_all_read(
 ) -> int:
     """Mark every unread message in the account as read."""
     if gmail is None:
-        gmail = GmailClient(
-            client_id=settings.gmail_client_id,
-            client_secret=settings.gmail_client_secret,
-            refresh_token=settings.gmail_refresh_token,
-            processed_label=settings.processed_label,
-        )
+        gmail = GmailClient.from_settings(settings)
 
     unread_ids = gmail.list_unread_messages(limit=limit)
     logger.info(f"[{settings.account_name}] Found {len(unread_ids)} unread email(s).")
@@ -184,12 +161,7 @@ def run_pipeline(
     )
 
     if gmail is None:
-        gmail = GmailClient(
-            client_id=settings.gmail_client_id,
-            client_secret=settings.gmail_client_secret,
-            refresh_token=settings.gmail_refresh_token,
-            processed_label=settings.processed_label,
-        )
+        gmail = GmailClient.from_settings(settings)
 
     if classifier is None:
         classifier = EmailClassifier(
@@ -208,7 +180,6 @@ def run_pipeline(
             account_name=settings.account_name,
         )
 
-    # Fetch and ensure required labels exist
     user_labels = gmail.get_user_labels()
     processed_label_id = gmail.ensure_label_exists(settings.processed_label)
     quarantine_label_id = gmail.ensure_label_exists(settings.quarantine_label)
@@ -218,7 +189,6 @@ def run_pipeline(
     candidate_labels = classifier.filter_candidate_labels(user_labels)
     logger.info(f"Active curated user labels ({len(candidate_labels)}): {candidate_labels}")
 
-    # Query unprocessed messages
     if inbox_mode:
         message_ids = gmail.list_unprocessed_inbox_messages(limit=limit)
         total_found = len(message_ids)
@@ -315,15 +285,13 @@ def run_pipeline(
                 f"Aborting batch run! LLM infrastructure failure at message {msg_id} "
                 f"[{index}/{len(message_ids)}]: {exc}"
             )
-            if notifier:
-                msg_text = (
-                    "⚠️ <b>Gmail Classifier Halted</b>\n"
-                    f"LLM server crashed at message [{index}/{len(message_ids)}]:\n"
-                    f"<code>{html.escape(str(exc))}</code>\n\n"
-                    "<i>Exiting immediately without marking as processed "
-                    "for Kubernetes to restart.</i>"
-                )
-                notifier.send_message(msg_text)
+            notifier.send_message(
+                "⚠️ <b>Gmail Classifier Halted</b>\n"
+                f"LLM server crashed at message [{index}/{len(message_ids)}]:\n"
+                f"<code>{html.escape(str(exc))}</code>\n\n"
+                "<i>Exiting immediately without marking as processed "
+                "for Kubernetes to restart.</i>"
+            )
             raise
         except Exception as exc:
             logger.error(f"Failed to process message {msg_id}: {exc}", exc_info=True)
@@ -362,7 +330,6 @@ def run_pipeline(
                     executor.shutdown(wait=False, cancel_futures=True)
                     raise
 
-    # Run archive sweep for older classified messages if enabled
     archived_count = 0
     if settings.auto_archive_enabled and settings.archive_older_than_days > 0:
         try:
@@ -374,7 +341,6 @@ def run_pipeline(
         except Exception as exc:
             logger.error(f"Archive sweep encountered an error: {exc}", exc_info=True)
 
-    # Dispatch final summary notification to Telegram
     final_header = "All Inbox Messages" if inbox_mode else (target_date or "Unknown")
     logger.info("Dispatching summary to Telegram...")
     notifier.send_daily_summary(
@@ -394,7 +360,6 @@ def run_pipeline(
 
 
 def main() -> None:
-    """CLI entrypoint."""
     args = parse_arguments()
 
     try:
@@ -405,29 +370,17 @@ def main() -> None:
         logger.error(f"Failed to load application settings from environment: {exc}")
         sys.exit(1)
 
-    if args.mark_all_read:
-        try:
+    try:
+        if args.mark_all_read:
             run_mark_all_read(settings=settings, dry_run=args.dry_run, limit=args.limit)
-        except Exception as exc:
-            logger.exception(f"Unhandled error while marking emails as read: {exc}")
-            sys.exit(1)
-        return
-
-    if args.archive_only:
-        try:
+        elif args.archive_only:
             run_archive_sweep(
                 settings=settings,
                 archive_days=args.archive_days,
                 dry_run=args.dry_run,
                 limit=args.limit,
             )
-        except Exception as exc:
-            logger.exception(f"Unhandled error during archive-only sweep: {exc}")
-            sys.exit(1)
-        return
-
-    if args.inbox:
-        try:
+        elif args.inbox:
             run_pipeline(
                 target_date=None,
                 dry_run=args.dry_run,
@@ -436,33 +389,26 @@ def main() -> None:
                 inbox_mode=True,
                 concurrency=args.concurrency,
             )
-        except Exception as exc:
-            logger.exception(f"Unhandled error during inbox pipeline: {exc}")
-            sys.exit(1)
-        return
-
-    if args.days:
-        today = datetime.now(UTC).date()
-        # Dates from (today - N days) up to yesterday
-        dates = [(today - timedelta(days=i)).isoformat() for i in range(args.days, 0, -1)]
-    elif args.date:
-        dates = [args.date]
-    else:
-        yesterday = datetime.now(UTC).date() - timedelta(days=1)
-        dates = [yesterday.isoformat()]
-
-    for target_date in dates:
-        try:
-            run_pipeline(
-                target_date=target_date,
-                dry_run=args.dry_run,
-                limit=args.limit,
-                settings=settings,
-                concurrency=args.concurrency,
-            )
-        except Exception as exc:
-            logger.exception(f"Unhandled error during pipeline for date {target_date}: {exc}")
-            sys.exit(1)
+        else:
+            today = datetime.now(UTC).date()
+            if args.days:
+                # Dates from (today - N days) up to yesterday
+                dates = [(today - timedelta(days=i)).isoformat() for i in range(args.days, 0, -1)]
+            elif args.date:
+                dates = [args.date]
+            else:
+                dates = [(today - timedelta(days=1)).isoformat()]
+            for target_date in dates:
+                run_pipeline(
+                    target_date=target_date,
+                    dry_run=args.dry_run,
+                    limit=args.limit,
+                    settings=settings,
+                    concurrency=args.concurrency,
+                )
+    except Exception as exc:
+        logger.exception(f"Unhandled error: {exc}")
+        sys.exit(1)
 
 
 if __name__ == "__main__":

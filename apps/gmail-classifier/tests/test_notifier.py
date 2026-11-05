@@ -1,4 +1,5 @@
 import httpx
+import pytest
 
 from gmail_classifier.notifier import TelegramNotifier
 
@@ -31,47 +32,31 @@ def test_format_daily_summary_single():
     assert "Suspicious link detected (conf: 0.45)" in text
 
 
-def test_format_daily_summary_custom_account():
-    notifier = TelegramNotifier(bot_token="fake-token", chat_id=123, account_name="family")
+@pytest.mark.parametrize(
+    ("account_name", "options", "expected"),
+    [
+        pytest.param("family", {}, "Gmail Daily Classifier Summary [Family]", id="account"),
+        pytest.param(
+            "personal", {"archived_count": 42}, "Archived from Inbox:</b> 42", id="archived"
+        ),
+        pytest.param("personal", {"dry_run": True}, "[DRY RUN]", id="dry-run"),
+    ],
+)
+def test_format_daily_summary_options(account_name, options, expected):
+    notifier = TelegramNotifier(bot_token="fake-token", chat_id=123, account_name=account_name)
     msgs = notifier.format_daily_summary(
         target_date="2026-09-16",
         total_count=3,
         label_counts={"Personal": 3},
         quarantined_items=[],
+        **options,
     )
     assert len(msgs) == 1
-    assert "Gmail Daily Classifier Summary [Family]" in msgs[0]
-
-
-def test_format_daily_summary_with_archived_count():
-    notifier = TelegramNotifier(bot_token="fake-token", chat_id=123)
-    msgs = notifier.format_daily_summary(
-        target_date="2026-09-16",
-        total_count=10,
-        label_counts={"Personal": 10},
-        quarantined_items=[],
-        archived_count=42,
-    )
-    assert len(msgs) == 1
-    assert "Archived from Inbox:</b> 42" in msgs[0]
-
-
-def test_format_daily_summary_dry_run():
-    notifier = TelegramNotifier(bot_token="fake-token", chat_id=123)
-    msgs = notifier.format_daily_summary(
-        target_date="2026-09-16",
-        total_count=5,
-        label_counts={"Work": 5},
-        quarantined_items=[],
-        dry_run=True,
-    )
-    assert len(msgs) == 1
-    assert "[DRY RUN]" in msgs[0]
+    assert expected in msgs[0]
 
 
 def test_format_daily_summary_chunking():
     notifier = TelegramNotifier(bot_token="fake-token", chat_id=123)
-    # Generate large number of quarantined items to force chunking
     quarantined = [
         {
             "subject": f"Suspicious Alert #{i} with very long explanation text",
@@ -94,47 +79,24 @@ def test_format_daily_summary_chunking():
 
 def test_send_message_missing_token():
     notifier = TelegramNotifier(bot_token=None, chat_id=123)
-    # Should safely return True without attempting HTTP
     assert notifier.send_message("Hello") is True
 
 
-def test_send_message(monkeypatch):
-    notifier = TelegramNotifier(bot_token="token123", chat_id=12345)
+@pytest.mark.parametrize("topic_id", [None, 99])
+def test_send_message(monkeypatch, topic_id):
+    notifier = TelegramNotifier(bot_token="token123", chat_id=12345, topic_id=topic_id)
+    sent = {}
 
     def fake_post(self, url, json=None, **kwargs):
-        assert "token123" in url
-        assert json is not None
-        assert json["chat_id"] == 12345
-        assert json["text"] == "Test alert"
+        sent.update(url=url, json=json)
         return httpx.Response(200, json={"ok": True}, request=httpx.Request("POST", url))
 
     monkeypatch.setattr(httpx.Client, "post", fake_post)
     assert notifier.send_message("Test alert") is True
-
-
-def test_send_daily_summary(monkeypatch):
-    notifier = TelegramNotifier(bot_token="token123", chat_id=12345)
-
-    def fake_post(self, url, json=None, **kwargs):
-        return httpx.Response(200, json={"ok": True}, request=httpx.Request("POST", url))
-
-    monkeypatch.setattr(httpx.Client, "post", fake_post)
-    success = notifier.send_daily_summary(
-        target_date="2026-09-16",
-        total_count=1,
-        label_counts={"Work": 1},
-        quarantined_items=[],
-    )
-    assert success is True
-
-
-def test_send_message_with_topic_id(monkeypatch):
-    notifier = TelegramNotifier(bot_token="token123", chat_id=12345, topic_id=99)
-
-    def fake_post(self, url, json=None, **kwargs):
-        assert json is not None
-        assert json["message_thread_id"] == 99
-        return httpx.Response(200, json={"ok": True}, request=httpx.Request("POST", url))
-
-    monkeypatch.setattr(httpx.Client, "post", fake_post)
-    assert notifier.send_message("Topic test") is True
+    assert "token123" in sent["url"]
+    assert sent["json"]["chat_id"] == 12345
+    assert sent["json"]["text"] == "Test alert"
+    if topic_id is None:
+        assert "message_thread_id" not in sent["json"]
+    else:
+        assert sent["json"]["message_thread_id"] == topic_id

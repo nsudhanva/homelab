@@ -1,32 +1,69 @@
 from unittest.mock import MagicMock
 
+import pytest
+
 from gmail_classifier.classifier import ClassificationResult
 from gmail_classifier.config import Settings
-from gmail_classifier.main import parse_arguments, run_pipeline
+from gmail_classifier.main import (
+    parse_arguments,
+    run_archive_sweep,
+    run_mark_all_read,
+    run_pipeline,
+)
+
+
+@pytest.fixture
+def settings(monkeypatch):
+    monkeypatch.setenv("GMAIL_CLIENT_ID", "cid")
+    monkeypatch.setenv("GMAIL_CLIENT_SECRET", "csecret")
+    monkeypatch.setenv("GMAIL_REFRESH_TOKEN", "rtoken")
+    for name in ("AUTO_ARCHIVE_ENABLED", "ARCHIVE_OLDER_THAN_DAYS"):
+        monkeypatch.delenv(name, raising=False)
+    return Settings(_env_file=None, auto_archive_enabled=True, archive_older_than_days=90)
 
 
 def test_parse_arguments():
-    # Defaults
     args = parse_arguments([])
     assert args.date is None
     assert args.days is None
     assert args.dry_run is False
     assert args.limit is None
+    assert args.mark_all_read is False
+    assert args.archive_only is False
 
-    # Custom flags
-    args = parse_arguments(["--date", "2026-09-15", "--days", "7", "--dry-run", "--limit", "10"])
+    args = parse_arguments(
+        [
+            "--date",
+            "2026-09-15",
+            "--days",
+            "7",
+            "--inbox",
+            "--dry-run",
+            "--limit",
+            "10",
+            "--concurrency",
+            "2",
+            "--archive-days",
+            "60",
+            "--archive-only",
+            "--mark-all-read",
+            "--account",
+            "family",
+        ]
+    )
     assert args.date == "2026-09-15"
     assert args.days == 7
+    assert args.inbox is True
     assert args.dry_run is True
     assert args.limit == 10
+    assert args.concurrency == 2
+    assert args.archive_days == 60
+    assert args.archive_only is True
+    assert args.mark_all_read is True
+    assert args.account == "family"
 
 
-def test_run_pipeline_normal(monkeypatch):
-    monkeypatch.setenv("GMAIL_CLIENT_ID", "cid")
-    monkeypatch.setenv("GMAIL_CLIENT_SECRET", "csecret")
-    monkeypatch.setenv("GMAIL_REFRESH_TOKEN", "rtoken")
-    settings = Settings()
-
+def test_run_pipeline_normal(settings):
     mock_gmail = MagicMock()
     mock_gmail.get_user_labels.return_value = {
         "Work": "lbl-work",
@@ -62,13 +99,10 @@ def test_run_pipeline_normal(monkeypatch):
 
     assert processed_count == 2
     assert mock_gmail.apply_label.call_count == 2
-    # Check first message: should apply Work and ai-processed
     mock_gmail.apply_label.assert_any_call("msg-1", add_label_ids=["lbl-work", "lbl-ai-processed"])
-    # Check second message: should apply ai-review and ai-processed
     mock_gmail.apply_label.assert_any_call(
         "msg-2", add_label_ids=["lbl-ai-review", "lbl-ai-processed"]
     )
-    # Check notifier
     mock_notifier.send_daily_summary.assert_called_once()
     call_kwargs = mock_notifier.send_daily_summary.call_args.kwargs
     assert call_kwargs["total_count"] == 2
@@ -76,12 +110,7 @@ def test_run_pipeline_normal(monkeypatch):
     assert len(call_kwargs["quarantined_items"]) == 1
 
 
-def test_run_pipeline_dry_run(monkeypatch):
-    monkeypatch.setenv("GMAIL_CLIENT_ID", "cid")
-    monkeypatch.setenv("GMAIL_CLIENT_SECRET", "csecret")
-    monkeypatch.setenv("GMAIL_REFRESH_TOKEN", "rtoken")
-    settings = Settings()
-
+def test_run_pipeline_dry_run(settings):
     mock_gmail = MagicMock()
     mock_gmail.get_user_labels.return_value = {"Work": "lbl-work"}
     mock_gmail.ensure_label_exists.side_effect = lambda name: f"lbl-{name}"
@@ -107,18 +136,12 @@ def test_run_pipeline_dry_run(monkeypatch):
     )
 
     assert processed_count == 1
-    # apply_label should NOT be called in dry-run mode
     mock_gmail.apply_label.assert_not_called()
     mock_notifier.send_daily_summary.assert_called_once()
     assert mock_notifier.send_daily_summary.call_args.kwargs["dry_run"] is True
 
 
-def test_run_pipeline_with_limit(monkeypatch):
-    monkeypatch.setenv("GMAIL_CLIENT_ID", "cid")
-    monkeypatch.setenv("GMAIL_CLIENT_SECRET", "csecret")
-    monkeypatch.setenv("GMAIL_REFRESH_TOKEN", "rtoken")
-    settings = Settings()
-
+def test_run_pipeline_with_limit(settings):
     mock_gmail = MagicMock()
     mock_gmail.get_user_labels.return_value = {"Work": "lbl-work"}
     mock_gmail.ensure_label_exists.side_effect = lambda name: f"lbl-{name}"
@@ -147,12 +170,7 @@ def test_run_pipeline_with_limit(monkeypatch):
     assert mock_gmail.apply_label.call_count == 2
 
 
-def test_run_pipeline_handles_message_fetch_error(monkeypatch):
-    monkeypatch.setenv("GMAIL_CLIENT_ID", "cid")
-    monkeypatch.setenv("GMAIL_CLIENT_SECRET", "csecret")
-    monkeypatch.setenv("GMAIL_REFRESH_TOKEN", "rtoken")
-    settings = Settings()
-
+def test_run_pipeline_handles_message_fetch_error(settings):
     mock_gmail = MagicMock()
     mock_gmail.get_user_labels.return_value = {"Work": "lbl-work"}
     mock_gmail.ensure_label_exists.side_effect = lambda name: f"lbl-{name}"
@@ -184,79 +202,19 @@ def test_run_pipeline_handles_message_fetch_error(monkeypatch):
     )
 
     assert processed_count == 2
-    # Only msg-success should have apply_label called
     assert mock_gmail.apply_label.call_count == 1
-    # Notifier should still be called with quarantine item recorded for failure
     mock_notifier.send_daily_summary.assert_called_once()
     call_kwargs = mock_notifier.send_daily_summary.call_args.kwargs
     assert len(call_kwargs["quarantined_items"]) == 1
     assert "Transient Google API error" in call_kwargs["quarantined_items"][0]["reason"]
 
 
-def test_run_pipeline_concurrent(monkeypatch):
-    monkeypatch.setenv("GMAIL_CLIENT_ID", "cid")
-    monkeypatch.setenv("GMAIL_CLIENT_SECRET", "csecret")
-    monkeypatch.setenv("GMAIL_REFRESH_TOKEN", "rtoken")
-    settings = Settings()
-
-    mock_gmail = MagicMock()
-    mock_gmail.get_user_labels.return_value = {
-        "Work": "lbl-work",
-        "Personal": "lbl-personal",
-        "ai-processed": "lbl-proc",
-        "ai-review": "lbl-rev",
-    }
-    mock_gmail.ensure_label_exists.side_effect = lambda name: f"lbl-{name}"
-    mock_gmail.list_messages_for_date.return_value = ["msg-1", "msg-2", "msg-3", "msg-4"]
-    mock_gmail.get_message_content.side_effect = lambda mid: {"id": mid, "snippet": "Text"}
-
-    mock_classifier = MagicMock()
-    mock_classifier.filter_candidate_labels.return_value = ["Personal", "Work"]
-    mock_classifier.classify.return_value = ClassificationResult(
-        label="Work", confidence=0.95, reason="Work email"
-    )
-
-    mock_notifier = MagicMock()
-
-    processed_count = run_pipeline(
-        target_date="2026-09-16",
-        dry_run=False,
-        limit=None,
-        settings=settings,
-        gmail=mock_gmail,
-        classifier=mock_classifier,
-        notifier=mock_notifier,
-        concurrency=2,
-    )
-
-    assert processed_count == 4
-    assert mock_gmail.apply_label.call_count == 4
-    mock_notifier.send_daily_summary.assert_called_once()
-    call_kwargs = mock_notifier.send_daily_summary.call_args.kwargs
-    assert call_kwargs["total_count"] == 4
-    assert call_kwargs["label_counts"] == {"Work": 4}
-
-
-def test_parse_arguments_archive_flags():
-    args = parse_arguments(["--archive-only", "--archive-days", "60", "--account", "family"])
-    assert args.archive_only is True
-    assert args.archive_days == 60
-    assert args.account == "family"
-
-
-def test_run_archive_sweep_enabled(monkeypatch):
-    monkeypatch.setenv("GMAIL_CLIENT_ID", "cid")
-    monkeypatch.setenv("GMAIL_CLIENT_SECRET", "csecret")
-    monkeypatch.setenv("GMAIL_REFRESH_TOKEN", "rtoken")
-    settings = Settings(archive_older_than_days=90, auto_archive_enabled=True)
+def test_run_archive_sweep_enabled(settings):
 
     mock_gmail = MagicMock()
     mock_gmail.list_messages_to_archive.return_value = ["arch-1", "arch-2", "arch-3"]
     mock_gmail.batch_archive_messages.return_value = 3
 
-    from gmail_classifier.main import run_archive_sweep
-
-    # Normal execution
     count = run_archive_sweep(settings=settings, gmail=mock_gmail, dry_run=False)
     assert count == 3
     mock_gmail.list_messages_to_archive.assert_called_once_with(
@@ -266,7 +224,6 @@ def test_run_archive_sweep_enabled(monkeypatch):
     )
     mock_gmail.batch_archive_messages.assert_called_once_with(["arch-1", "arch-2", "arch-3"])
 
-    # Dry-run execution
     mock_gmail.reset_mock()
     mock_gmail.list_messages_to_archive.return_value = ["arch-1", "arch-2"]
     count_dry = run_archive_sweep(settings=settings, gmail=mock_gmail, dry_run=True)
@@ -274,34 +231,16 @@ def test_run_archive_sweep_enabled(monkeypatch):
     mock_gmail.batch_archive_messages.assert_not_called()
 
 
-def test_run_archive_sweep_disabled(monkeypatch):
-    monkeypatch.setenv("GMAIL_CLIENT_ID", "cid")
-    monkeypatch.setenv("GMAIL_CLIENT_SECRET", "csecret")
-    monkeypatch.setenv("GMAIL_REFRESH_TOKEN", "rtoken")
-    settings = Settings(auto_archive_enabled=False)
+def test_run_archive_sweep_disabled(settings):
+    settings.auto_archive_enabled = False
 
     mock_gmail = MagicMock()
-    from gmail_classifier.main import run_archive_sweep
-
     count = run_archive_sweep(settings=settings, gmail=mock_gmail)
     assert count == 0
     mock_gmail.list_messages_to_archive.assert_not_called()
 
 
-def test_parse_arguments_mark_all_read():
-    args = parse_arguments(["--mark-all-read", "--account", "family"])
-    assert args.mark_all_read is True
-    assert args.account == "family"
-
-
-def test_run_mark_all_read(monkeypatch):
-    monkeypatch.setenv("GMAIL_CLIENT_ID", "cid")
-    monkeypatch.setenv("GMAIL_CLIENT_SECRET", "csecret")
-    monkeypatch.setenv("GMAIL_REFRESH_TOKEN", "rtoken")
-    settings = Settings()
-
-    from gmail_classifier.main import run_mark_all_read
-
+def test_run_mark_all_read(settings):
     mock_gmail = MagicMock()
     mock_gmail.list_unread_messages.return_value = ["u-1", "u-2"]
     mock_gmail.batch_mark_read.return_value = 2

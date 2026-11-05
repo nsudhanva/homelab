@@ -72,46 +72,83 @@ def test_prompt_renders_hints_only_for_labels_the_account_has() -> None:
     assert "Body:\nHere is your community status report" in prompt
 
 
-def test_classify_success() -> None:
-    result = classifier_with(answer("Personal/Rent")).classify(EMAIL, ["Personal/Rent"])
-    assert result == ClassificationResult(
-        label="Personal/Rent", confidence=0.95, reason="Matches hint"
-    )
-
-
-def test_classify_low_confidence_quarantines() -> None:
-    result = classifier_with(answer("Personal", 0.65)).classify(EMAIL, ["Personal"])
-    assert result.label == "ai-review"
-    assert result.confidence == 0.65
-    assert "Low confidence" in result.reason
-
-
-def test_classify_unmatched_label_quarantines_when_creation_disabled() -> None:
-    classifier = classifier_with(answer("Crypto"), allow_label_creation=False)
-    result = classifier.classify(EMAIL, ["Personal"])
-    assert result.label == "ai-review"
-    assert "Unmatched label" in result.reason
-
-
-def test_classify_creates_clean_new_label() -> None:
-    result = classifier_with(answer("/Travel/")).classify(EMAIL, ["Personal"])
-    assert result.label == "Travel"
-
-
-def test_classify_explicit_quarantine() -> None:
-    result = classifier_with(answer("QUARANTINE")).classify(EMAIL, ["Personal"])
-    assert result.label == "ai-review"
-    assert "Quarantined" in result.reason
+@pytest.mark.parametrize(
+    ("label", "confidence", "allow_creation", "candidates", "expected_label", "reason_part"),
+    [
+        pytest.param(
+            "Personal/Rent",
+            0.95,
+            True,
+            ["Personal/Rent"],
+            "Personal/Rent",
+            "Matches hint",
+            id="allowed-label",
+        ),
+        pytest.param(
+            "Personal",
+            0.65,
+            True,
+            ["Personal"],
+            "ai-review",
+            "Low confidence",
+            id="low-confidence",
+        ),
+        pytest.param(
+            "Crypto",
+            0.95,
+            False,
+            ["Personal"],
+            "ai-review",
+            "Unmatched label",
+            id="unmatched-label-creation-disabled",
+        ),
+        pytest.param(
+            "/Travel/",
+            0.95,
+            True,
+            ["Personal"],
+            "Travel",
+            "Matches hint",
+            id="creates-clean-new-label",
+        ),
+        pytest.param(
+            "QUARANTINE",
+            0.95,
+            True,
+            ["Personal"],
+            "ai-review",
+            "Quarantined",
+            id="explicit-quarantine",
+        ),
+        pytest.param(
+            "Newsletters",
+            0.92,
+            True,
+            ["INBOX"],
+            "Newsletters",
+            "Matches hint",
+            id="no-curated-labels-proposes-label",
+        ),
+    ],
+)
+def test_classify_decision(
+    label: str,
+    confidence: float,
+    allow_creation: bool,
+    candidates: list[str],
+    expected_label: str,
+    reason_part: str,
+) -> None:
+    classifier = classifier_with(answer(label, confidence), allow_label_creation=allow_creation)
+    result = classifier.classify(EMAIL, candidates)
+    assert result.label == expected_label
+    assert result.confidence == confidence
+    assert reason_part in result.reason
 
 
 def test_infrastructure_failure_propagates_so_batch_can_abort() -> None:
     with pytest.raises(LLMConnectionError, match="connection refused"):
         classifier_with(Down(), Down()).classify(EMAIL, ["Personal"])
-
-
-def test_fallback_model_answers_when_primary_is_down() -> None:
-    result = classifier_with(Down(), answer("Personal/Rent")).classify(EMAIL, ["Personal/Rent"])
-    assert result.label == "Personal/Rent"
 
 
 def test_invalid_model_output_quarantines() -> None:
@@ -130,9 +167,3 @@ def test_no_curated_labels_skips_model_when_creation_disabled() -> None:
     result = classifier.classify(EMAIL, ["INBOX", "SPAM"])
     assert result.label == "ai-review"
     assert "No active curated user labels available" in result.reason
-
-
-def test_no_curated_labels_proposes_label_when_creation_enabled() -> None:
-    result = classifier_with(answer("Newsletters", 0.92)).classify(EMAIL, ["INBOX"])
-    assert result.label == "Newsletters"
-    assert result.confidence == 0.92

@@ -7,6 +7,17 @@ import httpx
 logger = logging.getLogger(__name__)
 
 TELEGRAM_MAX_MSG_LEN = 4000
+TELEGRAM_API_URL = "https://api.telegram.org"
+
+
+def _quarantine_entry(item: dict[str, Any]) -> str:
+    subj = html.escape(item.get("subject", "(No Subject)"))
+    sender = html.escape(item.get("sender", "Unknown"))
+    reason = html.escape(item.get("reason", "Unknown reason"))
+    conf = item.get("confidence", 0.0)
+    return (
+        f"• <b>{subj}</b>\n  <i>From:</i> {sender}\n  <i>Reason:</i> {reason} (conf: {conf:.2f})\n"
+    )
 
 
 class TelegramNotifier:
@@ -18,15 +29,11 @@ class TelegramNotifier:
         chat_id: int,
         topic_id: int | None = None,
         account_name: str = "personal",
-        api_url: str = "https://api.telegram.org",
-        timeout: float = 10.0,
     ) -> None:
         self.bot_token = bot_token
         self.chat_id = chat_id
         self.topic_id = topic_id
         self.account_name = account_name
-        self.api_url = api_url.rstrip("/")
-        self.timeout = timeout
 
     def format_daily_summary(
         self,
@@ -36,10 +43,9 @@ class TelegramNotifier:
         quarantined_items: list[dict[str, Any]],
         dry_run: bool = False,
         archived_count: int = 0,
-        account_name: str | None = None,
     ) -> list[str]:
         """Format daily summary into one or more HTML messages respecting Telegram limits."""
-        acct = (account_name or self.account_name).title()
+        acct = self.account_name.title()
         dry_run_badge = " <b>[DRY RUN]</b>" if dry_run else ""
         archived_line = (
             f"📦 <b>Archived from Inbox:</b> {archived_count}\n" if archived_count > 0 else ""
@@ -58,41 +64,21 @@ class TelegramNotifier:
         else:
             labels_section += "• <i>No emails classified</i>\n"
 
+        entries = [_quarantine_entry(item) for item in quarantined_items]
         quarantine_section = ""
-        if quarantined_items:
-            quarantine_section += f"\n⚠️ <b>Quarantined Emails ({len(quarantined_items)}):</b>\n"
-            for item in quarantined_items:
-                subj = html.escape(item.get("subject", "(No Subject)"))
-                sender = html.escape(item.get("sender", "Unknown"))
-                reason = html.escape(item.get("reason", "Unknown reason"))
-                conf = item.get("confidence", 0.0)
-                quarantine_section += (
-                    f"• <b>{subj}</b>\n"
-                    f"  <i>From:</i> {sender}\n"
-                    f"  <i>Reason:</i> {reason} (conf: {conf:.2f})\n"
-                )
+        if entries:
+            quarantine_section = f"\n⚠️ <b>Quarantined Emails ({len(entries)}):</b>\n" + "".join(
+                entries
+            )
 
         full_text = f"{header}{labels_section}{quarantine_section}".strip()
 
         if len(full_text) <= TELEGRAM_MAX_MSG_LEN:
             return [full_text]
 
-        # Chunk into multiple messages if too long
-        chunks: list[str] = []
-        base_header = f"{header}{labels_section}".strip()
-        chunks.append(base_header)
-
-        curr_chunk = f"⚠️ <b>Quarantined Emails ({len(quarantined_items)}):</b>\n"
-        for item in quarantined_items:
-            subj = html.escape(item.get("subject", "(No Subject)"))
-            sender = html.escape(item.get("sender", "Unknown"))
-            reason = html.escape(item.get("reason", "Unknown reason"))
-            conf = item.get("confidence", 0.0)
-            entry = (
-                f"• <b>{subj}</b>\n"
-                f"  <i>From:</i> {sender}\n"
-                f"  <i>Reason:</i> {reason} (conf: {conf:.2f})\n"
-            )
+        chunks: list[str] = [f"{header}{labels_section}".strip()]
+        curr_chunk = f"⚠️ <b>Quarantined Emails ({len(entries)}):</b>\n"
+        for entry in entries:
             if len(curr_chunk) + len(entry) > TELEGRAM_MAX_MSG_LEN:
                 chunks.append(curr_chunk.strip())
                 curr_chunk = entry
@@ -104,24 +90,23 @@ class TelegramNotifier:
 
         return chunks
 
-    def send_message(self, text: str, parse_mode: str = "HTML") -> bool:
-        """Send a single text message via Telegram Bot API."""
+    def send_message(self, text: str) -> bool:
         if not self.bot_token:
             logger.info("Telegram bot token not configured. Skipping message dispatch.")
             return True
 
-        endpoint = f"{self.api_url}/bot{self.bot_token}/sendMessage"
+        endpoint = f"{TELEGRAM_API_URL}/bot{self.bot_token}/sendMessage"
         payload: dict[str, Any] = {
             "chat_id": self.chat_id,
             "text": text,
-            "parse_mode": parse_mode,
+            "parse_mode": "HTML",
             "disable_web_page_preview": True,
         }
         if self.topic_id is not None:
             payload["message_thread_id"] = self.topic_id
 
         try:
-            with httpx.Client(timeout=self.timeout) as client:
+            with httpx.Client(timeout=10.0) as client:
                 resp = client.post(endpoint, json=payload)
                 resp.raise_for_status()
             return True
@@ -138,7 +123,6 @@ class TelegramNotifier:
         dry_run: bool = False,
         archived_count: int = 0,
     ) -> bool:
-        """Send formatted daily summary messages."""
         messages = self.format_daily_summary(
             target_date=target_date,
             total_count=total_count,

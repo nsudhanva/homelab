@@ -15,12 +15,10 @@ _BLOCK_TAG_RE = re.compile(
 )
 _TAG_RE = re.compile(r"<[^>]+>")
 _WHITESPACE_RE = re.compile(r"[ \t]+")
-_NEWLINES_RE = re.compile(r"\n\s*\n")
 
 
 class SanitizedEmail(BaseModel):
     id: str
-    thread_id: str = Field(default="")
     subject: str = Field(default="(No Subject)")
     sender: str = Field(default="Unknown")
     date: str = Field(default="Unknown")
@@ -32,7 +30,6 @@ def decode_base64url(data: str) -> str:
     """Decode a base64url-encoded string with padding correction."""
     if not data:
         return ""
-    # Normalize base64url padding
     padded = data + "=" * (-len(data) % 4)
     try:
         decoded_bytes = base64.urlsafe_b64decode(padded.encode("ascii"))
@@ -54,7 +51,6 @@ def clean_html(raw_html: str) -> str:
     text = _WHITESPACE_RE.sub(" ", text)
     lines = [line.strip() for line in text.split("\n")]
     text = "\n".join(line for line in lines if line)
-    text = _NEWLINES_RE.sub("\n\n", text)
     return text.strip()
 
 
@@ -85,7 +81,6 @@ def extract_payload_text(payload: dict[str, Any]) -> tuple[str, str]:
 def sanitize_message(msg: dict[str, Any], max_body_chars: int) -> SanitizedEmail:
     """Parse raw Gmail API message dictionary and produce a clean SanitizedEmail model."""
     msg_id = str(msg.get("id", ""))
-    thread_id = str(msg.get("threadId", ""))
     snippet = str(msg.get("snippet", ""))
 
     payload = msg.get("payload", {})
@@ -114,12 +109,10 @@ def sanitize_message(msg: dict[str, Any], max_body_chars: int) -> SanitizedEmail
     else:
         body_content = clean_html(snippet)
 
-    # Truncate to first max_body_chars
     truncated_body = body_content[:max_body_chars].strip()
 
     return SanitizedEmail(
         id=msg_id,
-        thread_id=thread_id,
         subject=subject,
         sender=sender,
         date=date_str,
