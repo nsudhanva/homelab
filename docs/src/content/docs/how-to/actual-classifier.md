@@ -21,7 +21,7 @@ The classifier gives each imported bank transaction a category and a one-word ta
 - Confidence threshold: If the confidence of a prediction is below the threshold (default `0.60`), the classifier tags the transaction `#Unknown`. This prevents wrong categories on unclear charges. If no tag applies, for example on groceries or general shopping, the classifier writes no tag in the note.
 - Scope: The classifier processes only on-budget transactions that have no category or that have an `#Unknown` note. It skips transfers between accounts, off-budget accounts (brokerage and retirement), split parents, and starting balances.
 - Amount sign: A negative amount is an outflow, and a positive amount is an inflow. The prompt instructs the model to categorize merchant refunds with the merchant category.
-- Schedule: A Kubernetes CronJob runs the classifier each day at 03:00 (`0 3 * * *`), after the Gmail (01:00) and Drive (02:00) jobs. The CronJob uses `concurrencyPolicy: Forbid`, and each pod stops after its run.
+- Schedule: A Kubernetes CronJob runs the classifier each day at 07:00 (`0 7 * * *`). The `offers-sync` CronJob runs the Actual Budget bank sync at 06:30, so the classifier categorizes the new transactions on the same morning. The CronJob uses `concurrencyPolicy: Forbid`, and each pod stops after its run.
 - Image: The `image-push (apps/actual-classifier)` CI job builds the image and pushes it to `ghcr.io/nsudhanva/homelab-actual-classifier`.
 
 ## Step 1: Review the Configuration and Secrets

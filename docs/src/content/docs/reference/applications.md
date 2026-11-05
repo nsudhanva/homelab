@@ -252,7 +252,7 @@ These apps share the `jellyfin-media` volume:
 | Namespace | `actual-classifier` | Dedicated namespace |
 | ArgoCD App | `apps/actual-classifier/app.yaml` | Application manifest |
 | Container Image | `ghcr.io/nsudhanva/homelab-actual-classifier:latest` | CI builds the image |
-| Workload Type | Kubernetes CronJob | `actual-classifier`, daily at 03:00 |
+| Workload Type | Kubernetes CronJob | `actual-classifier`, daily at 07:00, after the bank sync |
 | Vault Path | `kv/actual`, `kv/anthropic`, `kv/openrouter` | Actual server password, and model API keys through `homelab-ai-credentials` |
 
 ### Offers

@@ -227,7 +227,7 @@ docs/             Astro Starlight documentation
 | Gemma 4 AI | Local LLM inference on NVIDIA GPU | `ai.sudhanva.me` |
 | Gmail Classifier | Daily email sorting and Telegram summary for each account, plus a weekly mark-read job | CronJobs (01:00 and 01:15 America/Los_Angeles) |
 | Drive Organizer | Family document organizer with the same folder structure for each person | CronJobs (02:00 and 02:15 America/Los_Angeles) |
-| Actual Classifier | Daily bank transaction categorization in Actual Budget | CronJob (03:00 America/Los_Angeles) |
+| Actual Classifier | Daily bank transaction categorization in Actual Budget | CronJob (07:00 America/Los_Angeles, after the bank sync) |
 | Offers Sync | Daily offer matching, AI review of unclear transactions, and Telegram reminders | CronJob (06:30 America/Los_Angeles) |
 | Alert Summarizer | Alertmanager webhook that summarizes alerts with the AI model chain and posts them to Telegram | Deployment (no HTTPRoute) |
 | ArgoCD | GitOps control plane UI | `argocd.sudhanva.me` |
