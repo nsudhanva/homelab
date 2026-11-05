@@ -1,3 +1,15 @@
+ignore_accounts: checking|savings|hysa|debit|brokerage|\bira\b|crypto|stock plan|individual|joint
+
+merchant_rules:
+  online_retail: \bamazon\b(?!.*(fresh|web services))|audible
+  groceries: whole foods|amazon fresh|safeway|trader joe|wegmans|costco|farmers market|mandi|grocer
+  rideshare: \buber\b(?!.*eats)|\blyft\b|waymo
+  transit: \bmta\b|omny|clipper|\bmbta\b|\bbart\b|caltrain|metro|pay ?by ?phone|parking
+  gas: chevron|shell|speedway|exxon|mobil|\barco\b|\b76\b|world oil|valero
+  drugstore: walgreens|cvs|duane reade|rite aid
+  streaming: netflix|disney\+|hulu|paramount|spotify|fox one|youtube premium|max\b
+  phone: t-mobile|verizon|at&t
+
 cards:
   - id: amex-gold
     name: American Express Gold Card
@@ -5,6 +17,32 @@ cards:
     annual_fee: 325
     account: amex gold
     fee_payee: membership fee|annual fee
+    rewards:
+      currency: points
+      program: Membership Rewards
+      point_value: 0.6
+      base: 1
+      note: >-
+        Points at 0.6 cents each, their value as a statement credit. They are worth 1 cent on
+        flights through Amex Travel, and more through airline and hotel transfer partners.
+      bonuses:
+        - name: Restaurants
+          rate: 4
+          types: [dining]
+          cap: {amount: 50000, period: year, after_rate: 1}
+        - name: U.S. supermarkets
+          rate: 4
+          types: [groceries]
+          cap: {amount: 25000, period: year, after_rate: 1}
+          note: superstores, warehouse clubs, and convenience stores do not count
+        - name: Flights
+          rate: 3
+          types: [airline]
+          note: booked directly with the airline or on Amex Travel
+        - name: Prepaid hotels on Amex Travel
+          rate: 5
+          payee: amex travel|american express travel
+          note: prepaid car rentals and Airbnb stays on Amex Travel earn 2x, which bank data cannot separate
 
   - id: chase-sapphire-reserve
     name: Chase Sapphire Reserve
@@ -13,16 +51,140 @@ cards:
     account: sapphire reserve
     fee_payee: annual (membership )?fee
     anniversary_month: 7
+    rewards:
+      currency: points
+      program: Ultimate Rewards
+      point_value: 1.0
+      base: 1
+      note: >-
+        Points at 1 cent each, their cash value. Points Boost on Chase Travel can make some
+        redemptions worth up to 2 cents.
+      bonuses:
+        - name: Chase Travel
+          rate: 8
+          payee: chase travel
+        - name: Flights and hotels booked direct
+          rate: 4
+          types: [airline, hotel]
+        - name: Dining
+          rate: 3
+          types: [dining]
+        - name: Lyft
+          rate: 5
+          payee: \blyft\b
+          valid_to: 2027-09-30
 
   - id: chase-freedom-flex
     name: Chase Freedom Flex
     issuer: Chase
     account: freedom flex
+    rewards:
+      base: 1
+      bonuses:
+        - name: 5% categories (Q3 2026)
+          rate: 5
+          types: [gas, transit, entertainment]
+          payee: united way
+          cap: {amount: 1500, period: quarter, after_rate: 1}
+          valid_from: 2026-07-01
+          valid_to: 2026-09-30
+          activation_offer: freedom-flex-5-percent
+          note: gas and EV charging, public transit, live entertainment, United Way
+        - name: 5% categories (Q4 2026)
+          rate: 5
+          types: [groceries, dining]
+          payee: red cross
+          cap: {amount: 1500, period: quarter, after_rate: 1}
+          valid_from: 2026-10-01
+          valid_to: 2026-12-31
+          activation_offer: freedom-flex-5-percent
+          note: grocery stores (not Walmart or Target), dining, American Red Cross
+        - name: Chase Travel
+          rate: 5
+          payee: chase travel
+        - name: Dining
+          rate: 3
+          types: [dining]
+        - name: Drugstores
+          rate: 3
+          types: [drugstore]
+        - name: Lyft
+          rate: 2
+          payee: \blyft\b
+          valid_to: 2027-09-30
 
   - id: discover-it
     name: Discover it Cash Back
     issuer: Discover
     account: discover it card
+    rewards:
+      base: 1
+      note: In the first year, Discover matches all the cash back at the end of the year.
+      bonuses:
+        - name: 5% categories (Q3 2026)
+          rate: 5
+          types: [gas, transit, airline, drugstore]
+          cap: {amount: 1500, period: quarter, after_rate: 1}
+          valid_from: 2026-07-01
+          valid_to: 2026-09-30
+          activation_offer: discover-it-5-percent
+          note: gas and EV charging, transportation, drugstores
+        - name: 5% categories (Q4 2026)
+          rate: 5
+          types: [dining, entertainment, utilities]
+          cap: {amount: 1500, period: quarter, after_rate: 1}
+          valid_from: 2026-10-01
+          valid_to: 2026-12-31
+          activation_offer: discover-it-5-percent
+          note: restaurants, entertainment, utilities
+
+  - id: apple-card
+    name: Apple Card
+    issuer: Apple
+    account: apple card
+    rewards:
+      base: 2
+      note: >-
+        Assumes Apple Pay, which earns 2%. The physical card earns 1%. Bank data does not show
+        which one paid, and the 3% partner rate also needs Apple Pay.
+      bonuses:
+        - name: Apple
+          rate: 3
+          payee: \bapple\b|app store|itunes
+        - name: Apple Pay partners
+          rate: 3
+          payee: ace hardware|booking\.com|chargepoint|duane reade|exxon|\bmobil\b|hertz|\bnike\b|\buber\b|walgreens
+
+  - id: robinhood-gold-card
+    name: Robinhood Gold Card
+    issuer: Robinhood
+    account: robinhood credit card
+    rewards:
+      currency: points
+      program: Robinhood points
+      point_value: 1.0
+      base: 3
+      note: >-
+        3 points on everything with an active Robinhood Gold membership. Points are worth
+        1 cent moved to brokerage cash, and less as a statement credit.
+
+  - id: prime-visa
+    name: Amazon Prime Visa
+    issuer: Chase
+    account: prime visa
+    rewards:
+      base: 1
+      note: The 5% rates need a Prime membership. Checkout promotions on Amazon are not visible.
+      bonuses:
+        - name: Amazon, Whole Foods, and Audible
+          rate: 5
+          payee: \bamazon\b(?!.*web services)|whole foods|audible
+        - name: Chase Travel
+          rate: 5
+          payee: chase travel
+        - name: Gas, restaurants, and local transit
+          rate: 2
+          types: [gas, dining, transit, rideshare]
 
 offers:
   - id: amex-gold-uber-cash

@@ -1,13 +1,20 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link, createFileRoute } from "@tanstack/react-router";
-import { AlertTriangle, Check, ChevronRight, Hand, KeyRound, ReceiptText, RotateCcw, SkipForward, Smartphone, TriangleAlert } from "lucide-react";
+import { AlertTriangle, Check, ChevronRight, Coins, Hand, KeyRound, ReceiptText, RotateCcw, SkipForward, Smartphone, TriangleAlert } from "lucide-react";
 import { useState } from "react";
 import { CellCaption, LOOK_LABEL, Mark, look, type Look } from "@/components/cell";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { trackerApi, type Cell, type Tracker, type TrackerCard, type TrackerRow } from "@/lib/api";
+import {
+  trackerApi,
+  type CardRewards,
+  type Cell,
+  type Tracker,
+  type TrackerCard,
+  type TrackerRow,
+} from "@/lib/api";
 import {
   MONTH_NAMES,
   holderLabel,
@@ -42,6 +49,12 @@ function TrackerPage() {
       {data.cards.map((card) => (
         <CardGrid key={`${card.card_id}:${card.account.id}`} card={card} months={data.months} />
       ))}
+      {data.unmatched_accounts.length > 0 && (
+        <p className="px-1 text-xs text-muted-foreground">
+          Accounts in Actual Budget without a card in the catalog: {data.unmatched_accounts.join(", ")}. Add a card to{" "}
+          <code>apps/offers/catalog.yaml</code> to track one.
+        </p>
+      )}
     </div>
   );
 }
@@ -96,6 +109,11 @@ function Hero({ data }: { data: Tracker }) {
             </span>
           )}
           {c.missed > 0 && <Pill look="missed" text={`${money(c.missed)} missed last month`} />}
+          {data.rewards_month > 0 && (
+            <span className="inline-flex items-center gap-2 rounded-full border bg-background px-3 py-1">
+              <Coins className="size-3.5 text-success" /> {money(data.rewards_month)} rewards earned (est.)
+            </span>
+          )}
         </div>
       </div>
     </section>
@@ -226,10 +244,81 @@ function CardGrid({ card, months }: { card: TrackerCard; months: string[] }) {
             {card.rows.map((row) => (
               <OfferLine key={row.offer_id} row={row} card={card} last={last} />
             ))}
+            {card.rewards && <RewardsLine rewards={card.rewards} last={last} />}
           </tbody>
         </table>
       </div>
     </Card>
+  );
+}
+
+function rateText(r: CardRewards, rate: number): string {
+  return r.currency === "cash" ? `${rate}%` : `${rate}x`;
+}
+
+function RewardsLine({ rewards: r, last }: { rewards: CardRewards; last: string }) {
+  return (
+    <tr>
+      <td className="sticky left-0 z-10 border-t bg-card px-4 py-3 align-middle sm:px-5">
+        <div className="flex items-center gap-1.5 font-medium leading-tight">
+          <Coins className="size-3.5 shrink-0 text-muted-foreground" />
+          Rewards earned
+        </div>
+        <div className="mt-0.5 text-xs text-muted-foreground">
+          {rateText(r, r.base)} on everything
+          {r.rules.length > 0 && `, up to ${rateText(r, Math.max(...r.rules.map((b) => b.rate)))}`}
+          {r.currency === "points" && ` · ${r.point_value}¢ a point`}
+        </div>
+        <div className="mt-0.5 text-[11px] text-muted-foreground/80">Estimated from purchases</div>
+      </td>
+      {r.months.map((m) => (
+        <td key={m.month} className={cn("border-t px-1 py-2 text-center align-middle", m.month === last && "bg-accent/40")}>
+          {m.spend > 0 ? (
+            <Popover>
+              <PopoverTrigger asChild>
+                <button
+                  type="button"
+                  className="mx-auto flex w-full flex-col items-center gap-0.5 rounded-lg px-1 py-1.5 transition hover:bg-accent/60"
+                >
+                  <span className="tabular text-sm font-semibold text-success">{money(m.value)}</span>
+                  <span className="tabular text-[10px] text-muted-foreground">on {money(Math.round(m.spend))}</span>
+                  {m.missed > 0.5 && <span className="tabular text-[10px] text-warning">+{money(m.missed)} missed</span>}
+                </button>
+              </PopoverTrigger>
+              <PopoverContent side="top" className="w-80 space-y-2 text-left">
+                <div className="font-medium">Rewards in {new Date(`${m.month}-01T00:00:00`).toLocaleDateString("en-US", { month: "long", year: "numeric" })}</div>
+                <div className="text-xs text-muted-foreground">
+                  {money(m.value)} on {money(m.spend)} of purchases
+                  {r.currency === "points" && ` · ${Math.round(m.points).toLocaleString()} points`}
+                </div>
+                <ul className="space-y-1 text-xs">
+                  {m.by_bonus.map((b) => (
+                    <li key={b.name} className="flex justify-between gap-2">
+                      <span>
+                        {b.name} <span className="text-muted-foreground">({rateText(r, b.rate)})</span>
+                      </span>
+                      <span className="tabular text-muted-foreground">
+                        {money(b.value)} on {money(Math.round(b.spend))}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+                {m.missed > 0.5 && (
+                  <p className="rounded-md bg-warning-soft px-2.5 py-1.5 text-xs text-warning">
+                    {money(m.missed)} more if the quarterly bonus had been activated.
+                  </p>
+                )}
+                {r.note && <p className="text-[11px] text-muted-foreground">{r.note}</p>}
+              </PopoverContent>
+            </Popover>
+          ) : (
+            <div className="mx-auto grid h-12 place-items-center">
+              <Mark look="none" />
+            </div>
+          )}
+        </td>
+      ))}
+    </tr>
   );
 }
 

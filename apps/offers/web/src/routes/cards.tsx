@@ -84,6 +84,35 @@ function Cards() {
                   <div className="text-sm text-muted-foreground">No annual fee.</div>
                 )}
 
+                {card.rewards && (
+                  <div className="space-y-1.5 border-t pt-3 text-xs">
+                    <div className="flex items-baseline justify-between">
+                      <span className="font-medium text-foreground">
+                        Earns{card.rewards.program ? ` ${card.rewards.program}` : ""}
+                      </span>
+                      <span className="tabular text-success">{money(card.rewards.year_value)} this year (est.)</span>
+                    </div>
+                    <ul className="space-y-1 text-muted-foreground">
+                      {card.rewards.rules.map((b) => (
+                        <li key={b.name}>
+                          <span className="tabular font-medium text-foreground">
+                            {card.rewards!.currency === "cash" ? `${b.rate}%` : `${b.rate}x`}
+                          </span>{" "}
+                          {b.name}
+                          {b.detail && <span> · {b.detail}</span>}
+                        </li>
+                      ))}
+                      <li>
+                        <span className="tabular font-medium text-foreground">
+                          {card.rewards.currency === "cash" ? `${card.rewards.base}%` : `${card.rewards.base}x`}
+                        </span>{" "}
+                        Everything else
+                      </li>
+                    </ul>
+                    {card.rewards.note && <p className="text-muted-foreground/80">{card.rewards.note}</p>}
+                  </div>
+                )}
+
                 <ul className="space-y-2 border-t pt-3">
                   {card.rows.map((r) => (
                     <li key={r.offer_id} className="text-xs">

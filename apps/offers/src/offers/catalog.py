@@ -176,6 +176,94 @@ class Offer(BaseModel):
         return hashlib.sha256(meaning.encode()).hexdigest()[:16]
 
 
+class MerchantType(StrEnum):
+    """Types of merchant that earning rules refer to."""
+
+    DINING = "dining"
+    GROCERIES = "groceries"
+    GAS = "gas"
+    TRANSIT = "transit"
+    RIDESHARE = "rideshare"
+    AIRLINE = "airline"
+    HOTEL = "hotel"
+    TRAVEL = "travel"
+    DRUGSTORE = "drugstore"
+    STREAMING = "streaming"
+    ENTERTAINMENT = "entertainment"
+    ONLINE_RETAIL = "online_retail"
+    RETAIL = "retail"
+    UTILITIES = "utilities"
+    PHONE = "phone"
+    SUBSCRIPTION = "subscription"
+    HEALTH = "health"
+    OTHER = "other"
+
+
+class Cap(BaseModel):
+    """A spend cap. After ``amount`` dollars of bonus spend in a period, ``after_rate`` applies."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    amount: float = Field(gt=0)
+    period: Literal["quarter", "year", "cardmember_year"] = "year"
+    after_rate: float = Field(default=1, ge=0)
+
+
+class Bonus(BaseModel):
+    """A bonus earning rate. A purchase qualifies when its payee matches ``payee`` or its merchant
+    type is in ``types``."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    name: str
+    rate: float = Field(gt=0)
+    payee: str | None = None
+    types: tuple[MerchantType, ...] = ()
+    cap: Cap | None = None
+    valid_from: date | None = None
+    valid_to: date | None = None
+    activation_offer: str | None = None
+    note: str | None = None
+
+    @field_validator("payee")
+    @classmethod
+    def _compiles(cls, value: str | None) -> str | None:
+        return value if value is None else _check_pattern(value)
+
+    @model_validator(mode="after")
+    def _check(self) -> "Bonus":
+        if not self.payee and not self.types:
+            raise ValueError(f"bonus {self.name!r} needs payee or types")
+        return self
+
+    def active_on(self, day: date) -> bool:
+        if self.valid_from and day < self.valid_from:
+            return False
+        return not (self.valid_to and day > self.valid_to)
+
+    def applies(self, fields: Iterable[str], merchant_type: MerchantType | None) -> bool:
+        if merchant_type is not None and merchant_type in self.types:
+            return True
+        if self.payee:
+            return any(re.search(self.payee, f, re.IGNORECASE) for f in fields if f)
+        return False
+
+
+class Rewards(BaseModel):
+    """How a card earns on purchases. ``base`` and every bonus ``rate`` are percent back for a
+    cash card, or points per dollar for a points card. ``point_value`` is the cash value of one
+    point in cents."""
+
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    currency: Literal["cash", "points"] = "cash"
+    program: str | None = None
+    point_value: float = Field(default=1.0, gt=0)
+    base: float = Field(ge=0)
+    bonuses: tuple[Bonus, ...] = ()
+    note: str | None = None
+
+
 class Card(BaseModel):
     """A card product. ``account`` matches the names of the Actual accounts for this card.
 
@@ -193,6 +281,7 @@ class Card(BaseModel):
     account: str
     fee_payee: str | None = None
     anniversary_month: int | None = Field(default=None, ge=1, le=12)
+    rewards: Rewards | None = None
 
     @field_validator("account", "fee_payee")
     @classmethod
@@ -207,7 +296,21 @@ class Catalog(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
     cards: tuple[Card, ...]
-    offers: tuple[Offer, ...]
+    offers: tuple[Offer, ...] = ()
+    merchant_rules: dict[MerchantType, str] = {}
+    ignore_accounts: str | None = None
+
+    @field_validator("merchant_rules")
+    @classmethod
+    def _rules_compile(cls, value: dict[MerchantType, str]) -> dict[MerchantType, str]:
+        for pattern in value.values():
+            _check_pattern(pattern)
+        return value
+
+    @field_validator("ignore_accounts")
+    @classmethod
+    def _ignore_compiles(cls, value: str | None) -> str | None:
+        return value if value is None else _check_pattern(value)
 
     @model_validator(mode="after")
     def _check(self) -> "Catalog":
@@ -220,6 +323,14 @@ class Catalog(BaseModel):
         unknown = sorted({o.card for o in self.offers} - set(card_ids))
         if unknown:
             raise ValueError(f"offers refer to unknown cards: {', '.join(unknown)}")
+        activations = {o.id for o in self.offers if o.kind is Kind.ACTIVATION}
+        for card in self.cards:
+            for bonus in card.rewards.bonuses if card.rewards else ():
+                if bonus.activation_offer and bonus.activation_offer not in activations:
+                    raise ValueError(
+                        f"{card.id}: bonus {bonus.name!r} refers to unknown activation offer "
+                        f"{bonus.activation_offer}"
+                    )
         return self
 
     def card(self, card_id: str) -> Card:

@@ -9,6 +9,7 @@ from dataclasses import dataclass
 from datetime import UTC, date, datetime
 from pathlib import Path
 
+from offers.catalog import MerchantType
 from offers.engine import AIKey, DecisionKey
 from offers.models import (
     Account,
@@ -101,6 +102,16 @@ MIGRATIONS = [
     ALTER TABLE evidence ADD COLUMN promo_cents INTEGER NOT NULL DEFAULT 0;
     ALTER TABLE review ADD COLUMN ai_match INTEGER NOT NULL DEFAULT 0
     """,
+    """
+    ALTER TABLE transactions ADD COLUMN category TEXT NOT NULL DEFAULT '';
+    CREATE TABLE merchant_types (
+        merchant TEXT PRIMARY KEY,
+        type TEXT NOT NULL,
+        source TEXT NOT NULL,
+        confidence REAL NOT NULL,
+        updated_at TEXT NOT NULL
+    )
+    """,
 ]
 
 
@@ -190,7 +201,7 @@ class Store:
                 ),
                 (
                     "INSERT INTO transactions (id, account_id, date, amount_cents, payee,"
-                    " description) VALUES (?, ?, ?, ?, ?, ?)",
+                    " description, category) VALUES (?, ?, ?, ?, ?, ?, ?)",
                     [
                         (
                             t.id,
@@ -199,6 +210,7 @@ class Store:
                             t.amount_cents,
                             t.payee,
                             t.description,
+                            t.category,
                         )
                         for t in txns
                     ],
@@ -353,6 +365,22 @@ class Store:
             [("INSERT OR REPLACE INTO overrides VALUES (?, ?, ?, ?, ?)", (*key, status, _now()))]
         )
 
+    def merchant_types(self) -> dict[str, MerchantType]:
+        rows = self.conn.execute("SELECT merchant, type FROM merchant_types")
+        return {r["merchant"]: MerchantType(r["type"]) for r in rows}
+
+    def save_merchant_type(
+        self, merchant: str, kind: MerchantType, source: str, confidence: float
+    ) -> None:
+        self._write(
+            [
+                (
+                    "INSERT OR REPLACE INTO merchant_types VALUES (?, ?, ?, ?, ?)",
+                    (merchant, kind.value, source, confidence, _now()),
+                )
+            ]
+        )
+
     def was_sent(self, key: str) -> bool:
         row = self.conn.execute("SELECT 1 FROM notifications WHERE key = ?", (key,)).fetchone()
         return row is not None
@@ -414,4 +442,5 @@ def _txn(row: sqlite3.Row) -> Txn:
         amount_cents=row["amount_cents"],
         payee=row["payee"],
         description=row["description"],
+        category=row["category"],
     )

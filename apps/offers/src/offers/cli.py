@@ -13,7 +13,7 @@ logger = logging.getLogger("offers")
 
 
 def _sync(settings: Settings, args: argparse.Namespace) -> int:
-    from offers.ai import OfferMatcher
+    from offers.ai import MerchantClassifier, OfferMatcher
     from offers.notify import Telegram
     from offers.source import fetch
     from offers.store import Store
@@ -29,7 +29,8 @@ def _sync(settings: Settings, args: argparse.Namespace) -> int:
         sender = None
         if settings.telegram_enabled and not args.no_notify:
             sender = Telegram(settings.telegram_bot_token, settings.telegram_chat_id)
-        message = sync(store, catalog, settings, snapshot, today, matcher, sender)
+        classifier = MerchantClassifier() if settings.ai_enabled else None
+        message = sync(store, catalog, settings, snapshot, today, matcher, sender, classifier)
         store.finish_run(run_id, "ok", message)
     except Exception as exc:
         store.finish_run(run_id, "failed", type(exc).__name__)

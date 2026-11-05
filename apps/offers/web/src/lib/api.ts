@@ -182,6 +182,28 @@ export type TrackerCard = {
     year_captured: number;
   };
   rows: TrackerRow[];
+  rewards: CardRewards | null;
+};
+
+export type RewardMonth = {
+  month: string;
+  spend: number;
+  value: number;
+  points: number;
+  missed: number;
+  by_bonus: { name: string; rate: number; spend: number; value: number }[];
+};
+
+export type CardRewards = {
+  currency: "cash" | "points";
+  program: string | null;
+  point_value: number;
+  base: number;
+  rules: { name: string; rate: number; detail: string }[];
+  note: string | null;
+  months: RewardMonth[];
+  fee_year_value: number;
+  year_value: number;
 };
 
 export type Tracker = {
@@ -200,6 +222,8 @@ export type Tracker = {
   };
   last_run: Dashboard["last_run"];
   cards: TrackerCard[];
+  rewards_month: number;
+  unmatched_accounts: string[];
 };
 
 export const trackerApi = {

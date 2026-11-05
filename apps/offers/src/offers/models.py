@@ -22,6 +22,7 @@ class Txn:
     amount_cents: int
     payee: str
     description: str = ""
+    category: str = ""
 
     @property
     def text(self) -> str:

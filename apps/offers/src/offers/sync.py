@@ -2,11 +2,13 @@
 
 import logging
 from datetime import date
+from typing import Protocol
 
-from offers import engine
-from offers.ai import Matcher
+from offers import engine, rewards
+from offers.ai import Matcher, MerchantDecision
 from offers.catalog import Catalog
 from offers.config import Settings
+from offers.models import Txn
 from offers.notify import Sender, notify
 from offers.source import Snapshot
 from offers.store import Store
@@ -61,6 +63,34 @@ def evaluate(
     return result
 
 
+class Classifier(Protocol):
+    def classify(self, txn: Txn) -> MerchantDecision | None: ...
+
+
+def classify_merchants(
+    store: Store, catalog: Catalog, settings: Settings, classifier: Classifier
+) -> int:
+    """Give a merchant type to new merchants on card accounts that earn rewards."""
+    todo = rewards.uncategorized(
+        catalog, store.accounts(), store.transactions(), store.merchant_types()
+    )
+    done = failures = 0
+    for key, txn in sorted(todo.items(), key=lambda kv: kv[1].date, reverse=True)[
+        : settings.ai_max_merchants
+    ]:
+        decision = classifier.classify(txn)
+        if decision is None:
+            failures += 1
+            if failures >= MAX_AI_FAILURES:
+                break
+            continue
+        failures = 0
+        store.save_merchant_type(key, decision.type, "ai", decision.confidence)
+        done += 1
+    logger.info("Classified %d of %d new merchants", done, len(todo))
+    return done
+
+
 def sync(
     store: Store,
     catalog: Catalog,
@@ -69,8 +99,11 @@ def sync(
     today: date,
     matcher: Matcher | None,
     sender: Sender | None,
+    classifier: Classifier | None = None,
 ) -> str:
     store.replace_snapshot(snapshot.accounts, snapshot.transactions)
+    if classifier:
+        classify_merchants(store, catalog, settings, classifier)
     result = evaluate(store, catalog, settings, matcher)
     sent = notify(store, catalog, settings, today, sender) if sender else []
     return (

@@ -120,6 +120,30 @@ Offers finds the annual fee with the `fee_payee` rule of the card. The month of 
 
 The fee year is the 12 months between two annual fees. The card header compares the credits captured in the fee year with the fee. A posted credit counts on its posting date. A use without a credit counts in the period in which it starts.
 
+## Rewards
+
+Each card in the catalog can have a `rewards` block. Offers estimates the rewards of each purchase on the card from it, and the tracker shows the rewards of each month in the **Rewards earned** row of the card. Every card in the catalog shows, also a card with no offers.
+
+- Each purchase earns the highest bonus that applies to it, or the `base` rate. Payments, transfers, refunds, the annual fee, and interest do not earn.
+- A bonus applies when the payee matches its `payee` expression, or when the merchant type of the purchase is in its `types`.
+- The merchant type comes from `merchant_rules` in the catalog first. Offers asks the AI about each other merchant one time, and keeps the answer in the `merchant_types` table. Each sync asks about a maximum of 200 merchants (`OFFERS_AI_MAX_MERCHANTS`). The AI gets the payee, the bank description, and the budget category.
+- A bonus with a `cap` earns its rate until the spend of the period reaches the cap, then `after_rate`.
+- A bonus with `activation_offer` applies only in the periods in which you marked that activation offer as activated. Otherwise the purchase earns the base rate, and the tracker shows the difference as missed.
+- A points card has `currency: points`. Its rates are points for each dollar, and `point_value` is the cash value of a point in cents.
+
+The values are estimates. Bank data does not show the merchant category code, the payment method (for example Apple Pay), or the booking channel, so the card `note` tells what the estimate assumes. Accounts in Actual Budget that no card matches show below the tracker, except the accounts that match `ignore_accounts`.
+
+| Field | Meaning |
+| --- | --- |
+| `rewards.currency` | `cash` (percent back) or `points` (points for each dollar) |
+| `rewards.program`, `rewards.point_value` | The points program and the cash value of a point in cents |
+| `rewards.base` | The rate for all other purchases |
+| `rewards.bonuses[].rate`, `payee`, `types` | A bonus rate, a payee regular expression, and merchant types |
+| `rewards.bonuses[].cap` | `amount` in dollars, `period` (`quarter`, `year`, or `cardmember_year`), and `after_rate` |
+| `rewards.bonuses[].valid_from`, `valid_to`, `activation_offer` | The dates of the bonus, and the activation offer that it needs |
+| `merchant_rules` | Merchant type to payee regular expression, used before the AI |
+| `ignore_accounts` | A regular expression for the accounts that are not cards |
+
 ## Offer States
 
 | State | Meaning |

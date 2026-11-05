@@ -46,6 +46,7 @@ def fetch(settings: Settings, today: date) -> Snapshot:
         ]
         on_budget = {a.id for a in accounts}
         payees = {p.id: p.name or "" for p in q.get_payees(session)}
+        categories = {c.id: c.name or "" for c in q.get_categories(session)}
 
         txns: list[Txn] = []
         for t in q.get_transactions(session, start_date=since):
@@ -59,6 +60,7 @@ def fetch(settings: Settings, today: date) -> Snapshot:
                     amount_cents=t.amount or 0,
                     payee=(payees.get(t.payee_id) if t.payee_id else "") or "",
                     description=t.imported_description or "",
+                    category=(categories.get(t.category_id) if t.category_id else "") or "",
                 )
             )
     logger.info("Read %d accounts and %d transactions", len(accounts), len(txns))

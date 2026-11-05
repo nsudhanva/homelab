@@ -44,6 +44,7 @@ class Settings(BaseSettings):
         default=0.85, ge=0.0, le=1.0, validation_alias="OFFERS_AI_CONFIDENCE_THRESHOLD"
     )
     ai_max_calls: int = Field(default=40, ge=0, validation_alias="OFFERS_AI_MAX_CALLS")
+    ai_max_merchants: int = Field(default=200, ge=0, validation_alias="OFFERS_AI_MAX_MERCHANTS")
 
     telegram_bot_token: str = Field(default="", validation_alias="TELEGRAM_BOT_TOKEN")
     telegram_chat_id: str = Field(default="", validation_alias="TELEGRAM_CHAT_ID")
