@@ -7,8 +7,6 @@ keywords:
   - jellyfin wrong movie title
   - radarr category movies
   - sonarr category tv
-sidebar:
-  order: 4
 ---
 
 This guide starts with a magnet link and ends with the title in Jellyfin with its poster, plot, and cast.

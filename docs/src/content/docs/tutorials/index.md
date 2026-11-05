@@ -7,8 +7,6 @@ keywords:
   - ubuntu 26.04 kubernetes
   - ansible automation k3s
   - argocd gitops setup
-sidebar:
-  order: 1
 ---
 
 These tutorials build a bare-metal K3s cluster from an empty machine. The cluster runs on node `legion` (Ubuntu 26.04 LTS).
@@ -34,4 +32,4 @@ Do the tutorials in sequence. The result is a single-node cluster that you can r
 | Step 3 | [Ansible Configuration](/tutorials/containerd/) | Inventory variables and host role settings |
 | Step 4 | [K3s Bootstrap](/tutorials/kubernetes/) | A running K3s cluster with Flannel and NVIDIA CDI |
 | Step 5 | [ArgoCD and GitOps](/tutorials/argocd/) | Infrastructure and applications that ArgoCD syncs from Git |
-| Step 6 | [Add Workers](/tutorials/join-workers/) | The node scope of the cluster: one server node |
+| Step 6 | [Add Worker Node](/how-to/add-worker-node/) | The node scope of the cluster: one server node |

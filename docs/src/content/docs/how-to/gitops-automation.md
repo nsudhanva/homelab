@@ -7,8 +7,6 @@ keywords:
   - k3s automated upgrade
   - tailscale github action
   - ansible automation
-sidebar:
-  order: 17
 ---
 
 This repository runs host provisioning and K3s upgrades from Git. A push to `master` starts each process.

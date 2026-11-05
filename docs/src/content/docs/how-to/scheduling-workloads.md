@@ -9,8 +9,6 @@ keywords:
   - rolling update kubernetes
   - kubernetes workload placement
   - kubernetes scheduling best practices
-sidebar:
-  order: 18
 ---
 
 Use node affinity, taints, and tolerations to control the nodes on which your pods run. The cluster has one node, `legion`. These rules have an effect only when the cluster has more than one node. Refer to [Add a Worker Node](/how-to/add-worker-node/).

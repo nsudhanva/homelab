@@ -7,8 +7,6 @@ keywords:
   - argocd git repository
   - argocd login cli
   - argocd repository credentials
-sidebar:
-  order: 5
 ---
 
 ArgoCD reads `https://github.com/nsudhanva/homelab.git`. The repository is public, so ArgoCD can clone it without credentials. ArgoCD Image Updater needs credentials to push its write-back commits, so the repository declares a repository Secret.

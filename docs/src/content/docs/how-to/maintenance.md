@@ -8,8 +8,6 @@ keywords:
   - system upgrade controller
   - ubuntu server maintenance
   - local storage backup
-sidebar:
-  order: 13
 ---
 
 This guide gives the routine maintenance procedures for the bare-metal node. It includes operating system patches, K3s upgrades, and volume backups.

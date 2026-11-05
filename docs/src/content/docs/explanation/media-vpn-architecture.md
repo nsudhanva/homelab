@@ -7,8 +7,6 @@ keywords:
   - qbittorrent pod network namespace
   - jellyfin media pvc hardlinks
   - linux kernel iptables routing table
-sidebar:
-  order: 7
 ---
 
 This page tells how the media stack keeps BitTorrent traffic in the VPN, and how the media apps share one storage volume.

@@ -9,8 +9,6 @@ keywords:
   - kubernetes cronjob
   - homelab ai
   - email triage
-sidebar:
-  order: 4
 ---
 
 ## Overview
@@ -80,7 +78,9 @@ flowchart TD
 
 ## Daily Run Sequence
 
-The classifier runs a fixed sequence without an operator. If one message causes a Gmail API error or another processing error, the classifier catches and logs the error. It lists the failed message in the Telegram digest and continues with the remaining messages. The failed message gets no labels, so it does not get the `ai-processed` label.
+The classifier runs a fixed sequence without an operator. It classifies the messages in a `ThreadPoolExecutor` with `CONCURRENCY` worker threads. Both CronJobs set `CONCURRENCY=4`. The workers share one lock for Gmail API calls, so only the sanitizer and the model calls run in parallel. With one worker, the run processes the messages in sequence and waits 1.5 seconds between messages.
+
+If one message causes a Gmail API error or another processing error, the classifier catches and logs the error. It lists the failed message in the Telegram digest and continues with the remaining messages. The failed message gets no labels, so it does not get the `ai-processed` label.
 
 A model infrastructure failure stops the run. If each model in the chain is unreachable, times out, or rate-limits the request, `homelab-ai` raises `LLMConnectionError`. The run then sends a "Gmail Classifier Halted" message to Telegram and exits with an error. The CronJob uses `restartPolicy: OnFailure`, so Kubernetes restarts the container. The messages that the run did not process do not have `ai-processed`, so the next attempt finds them.
 
@@ -96,13 +96,14 @@ sequenceDiagram
     participant TG as Telegram Bot
 
     Cron->>Pod: Trigger scheduled job (target: yesterday UTC)
-    Pod->>Gmail: Fetch user labels and ensure ai-processed exists
+    Pod->>Gmail: Fetch user labels and ensure ai-processed and ai-review exist
     Gmail-->>Pod: Active label taxonomy (user labels)
     Pod->>Gmail: Query messages (after:YYYY/MM/DD before:YYYY/MM/DD -label:ai-processed)
     Gmail-->>Pod: List of unprocessed message IDs
+    Pod->>Pod: Submit each message to ThreadPoolExecutor (CONCURRENCY workers)
 
-    loop For each message
-        Pod->>Gmail: Get message payload and headers
+    par Each worker thread, one message at a time
+        Pod->>Gmail: Get message payload and headers (shared Gmail lock)
         Gmail-->>Pod: Raw MIME / payload dictionary
         Pod->>San: Parse headers, decode base64, strip HTML
         San-->>Pod: SanitizedEmail model (subject, sender, snippet, MAX_BODY_CHARS body)
@@ -111,15 +112,16 @@ sequenceDiagram
         LLM-->>AI: JSON payload with reasoning & confidence
         AI-->>Pod: Validated ClassificationResult
         alt Confidence >= 0.80 and Label in Active Set
-            Pod->>Gmail: Apply user label + ai-processed
+            Pod->>Gmail: Apply user label + ai-processed (shared Gmail lock)
         else Confidence >= 0.80 and New Label Passes Guardrails
-            Pod->>Gmail: Create label, apply it + ai-processed
+            Pod->>Gmail: Create label, apply it + ai-processed (shared Gmail lock)
         else Low Confidence, QUARANTINE, or Rejected Label
-            Pod->>Gmail: Apply ai-review + ai-processed
+            Pod->>Gmail: Apply ai-review + ai-processed (shared Gmail lock)
             Pod->>Pod: Record item in quarantined list
         end
     end
 
+    Pod->>Gmail: Archive sweep (batchModify removes INBOX)
     Pod->>TG: Send daily summary HTML digest with quarantine details
     TG-->>Pod: 200 OK
     Pod-->>Cron: Exit 0 (Success)
@@ -128,36 +130,6 @@ sequenceDiagram
 ## Pydantic and Pydantic AI
 
 The application uses Pydantic for data validation. It uses Pydantic AI for the model calls and for structured output.
-
-```mermaid
-flowchart LR
-    subgraph Inputs ["Input Normalization"]
-        Raw["Raw Gmail API Resource"]
-        San["Sanitization Engine"]
-        EmailModel["SanitizedEmail (Pydantic Model)"]
-        Raw --> San --> EmailModel
-    end
-
-    subgraph PydanticAI ["Pydantic AI Framework"]
-        Prompt["Dynamic System & User Prompt"]
-        Provider["homelab-ai AITask"]
-        ChatModel["FallbackModel (Haiku, OpenRouter, local)"]
-        AgentCore["Agent[None, ClassificationResult]"]
-
-        EmailModel --> Prompt
-        Prompt --> AgentCore
-        Provider --> ChatModel --> AgentCore
-    end
-
-    subgraph Validation ["Structured Output & Guardrails"]
-        RawJSON["LLM JSON Response"]
-        ResultModel["ClassificationResult (Pydantic Model)"]
-        Guard["Confidence & Taxonomy Filter"]
-        FinalDecision["Label Decision (Approved / Quarantined)"]
-
-        AgentCore --> RawJSON --> ResultModel --> Guard --> FinalDecision
-    end
-```
 
 ### Data Models
 
@@ -208,65 +180,6 @@ An account can have few or no user labels, or an email can match no candidate la
 - Code guardrails: The code does three checks. It removes whitespace and leading or trailing `/` characters. It rejects labels longer than 40 characters and labels that start with `CATEGORY_`. A rejected label goes to quarantine.
 - Label creation: If the label is not in the account, the run calls `ensure_label_exists`, which creates the label through the Gmail API. The run then caches the label ID and adds the label to the candidate list for the remaining messages.
 - Quarantine: Spam, phishing, and ambiguous emails get the `QUARANTINE` label, which maps to `ai-review`.
-
-```mermaid
-stateDiagram-v2
-    [*] --> Unprocessed: Discovered by Gmail Query
-    Unprocessed --> Sanitizing: Fetch MIME & Clean Payload
-    Sanitizing --> Inferring: Submit to Pydantic AI Agent
-
-    state Inferring {
-        [*] --> ModelThinking: Model Reasoning Phase
-        ModelThinking --> JSONValidation: Structured Output Parse
-        JSONValidation --> [*]
-    }
-
-    Inferring --> ConfidenceCheck: Valid ClassificationResult
-
-    state ConfidenceCheck <<choice>>
-    ConfidenceCheck --> LabelEvaluation: Confidence >= 0.80
-    ConfidenceCheck --> Quarantined: Confidence < 0.80
-
-    state LabelEvaluation <<choice>>
-    LabelEvaluation --> ApprovedExisting: Label in Existing Taxonomy
-    LabelEvaluation --> DynamicProvisioning: New Canonical Label Proposed
-    LabelEvaluation --> Quarantined: QUARANTINE or Invalid Label
-
-    state DynamicProvisioning {
-        SanitizeLabel: Clean Whitespace & Check Length
-        EnsureGmailLabel: Gmail API createLabel If Missing
-        CacheLabelId: Cache ID in User Labels Matrix
-        SanitizeLabel --> EnsureGmailLabel
-        EnsureGmailLabel --> CacheLabelId
-    }
-
-    DynamicProvisioning --> ApprovedNew: Label Created / Verified
-
-    state ApprovedExisting {
-        ApplyExistingLabel: Add Existing User Label ID
-        ApplyExistingProcessed: Add ai-processed Label ID
-        ApplyExistingLabel --> ApplyExistingProcessed
-    }
-
-    state ApprovedNew {
-        ApplyCreatedLabel: Add Newly Provisioned Label ID
-        ApplyCreatedProcessed: Add ai-processed Label ID
-        ApplyCreatedLabel --> ApplyCreatedProcessed
-    }
-
-    state Quarantined {
-        ApplyReviewLabel: Add ai-review Label ID
-        ApplyProcessedQuarantine: Add ai-processed Label ID
-        LogAlert: Queue Item for Telegram Digest
-        ApplyReviewLabel --> ApplyProcessedQuarantine
-        ApplyProcessedQuarantine --> LogAlert
-    }
-
-    ApprovedExisting --> Completed: Batch Continuation
-    ApprovedNew --> Completed: Batch Continuation
-    Quarantined --> Completed: Batch Continuation
-    Completed --> [*]: All Emails Tagged & Alert Dispatched
-```
 
 ## 90-Day Archive Sweep
 

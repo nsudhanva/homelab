@@ -7,8 +7,6 @@ keywords:
   - pydantic ai drive
   - symmetrical family drive
   - claude haiku
-sidebar:
-  order: 20
 ---
 
 This guide tells how to run, configure, and monitor the Google Drive Organizer (`apps/drive-organizer/`).
@@ -80,7 +78,7 @@ cd apps/drive-organizer
 uv run python -m drive_organizer.main --dry-run --limit 10
 ```
 
-The app also accepts `--scope root|all` (default `root`), `--all` (the same as `--scope=all`), and `--account <nickname>`.
+The app also accepts `--scope root|all` (default `root`) and `--account <nickname>`.
 
 ## Step 5: Configure the Model Fallback
 

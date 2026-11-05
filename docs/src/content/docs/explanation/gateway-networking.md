@@ -8,8 +8,6 @@ keywords:
   - kubernetes tls termination
   - kubernetes ingress architecture
   - split horizon dns kubernetes
-sidebar:
-  order: 2
 ---
 
 This page tells how traffic goes from tailnet clients to the applications in the cluster.

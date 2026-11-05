@@ -9,8 +9,6 @@ keywords:
   - kubernetes app deployment
   - tailscale gateway ingress
   - externaldns annotation
-sidebar:
-  order: 3
 ---
 
 This guide tells how to deploy a workload from this repository through the ArgoCD ApplicationSets.

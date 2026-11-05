@@ -8,8 +8,6 @@ keywords:
   - kubernetes checklist
   - argocd status check
   - kubernetes maintenance commands
-sidebar:
-  order: 4
 ---
 
 Use these checklists to monitor the cluster and to examine it after a change or a reboot.

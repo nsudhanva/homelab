@@ -9,8 +9,6 @@ keywords:
   - argocd cd
   - github actions tailscale
   - kubernetes manifest validation
-sidebar:
-  order: 15
 ---
 
 This guide tells how GitHub Actions runs CI and how ArgoCD runs CD.

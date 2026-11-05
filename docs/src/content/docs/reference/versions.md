@@ -8,8 +8,6 @@ keywords:
   - envoy gateway version
   - helm chart versions
   - kubernetes component versions
-sidebar:
-  order: 3
 ---
 
 Keep these versions aligned when you upgrade a component.

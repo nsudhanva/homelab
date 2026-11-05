@@ -9,8 +9,6 @@ keywords:
   - headlamp homer filebrowser
   - home assistant actual budget
   - bitwarden homelab vault
-sidebar:
-  order: 2
 ---
 
 This reference lists the user workloads in the cluster. ArgoCD syncs each application through the `apps` ApplicationSet.

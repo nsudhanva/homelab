@@ -9,8 +9,6 @@ keywords:
   - gitops workflow
   - argocd applicationset
   - system upgrade controller
-sidebar:
-  order: 1
 ---
 
 The repository defines each layer of the homelab as code. A control loop applies each layer:

@@ -7,8 +7,7 @@ keywords:
   - bare metal worker node
   - ansible k3s agent
   - kubernetes node expansion
-sidebar:
-  order: 2
+  - multi-node k3s
 ---
 
 The cluster has one server node, `legion`, and no worker nodes. The repository has no `k3s_agents` inventory group and no agent role, so it cannot join a worker node.

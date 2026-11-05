@@ -10,8 +10,6 @@ keywords:
   - servicemonitor
   - kube-prometheus-stack
   - kubernetes metrics
-sidebar:
-  order: 10
 ---
 
 This guide installs the Prometheus stack with Grafana and Alertmanager. The Tailscale Gateway exposes the three web interfaces. Prometheus collects the Headlamp metrics.

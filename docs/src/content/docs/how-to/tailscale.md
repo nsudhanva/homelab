@@ -10,8 +10,6 @@ keywords:
   - externaldns cloudflare
   - cert-manager dns01
   - tailscale oauth
-sidebar:
-  order: 9
 ---
 
 This guide configures Tailscale on the node and exposes the cluster services to the tailnet through the Tailscale Gateway.

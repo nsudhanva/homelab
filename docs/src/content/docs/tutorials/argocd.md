@@ -8,8 +8,6 @@ keywords:
   - argocd bootstrap
   - kubernetes gitops
   - argocd auto sync
-sidebar:
-  order: 7
 ---
 
 ArgoCD applies the manifests in this repository to the cluster. It syncs the Kubernetes resources with `HEAD` of the repository (the `master` branch). The installed version is ArgoCD `v3.5.6`, pinned in `bootstrap/argocd/kustomization.yaml`.

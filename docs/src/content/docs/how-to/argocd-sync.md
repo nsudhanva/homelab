@@ -8,8 +8,6 @@ keywords:
   - argocd applicationset sync
   - argocd troubleshooting
   - argocd cli commands
-sidebar:
-  order: 4
 ---
 
 Use this guide to refresh the status of an application, start a sync, or repair drift. The `apps` and `infrastructure` ApplicationSets enable automated sync on each Application. Use a manual sync during troubleshooting.

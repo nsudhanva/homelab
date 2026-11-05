@@ -8,8 +8,6 @@ keywords:
   - drive organizer multi-account
   - vault google oauth
   - kubernetes gitops
-sidebar:
-  order: 21
 ---
 
 This guide adds a Google account to the AI workloads `apps/gmail-classifier` and `apps/drive-organizer`. You declare the account in a file, keep its credentials in Vault, and let ArgoCD deploy it.

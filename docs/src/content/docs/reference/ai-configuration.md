@@ -6,8 +6,6 @@ keywords:
   - AI_MODEL
   - anthropic workspace id
   - openrouter fallback
-sidebar:
-  order: 40
 ---
 
 All AI workloads read the same settings through `homelab_ai.AISettings`. The cluster defaults are in `packages/homelab-ai/kustomize/kustomization.yaml`.

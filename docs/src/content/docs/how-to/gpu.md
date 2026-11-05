@@ -7,8 +7,6 @@ keywords:
   - nvidia gpu operator
   - k3s cdi
   - jellyfin hardware transcoding
-sidebar:
-  order: 16
 ---
 
 The node `legion` has an NVIDIA GeForce GTX 1050 Ti Mobile GPU (Pascal architecture, 4GB VRAM). Three components give the GPU to Kubernetes pods. They are the NVIDIA Container Toolkit, the Container Device Interface (CDI), and the NVIDIA GPU Operator.

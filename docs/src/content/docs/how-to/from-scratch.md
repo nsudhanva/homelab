@@ -8,8 +8,6 @@ keywords:
   - ansible k3s automation
   - argocd gitops bootstrap
   - kubernetes homelab
-sidebar:
-  order: 1
 ---
 
 Use this guide to provision a bare-metal Kubernetes cluster on Ubuntu 26.04 with Ansible and K3s. This repository is the single source of truth. One command changes a machine with a base OS into a running cluster that ArgoCD manages.

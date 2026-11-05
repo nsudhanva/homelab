@@ -7,8 +7,6 @@ keywords:
   - sapphire reserve credits tracker
   - actual budget offers
   - unused card benefits
-sidebar:
-  order: 22
 ---
 
 Offers (`apps/offers/`) reads the transactions in Actual Budget each day. It shows which card credits are used and which are unused in the current period. It also sends Telegram reminders before unused credits expire. Open the dashboard at `https://offers.sudhanva.me`.
@@ -97,7 +95,6 @@ After the decisions, Offers applies these steps:
 - A credit moves to the period of the purchase that it pays back: the latest earlier purchase for the same offer, within 45 days. A credit that posts in the next month counts for the month of the purchase.
 - A credit that posts up to 60 days after the end date of an offer still counts.
 - In an offer with `promos`, each purchase in date order takes the first free promo whose `payee` matches it. A promo without `payee` takes a purchase only when no specific promo matches.
-- Offers in the same `group` share one pool of orders. Each purchase in a group stays with one offer only.
 
 The AI never overrules a rule. It sees a transaction only when no rule matched it. Offers keeps each AI answer in SQLite with the offer fingerprint. The AI sees each transaction once for each version of an offer. When you change an offer in the catalog, the AI decides its transactions again. Each sync asks the AI a maximum of 40 times (`OFFERS_AI_MAX_CALLS`). If the AI is not available, the transactions wait for the next sync.
 
@@ -268,7 +265,6 @@ Each offer has these fields:
 | `enrollment` | `true` if the offer needs enrollment or activation |
 | `uses` | The number of uses in a period, for an offer of equal uses. One qualifying purchase of a two-use offer shows it as partly used |
 | `promos` | Optional. A list of promos with a `name`, a `value`, and an optional `payee` regular expression. Offers sets `value` to their sum and `uses` to their number. Use it when the promos have different values or different merchants, for example the DoorDash promos |
-| `group` | Optional. Offers in the same group are separate promos that one order cannot share. Each purchase counts for the first offer in catalog order that matches it and has a use left |
 | `how_to_use` | A short instruction for the dashboard and the AI |
 | `detect.credit` | A rule for the credit that the issuer posts on the card |
 | `detect.usage` | A rule for a qualifying purchase. Set `scope: any` if a purchase on any account counts |

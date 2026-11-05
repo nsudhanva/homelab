@@ -7,8 +7,6 @@ keywords:
   - anthropic claude
   - llama-server kubernetes
   - gitops ai architecture
-sidebar:
-  order: 50
 ---
 
 All AI jobs in the homelab use one shared package, `packages/homelab-ai`. The package sends each request to Claude Haiku 5.5. If Claude Haiku 5.5 fails, the package tries OpenRouter and then the local model.

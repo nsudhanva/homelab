@@ -11,8 +11,6 @@ keywords:
   - cert-manager
   - external dns
   - envoy gateway
-sidebar:
-  order: 1
 ---
 
 This page lists each infrastructure component, its path, and its function.

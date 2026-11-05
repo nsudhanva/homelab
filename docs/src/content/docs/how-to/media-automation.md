@@ -9,8 +9,6 @@ keywords:
   - jellyfin shared pvc hardlinks
   - zero seeding bittorrent
   - bitwarden homelab vault
-sidebar:
-  order: 3
 ---
 
 This guide shows how to configure the media automation stack in the `media` namespace.

@@ -6,8 +6,6 @@ keywords:
   - kannada text to speech
   - bulbul v4 flash
   - google home kannada
-sidebar:
-  order: 8
 ---
 
 Home Assistant uses the Sarvam AI text-to-speech API to make Kannada speech. The Cast integration plays the audio on the Google Home speaker `media_player.living_room_speaker`.

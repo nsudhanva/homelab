@@ -5,8 +5,6 @@ keywords:
   - tailscale terraform reference
   - tailscale provider
   - terraform state r2
-sidebar:
-  order: 45
 ---
 
 `terraform/tailscale/` manages the tailnet with the [Tailscale Terraform provider](https://registry.terraform.io/providers/tailscale/tailscale/latest/docs). For the change procedure, refer to [Manage Tailscale with Terraform](/how-to/tailscale-terraform/).

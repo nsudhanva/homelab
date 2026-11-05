@@ -8,8 +8,6 @@ keywords:
   - gitops image automation
   - ghcr credentials
   - kustomization image override
-sidebar:
-  order: 6
 ---
 
 This guide configures ArgoCD Image Updater. Image Updater tracks container images and commits the updates to Git.

@@ -7,8 +7,6 @@ keywords:
   - infrastructure as code
   - ansible roles k3s
   - bare metal automation
-sidebar:
-  order: 4
 ---
 
 Ansible playbooks in this repository configure the bare-metal node. Make all node changes through the playbooks, not with commands on the node.

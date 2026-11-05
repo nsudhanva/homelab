@@ -7,8 +7,6 @@ keywords:
   - kubectl installation
   - bare metal cluster prerequisites
   - ubuntu 26.04 setup
-sidebar:
-  order: 2
 ---
 
 Prepare the operator workstation before you provision the cluster. Then make sure that the workstation can connect to the target node.

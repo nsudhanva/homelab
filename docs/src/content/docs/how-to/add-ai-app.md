@@ -6,8 +6,6 @@ keywords:
   - homelab-ai guide
   - pydantic-ai fallback
   - anthropic claude kubernetes
-sidebar:
-  order: 25
 ---
 
 This guide adds an AI workload, for example `apps/receipt-reader`. The workload uses `packages/homelab-ai`. The package gives it the shared model chain, the provider credentials, the fallback, and the retries. For the list of settings, see [AI Configuration Reference](/reference/ai-configuration/).

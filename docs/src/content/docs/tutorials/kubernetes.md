@@ -7,8 +7,6 @@ keywords:
   - bare metal kubernetes
   - local-path storage
   - nvidia cdi k3s
-sidebar:
-  order: 5
 ---
 
 In this tutorial, you provision the K3s control plane on the bare-metal node and start the GitOps control loop.

@@ -8,8 +8,6 @@ keywords:
   - kubernetes ui
   - headlamp metrics
   - tailscale gateway headlamp
-sidebar:
-  order: 17
 ---
 
 Headlamp is a Kubernetes UI. ArgoCD deploys it from `apps/headlamp/` as `app-headlamp`. The Tailscale Gateway exposes it at `headlamp.sudhanva.me`.

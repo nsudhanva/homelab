@@ -9,8 +9,6 @@ keywords:
   - external secrets validation
   - split horizon dns test
   - kubernetes health check
-sidebar:
-  order: 14
 ---
 
 This guide gives the checks for the cluster, GitOps sync, tailnet ingress, and External Secrets.

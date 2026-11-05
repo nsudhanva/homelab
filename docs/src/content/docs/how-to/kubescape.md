@@ -9,8 +9,6 @@ keywords:
   - kubernetes security posture
   - kubescape operator
   - container vulnerability scan
-sidebar:
-  order: 12
 ---
 
 This guide shows how to operate Kubescape in offline mode. In this mode, Kubescape does configuration scans and vulnerability scans in the cluster.

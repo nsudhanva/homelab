@@ -8,8 +8,6 @@ keywords:
   - actual budget argocd
   - personal finance homelab
   - bank sync actual budget
-sidebar:
-  order: 8
 ---
 
 This guide tells how the cluster deploys Actual Budget. It also tells how Actual Budget connects to bank feeds through SimpleFIN Bridge.

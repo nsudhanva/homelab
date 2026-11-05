@@ -7,8 +7,6 @@ keywords:
   - k3s storage partition
   - nvidia driver ubuntu
   - bare metal server setup
-sidebar:
-  order: 3
 ---
 
 This tutorial prepares a physical machine (node `legion`) with Ubuntu 26.04 LTS for use as a Kubernetes node.

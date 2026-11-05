@@ -7,8 +7,6 @@ keywords:
   - persistent volume claim
   - homelab storage architecture
   - nvme local storage
-sidebar:
-  order: 4
 ---
 
 The homelab uses the Local-Path Provisioner that K3s includes. This page tells how the provisioner creates volumes and where the data is on the host.

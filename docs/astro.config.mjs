@@ -5,6 +5,9 @@ import mermaid from 'astro-mermaid';
 
 export default defineConfig({
   site: 'https://homelab.sudhanva.me',
+  redirects: {
+    '/tutorials/join-workers': '/how-to/add-worker-node/',
+  },
   integrations: [
     sitemap(),
     mermaid(),
@@ -118,7 +121,6 @@ export default defineConfig({
               items: [
                 { label: 'K3s Bootstrap', slug: 'tutorials/kubernetes' },
                 { label: 'ArgoCD GitOps', slug: 'tutorials/argocd' },
-                { label: 'Add Workers', slug: 'tutorials/join-workers' },
               ],
             },
           ],

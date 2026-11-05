@@ -7,8 +7,6 @@ keywords:
   - llm finance classifier
   - transaction categorization
   - claude haiku
-sidebar:
-  order: 21
 ---
 
 Use this guide to configure, benchmark, run, and monitor the Actual Budget transaction classifier (`apps/actual-classifier/`).
@@ -22,7 +20,7 @@ The classifier gives each imported bank transaction a category and a one-word ta
 - Payee names: The classifier changes raw POS strings into readable payee names. For example, `TST*IDLY EXPRESS - MOUNT` becomes `Idly Express`, and `ACH Withdrawal COMCAST-XFINITY` becomes `Comcast`.
 - Confidence threshold: If the confidence of a prediction is below the threshold (default `0.60`), the classifier tags the transaction `#Unknown`. This prevents wrong categories on unclear charges. If no tag applies, for example on groceries or general shopping, the classifier writes no tag in the note.
 - Scope: The classifier processes only on-budget transactions that have no category or that have an `#Unknown` note. It skips transfers between accounts, off-budget accounts (brokerage and retirement), split parents, and starting balances.
-- Amount sign: A negative amount is an outflow, and a positive amount is an inflow. The classifier records a positive amount from a merchant as a refund in the category of that merchant.
+- Amount sign: A negative amount is an outflow, and a positive amount is an inflow. The prompt instructs the model to categorize merchant refunds with the merchant category.
 - Schedule: A Kubernetes CronJob runs the classifier each day at 03:00 (`0 3 * * *`), after the Gmail (01:00) and Drive (02:00) jobs. The CronJob uses `concurrencyPolicy: Forbid`, and each pod stops after its run.
 - Image: The `image-push (apps/actual-classifier)` CI job builds the image and pushes it to `ghcr.io/nsudhanva/homelab-actual-classifier`.
 
