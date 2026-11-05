@@ -15,6 +15,8 @@ sidebar:
 
 This guide shows how to configure the media automation stack in the `media` namespace.
 
+To add a movie or a TV show from a magnet link, refer to [Add a Movie or Show from a Magnet Link](/how-to/add-media-from-magnet/).
+
 ```mermaid
 flowchart LR
   Seerr["Seerr (Requests)"] --> Radarr["Radarr (Movies)"]

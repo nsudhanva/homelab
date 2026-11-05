@@ -134,6 +134,7 @@ export default defineConfig({
                 { label: 'Add Worker Node', slug: 'how-to/add-worker-node' },
                 { label: 'Deploy Apps', slug: 'how-to/deploy-apps' },
                 { label: 'Media Automation & VPN', slug: 'how-to/media-automation' },
+                { label: 'Add Media from a Magnet Link', slug: 'how-to/add-media-from-magnet' },
                 { label: 'Actual Budget', slug: 'how-to/actual-budget' },
                 { label: 'Sarvam TTS (Kannada)', slug: 'how-to/sarvam-tts' },
                 { label: 'Sync ArgoCD Apps', slug: 'how-to/argocd-sync' },
