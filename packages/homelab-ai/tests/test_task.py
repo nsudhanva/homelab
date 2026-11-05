@@ -133,9 +133,6 @@ def test_describe_lists_chain() -> None:
 def test_model_settings_only_include_overrides() -> None:
     assert task(ok()).agent.model_settings is None
     assert task(ok(), AI_TEMPERATURE=0.1).agent.model_settings == {"temperature": 0.1}
-
-
-def test_effort_maps_to_unified_thinking() -> None:
     assert task(ok(), AI_EFFORT="low").agent.model_settings == {"thinking": "low"}
 
 

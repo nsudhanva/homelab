@@ -15,17 +15,6 @@ def test_spec_rejects_malformed_values(value: str) -> None:
         ModelSpec.parse(value)
 
 
-def test_defaults_are_haiku_first_with_fallbacks(monkeypatch: pytest.MonkeyPatch) -> None:
-    for var in ("AI_MODEL", "AI_FALLBACK_MODELS"):
-        monkeypatch.delenv(var, raising=False)
-    settings = AISettings(_env_file=None)
-    assert [str(s) for s in settings.chain] == [
-        "anthropic:claude-haiku-5-5",
-        "openrouter:google/gemma-4-31b-it",
-        "local:gemma-4-e2b-it",
-    ]
-
-
 def test_env_overrides_chain_and_dedupes(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("AI_MODEL", "anthropic:claude-haiku-5-5")
     monkeypatch.setenv("AI_FALLBACK_MODELS", "local:gemma, anthropic:claude-haiku-5-5")

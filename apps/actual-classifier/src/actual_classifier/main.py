@@ -200,7 +200,6 @@ def run_benchmark(classifier: TransactionClassifier) -> float:
 
 
 def parse_args() -> argparse.Namespace:
-    """Parse command line arguments."""
     parser = argparse.ArgumentParser(description="Actual Budget AI Transaction Classifier")
     parser.add_argument(
         "--dry-run",
@@ -222,7 +221,6 @@ def parse_args() -> argparse.Namespace:
 
 
 def main() -> None:
-    """Main execution workflow."""
     args = parse_args()
     settings = Settings()
 

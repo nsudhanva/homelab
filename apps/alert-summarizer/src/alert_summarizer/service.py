@@ -105,11 +105,10 @@ class AlertSummarizerService:
         alert_context = self.format_alert_context(alert)
         logger.info(f"Processing alert: {alert.alertname} (status={alert.status})")
 
-        # Attempt AI summarization via Pydantic AI
         ai_summary = await self.agent.summarize_alert(alert_context, alert.is_resolved)
 
         if ai_summary is not None:
-            logger.info(f"Pydantic AI summarization succeeded for {alert.alertname}")
+            logger.debug(f"Pydantic AI summarization succeeded for {alert.alertname}")
             msg = self.format_ai_message(alert, ai_summary)
         else:
             logger.warning(f"Using fallback template for {alert.alertname}")

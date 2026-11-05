@@ -7,13 +7,11 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="ALERT_", env_file=".env", extra="ignore")
 
-    # Cluster Settings
     cluster_name: str = "homelab-k3s"
     environment: str = "production"
 
     dedup_window_seconds: float = 3000.0
 
-    # Telegram Settings
     telegram_bot_token: SecretStr | None = None
     telegram_bot_token_file: Path | None = Path("/etc/secrets/token")
     telegram_chat_id: int = 7341944813

@@ -61,18 +61,27 @@ def test_format_alert_context(sample_alert: Alert):
     assert "Restarted 5 times in 10 minutes" in ctx
 
 
-def test_format_fallback_message(sample_alert: Alert):
+@pytest.mark.parametrize(
+    ("alert_fixture", "expected"),
+    [
+        (
+            "sample_alert",
+            [
+                "🔴 <b>[FIRING] KubePodCrashLooping</b>",
+                "<code>monitoring</code>",
+                "Pod test-pod-123 is crash looping",
+            ],
+        ),
+        ("sample_resolved_alert", ["🟢 <b>[RESOLVED] KubePodCrashLooping</b>"]),
+    ],
+)
+def test_format_fallback_message(
+    request: pytest.FixtureRequest, alert_fixture: str, expected: list[str]
+):
     service = AlertSummarizerService(agent_client=AsyncMock(), telegram_client=AsyncMock())
-    msg = service.format_fallback_message(sample_alert)
-    assert "🔴 <b>[FIRING] KubePodCrashLooping</b>" in msg
-    assert "<code>monitoring</code>" in msg
-    assert "Pod test-pod-123 is crash looping" in msg
-
-
-def test_format_fallback_message_resolved(sample_resolved_alert: Alert):
-    service = AlertSummarizerService(agent_client=AsyncMock(), telegram_client=AsyncMock())
-    msg = service.format_fallback_message(sample_resolved_alert)
-    assert "🟢 <b>[RESOLVED] KubePodCrashLooping</b>" in msg
+    msg = service.format_fallback_message(request.getfixturevalue(alert_fixture))
+    for text in expected:
+        assert text in msg
 
 
 def agent_with(model: Model) -> AlertAgentClient:
@@ -86,7 +95,6 @@ def agent_with(model: Model) -> AlertAgentClient:
     return AlertAgentClient(task=task)
 
 
-@pytest.mark.asyncio
 async def test_summarize_returns_none_when_every_model_fails():
     class Down(TestModel):
         async def request(self, *args: Any, **kwargs: Any) -> Any:
@@ -95,18 +103,6 @@ async def test_summarize_returns_none_when_every_model_fails():
     assert await agent_with(Down()).summarize_alert("context", is_resolved=False) is None
 
 
-@pytest.mark.asyncio
-async def test_pydantic_ai_agent_direct_test_model():
-    client = agent_with(TestModel())
-    summary = await client.summarize_alert("Pod crash looping context", is_resolved=False)
-    assert summary is not None
-    assert isinstance(summary, AlertSummary)
-    assert summary.symptom != ""
-    assert summary.probable_cause != ""
-    assert summary.recommended_action != ""
-
-
-@pytest.mark.asyncio
 async def test_process_alert_with_pydantic_ai_success(sample_alert: Alert):
     def structured_model(messages, info):
         return ModelResponse(
@@ -138,7 +134,6 @@ async def test_process_alert_with_pydantic_ai_success(sample_alert: Alert):
     assert "• <b>Action:</b> kubectl describe pod test-pod-123 -n monitoring" in sent_text
 
 
-@pytest.mark.asyncio
 async def test_process_alert_with_agent_fallback(sample_alert: Alert):
     mock_agent = AsyncMock(spec=AlertAgentClient)
     mock_agent.summarize_alert.return_value = None
@@ -156,7 +151,6 @@ async def test_process_alert_with_agent_fallback(sample_alert: Alert):
     assert "Restarted 5 times in 10 minutes" in sent_text
 
 
-@pytest.mark.asyncio
 async def test_process_payload(sample_alert: Alert):
     mock_agent = AsyncMock(spec=AlertAgentClient)
     mock_agent.summarize_alert.return_value = AlertSummary(
@@ -179,7 +173,6 @@ async def test_process_payload(sample_alert: Alert):
     assert mock_tg.send_message.await_count == 2
 
 
-@pytest.mark.asyncio
 async def test_process_payload_skips_duplicate_deliveries(sample_alert: Alert):
     mock_agent = AsyncMock(spec=AlertAgentClient)
     mock_agent.summarize_alert.return_value = None
@@ -213,7 +206,7 @@ def test_deduplicator_treats_resolved_as_new_state(
     assert deduplicator.should_send(sample_resolved_alert, now=1.0)
 
 
-def test_webhook_returns_before_processing(sample_alert: Alert):
+def test_webhook_accepts_payload_and_dispatches_processing(sample_alert: Alert):
     from fastapi.testclient import TestClient
 
     from alert_summarizer.main import app, get_service

@@ -33,20 +33,16 @@ class ActualBudgetService:
         ) as actual:
             session = actual.session
 
-            # 1. Fetch categories map
             categories = q.get_categories(session)
             cat_map = {c.name.lower(): c.id for c in categories if c.name}
 
-            # 2. Fetch accounts map
             accounts = q.get_accounts(session)
             acc_map = {a.id: a.name for a in accounts}
             offbudget_accounts = {a.id for a in accounts if a.offbudget}
 
-            # 3. Fetch payees map
             payees = q.get_payees(session)
             payee_map = {p.id: p.name for p in payees}
 
-            # 4. Fetch all transactions
             transactions = q.get_transactions(session)
 
             # Filter for unclassified or #Unknown transactions
@@ -89,11 +85,7 @@ class ActualBudgetService:
                 current_notes_clean = (tx.notes or "").replace("#Unknown", "").strip()
                 if classification.tag:
                     tag_str = f"#{classification.tag.value}"
-                    new_notes = (
-                        f"{current_notes_clean} {tag_str}".strip()
-                        if current_notes_clean
-                        else tag_str
-                    )
+                    new_notes = f"{current_notes_clean} {tag_str}".strip()
                 else:
                     new_notes = current_notes_clean
 
