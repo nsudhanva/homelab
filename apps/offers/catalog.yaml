@@ -1,15 +1,5 @@
 ignore_accounts: checking|savings|hysa|debit|brokerage|\bira\b|crypto|stock plan|individual|joint
 
-merchant_rules:
-  online_retail: \bamazon\b(?!.*(fresh|web services))|audible
-  groceries: whole foods|amazon fresh|safeway|trader joe|wegmans|costco|farmers market|mandi|grocer
-  rideshare: \buber\b(?!.*eats)|\blyft\b|waymo
-  transit: \bmta\b|omny|clipper|\bmbta\b|\bbart\b|caltrain|metro|pay ?by ?phone|parking
-  gas: chevron|shell|speedway|exxon|mobil|\barco\b|\b76\b|world oil|valero
-  drugstore: walgreens|cvs|duane reade|rite aid
-  streaming: netflix|disney\+|hulu|paramount|spotify|fox one|youtube premium|max\b
-  phone: t-mobile|verizon|at&t
-
 cards:
   - id: amex-gold
     name: American Express Gold Card
@@ -20,7 +10,6 @@ cards:
     rewards:
       currency: points
       program: Membership Rewards
-      point_value: 0.6
       base: 1
       note: >-
         Points at 0.6 cents each, their value as a statement credit. They are worth 1 cent on
@@ -41,7 +30,6 @@ cards:
           note: booked directly with the airline or on Amex Travel
         - name: Prepaid hotels on Amex Travel
           rate: 5
-          payee: amex travel|american express travel
           note: prepaid car rentals and Airbnb stays on Amex Travel earn 2x, which bank data cannot separate
 
   - id: chase-sapphire-reserve
@@ -54,7 +42,6 @@ cards:
     rewards:
       currency: points
       program: Ultimate Rewards
-      point_value: 1.0
       base: 1
       note: >-
         Points at 1 cent each, their cash value. Points Boost on Chase Travel can make some
@@ -62,7 +49,7 @@ cards:
       bonuses:
         - name: Chase Travel
           rate: 8
-          payee: chase travel
+          note: booked through Chase Travel
         - name: Flights and hotels booked direct
           rate: 4
           types: [airline, hotel]
@@ -71,7 +58,7 @@ cards:
           types: [dining]
         - name: Lyft
           rate: 5
-          payee: \blyft\b
+          note: Lyft rides
           valid_to: 2027-09-30
 
   - id: chase-freedom-flex
@@ -84,7 +71,6 @@ cards:
         - name: 5% categories (Q3 2026)
           rate: 5
           types: [gas, transit, entertainment]
-          payee: united way
           cap: {amount: 1500, period: quarter, after_rate: 1}
           valid_from: 2026-07-01
           valid_to: 2026-09-30
@@ -93,7 +79,6 @@ cards:
         - name: 5% categories (Q4 2026)
           rate: 5
           types: [groceries, dining]
-          payee: red cross
           cap: {amount: 1500, period: quarter, after_rate: 1}
           valid_from: 2026-10-01
           valid_to: 2026-12-31
@@ -101,7 +86,7 @@ cards:
           note: grocery stores (not Walmart or Target), dining, American Red Cross
         - name: Chase Travel
           rate: 5
-          payee: chase travel
+          note: booked through Chase Travel
         - name: Dining
           rate: 3
           types: [dining]
@@ -110,7 +95,7 @@ cards:
           types: [drugstore]
         - name: Lyft
           rate: 2
-          payee: \blyft\b
+          note: Lyft rides
           valid_to: 2027-09-30
 
   - id: discover-it
@@ -150,10 +135,10 @@ cards:
       bonuses:
         - name: Apple
           rate: 3
-          payee: \bapple\b|app store|itunes
+          note: Apple Store, apple.com, App Store, and Apple services
         - name: Apple Pay partners
           rate: 3
-          payee: ace hardware|booking\.com|chargepoint|duane reade|exxon|\bmobil\b|hertz|\bnike\b|\buber\b|walgreens
+          note: with Apple Pay at Ace Hardware, Booking.com, ChargePoint, Duane Reade, Exxon, Mobil, Hertz, Nike, Uber, Uber Eats, and Walgreens
 
   - id: robinhood-gold-card
     name: Robinhood Gold Card
@@ -162,7 +147,6 @@ cards:
     rewards:
       currency: points
       program: Robinhood points
-      point_value: 1.0
       base: 3
       note: >-
         3 points on everything with an active Robinhood Gold membership. Points are worth
@@ -178,10 +162,10 @@ cards:
       bonuses:
         - name: Amazon, Whole Foods, and Audible
           rate: 5
-          payee: \bamazon\b(?!.*web services)|whole foods|audible
+          note: needs a Prime membership
         - name: Chase Travel
           rate: 5
-          payee: chase travel
+          note: booked through Chase Travel
         - name: Gas, restaurants, and local transit
           rate: 2
           types: [gas, dining, transit, rideshare]

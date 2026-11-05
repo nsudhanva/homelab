@@ -90,7 +90,11 @@ function Cards() {
                       <span className="font-medium text-foreground">
                         Earns{card.rewards.program ? ` ${card.rewards.program}` : ""}
                       </span>
-                      <span className="tabular text-success">{money(card.rewards.year_value)} this year (est.)</span>
+                      {card.total && card.total.since && (
+                        <span className="tabular text-success">
+                          {money(card.total.captured)} in credits since {monthYear(card.total.since)}
+                        </span>
+                      )}
                     </div>
                     <ul className="space-y-1 text-muted-foreground">
                       {card.rewards.rules.map((b) => (

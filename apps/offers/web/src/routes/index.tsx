@@ -110,9 +110,9 @@ function Hero({ data }: { data: Tracker }) {
             </span>
           )}
           {c.missed > 0 && <Pill look="missed" text={`${money(c.missed)} missed last month`} />}
-          {data.rewards_month > 0 && (
+          {data.captured_total > 0 && (
             <span className="inline-flex items-center gap-2 rounded-full border bg-background px-3 py-1">
-              <Coins className="size-3.5 text-success" /> {money(data.rewards_month)} rewards earned (est.)
+              <Coins className="size-3.5 text-success" /> {money(data.captured_total)} captured so far, all cards
             </span>
           )}
         </div>
@@ -216,7 +216,17 @@ function CardGrid({ card, months }: { card: TrackerCard; months: string[] }) {
         <span className={cn("h-8 w-12 shrink-0 rounded-md bg-gradient-to-br shadow-sm", issuerAccent(card.issuer))} />
         <div className="min-w-0 flex-1">
           <div className="font-semibold">{shortCard(card.name)}</div>
-          <div className="text-xs text-muted-foreground">{holderLabel(card.account)}</div>
+          <div className="text-xs text-muted-foreground">
+            {holderLabel(card.account)}
+            {card.total && card.total.since && (
+              <>
+                {" · "}
+                <span className="tabular font-medium text-success">{money(card.total.captured)}</span> captured since{" "}
+                {monthYear(card.total.since)} ({card.total.months} month{card.total.months === 1 ? "" : "s"})
+              </>
+            )}
+          </div>
+          {card.rewards && <Rates rewards={card.rewards} />}
         </div>
         {fee > 0 && <FeeYear card={card} />}
       </header>
@@ -245,7 +255,6 @@ function CardGrid({ card, months }: { card: TrackerCard; months: string[] }) {
             {card.rows.map((row) => (
               <OfferLine key={row.offer_id} row={row} card={card} last={last} />
             ))}
-            {card.rewards && <RewardsLine rewards={card.rewards} last={last} />}
           </tbody>
         </table>
       </div>
@@ -257,69 +266,16 @@ function rateText(r: CardRewards, rate: number): string {
   return r.currency === "cash" ? `${rate}%` : `${rate}x`;
 }
 
-function RewardsLine({ rewards: r, last }: { rewards: CardRewards; last: string }) {
+function Rates({ rewards: r }: { rewards: CardRewards }) {
+  const items = [...r.rules.map((b) => `${rateText(r, b.rate)} ${b.name.toLowerCase()}`), `${rateText(r, r.base)} everything else`];
   return (
-    <tr>
-      <td className="sticky left-0 z-10 border-t bg-card px-4 py-3 align-middle sm:px-5">
-        <div className="flex items-center gap-1.5 font-medium leading-tight">
-          <Coins className="size-3.5 shrink-0 text-muted-foreground" />
-          Rewards earned
-        </div>
-        <div className="mt-0.5 text-xs text-muted-foreground">
-          {rateText(r, r.base)} on everything
-          {r.rules.length > 0 && `, up to ${rateText(r, Math.max(...r.rules.map((b) => b.rate)))}`}
-          {r.currency === "points" && ` · ${r.point_value}¢ a point`}
-        </div>
-        <div className="mt-0.5 text-[11px] text-muted-foreground/80">Estimated from purchases</div>
-      </td>
-      {r.months.map((m) => (
-        <td key={m.month} className={cn("border-t px-1 py-2 text-center align-middle", m.month === last && "bg-accent/40")}>
-          {m.spend > 0 ? (
-            <Popover>
-              <PopoverTrigger asChild>
-                <button
-                  type="button"
-                  className="mx-auto flex w-full flex-col items-center gap-0.5 rounded-lg px-1 py-1.5 transition hover:bg-accent/60"
-                >
-                  <span className="tabular text-sm font-semibold text-success">{money(m.value)}</span>
-                  <span className="tabular text-[10px] text-muted-foreground">on {money(Math.round(m.spend))}</span>
-                  {m.missed > 0.5 && <span className="tabular text-[10px] text-warning">+{money(m.missed)} missed</span>}
-                </button>
-              </PopoverTrigger>
-              <PopoverContent side="top" className="w-80 space-y-2 text-left">
-                <div className="font-medium">Rewards in {new Date(`${m.month}-01T00:00:00`).toLocaleDateString("en-US", { month: "long", year: "numeric" })}</div>
-                <div className="text-xs text-muted-foreground">
-                  {money(m.value)} on {money(m.spend)} of purchases
-                  {r.currency === "points" && ` · ${Math.round(m.points).toLocaleString()} points`}
-                </div>
-                <ul className="space-y-1 text-xs">
-                  {m.by_bonus.map((b) => (
-                    <li key={b.name} className="flex justify-between gap-2">
-                      <span>
-                        {b.name} <span className="text-muted-foreground">({rateText(r, b.rate)})</span>
-                      </span>
-                      <span className="tabular text-muted-foreground">
-                        {money(b.value)} on {money(Math.round(b.spend))}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-                {m.missed > 0.5 && (
-                  <p className="rounded-md bg-warning-soft px-2.5 py-1.5 text-xs text-warning">
-                    {money(m.missed)} more if the quarterly bonus had been activated.
-                  </p>
-                )}
-                {r.note && <p className="text-[11px] text-muted-foreground">{r.note}</p>}
-              </PopoverContent>
-            </Popover>
-          ) : (
-            <div className="mx-auto grid h-12 place-items-center">
-              <Mark look="none" />
-            </div>
-          )}
-        </td>
+    <div className="mt-1.5 flex flex-wrap gap-1.5" title={r.note ?? undefined}>
+      {items.map((t) => (
+        <span key={t} className="rounded-full bg-muted px-2 py-0.5 text-[11px] text-muted-foreground">
+          {t}
+        </span>
       ))}
-    </tr>
+    </div>
   );
 }
 

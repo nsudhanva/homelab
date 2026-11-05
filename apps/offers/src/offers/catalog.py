@@ -209,14 +209,12 @@ class Cap(BaseModel):
 
 
 class Bonus(BaseModel):
-    """A bonus earning rate. A purchase qualifies when its payee matches ``payee`` or its merchant
-    type is in ``types``."""
+    """A bonus earning rate on the purchases in ``types`` or at the merchants in ``note``."""
 
     model_config = ConfigDict(extra="forbid", frozen=True)
 
     name: str
     rate: float = Field(gt=0)
-    payee: str | None = None
     types: tuple[MerchantType, ...] = ()
     cap: Cap | None = None
     valid_from: date | None = None
@@ -224,40 +222,15 @@ class Bonus(BaseModel):
     activation_offer: str | None = None
     note: str | None = None
 
-    @field_validator("payee")
-    @classmethod
-    def _compiles(cls, value: str | None) -> str | None:
-        return value if value is None else _check_pattern(value)
-
-    @model_validator(mode="after")
-    def _check(self) -> "Bonus":
-        if not self.payee and not self.types:
-            raise ValueError(f"bonus {self.name!r} needs payee or types")
-        return self
-
-    def active_on(self, day: date) -> bool:
-        if self.valid_from and day < self.valid_from:
-            return False
-        return not (self.valid_to and day > self.valid_to)
-
-    def applies(self, fields: Iterable[str], merchant_type: MerchantType | None) -> bool:
-        if merchant_type is not None and merchant_type in self.types:
-            return True
-        if self.payee:
-            return any(re.search(self.payee, f, re.IGNORECASE) for f in fields if f)
-        return False
-
 
 class Rewards(BaseModel):
     """How a card earns on purchases. ``base`` and every bonus ``rate`` are percent back for a
-    cash card, or points per dollar for a points card. ``point_value`` is the cash value of one
-    point in cents."""
+    cash card, or points per dollar for a points card."""
 
     model_config = ConfigDict(extra="forbid", frozen=True)
 
     currency: Literal["cash", "points"] = "cash"
     program: str | None = None
-    point_value: float = Field(default=1.0, gt=0)
     base: float = Field(ge=0)
     bonuses: tuple[Bonus, ...] = ()
     note: str | None = None
@@ -296,15 +269,7 @@ class Catalog(BaseModel):
 
     cards: tuple[Card, ...]
     offers: tuple[Offer, ...] = ()
-    merchant_rules: dict[MerchantType, str] = {}
     ignore_accounts: str | None = None
-
-    @field_validator("merchant_rules")
-    @classmethod
-    def _rules_compile(cls, value: dict[MerchantType, str]) -> dict[MerchantType, str]:
-        for pattern in value.values():
-            _check_pattern(pattern)
-        return value
 
     @field_validator("ignore_accounts")
     @classmethod
@@ -345,3 +310,25 @@ class Catalog(BaseModel):
 def load_catalog(path: Path) -> Catalog:
     data = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
     return Catalog.model_validate(data)
+
+
+def describe(bonus: Bonus) -> str:
+    """A short plain description of where a bonus applies."""
+    parts = []
+    if bonus.types:
+        parts.append(", ".join(t.value.replace("_", " ") for t in bonus.types))
+    if bonus.note:
+        parts.append(bonus.note)
+    if bonus.cap:
+        period = {"quarter": "quarter", "year": "year", "cardmember_year": "card year"}
+        parts.append(
+            f"up to ${bonus.cap.amount:,.0f} a {period[bonus.cap.period]}, "
+            f"then {bonus.cap.after_rate:g}"
+        )
+    if bonus.activation_offer:
+        parts.append("needs activation")
+    if bonus.valid_from or bonus.valid_to:
+        start = bonus.valid_from.strftime("%b %-d, %Y") if bonus.valid_from else "now"
+        end = bonus.valid_to.strftime("%b %-d, %Y") if bonus.valid_to else "ongoing"
+        parts.append(f"{start} to {end}")
+    return "; ".join(parts)

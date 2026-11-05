@@ -3,7 +3,7 @@ from datetime import date
 from conftest import txn
 from fastapi.testclient import TestClient
 
-from offers.catalog import Catalog
+from offers.catalog import Bonus, Card, Catalog, MerchantType, Rewards
 from offers.config import Settings
 from offers.models import Account, AIDecision, Candidate, OverrideStatus
 from offers.notify import notify
@@ -279,53 +279,59 @@ def test_fee_year_and_cycles(store, catalog, settings, accounts) -> None:
     assert detail["cycle"] == rows["gold-travel"]["cycle"]
 
 
-def test_tracker_shows_rewards_and_cards_without_offers(store, settings, accounts) -> None:
-    cat = Catalog.model_validate(
-        {
-            "merchant_rules": {"dining": "coffee"},
-            "ignore_accounts": "savings",
-            "cards": [
-                {
-                    "id": "gold",
-                    "name": "Gold Card",
-                    "issuer": "Example",
-                    "account": "gold card",
-                    "rewards": {
-                        "currency": "points",
-                        "point_value": 2,
-                        "base": 1,
-                        "bonuses": [{"name": "Dining", "rate": 4, "types": ["dining"]}],
-                    },
-                },
-                {
-                    "id": "other",
-                    "name": "Other Card",
-                    "issuer": "Example",
-                    "account": "other card",
-                    "rewards": {"base": 2},
-                },
-            ],
-        }
+def test_tracker_shows_rates_totals_and_cards_without_offers(
+    store, catalog, settings, accounts
+) -> None:
+    cards = (
+        *(
+            c.model_copy(
+                update={
+                    "rewards": Rewards(
+                        currency="points",
+                        program="Example points",
+                        base=1,
+                        bonuses=(Bonus(name="Dining", rate=4, types=(MerchantType.DINING,)),),
+                    )
+                }
+            )
+            if c.id == "gold"
+            else c
+            for c in catalog.cards
+        ),
+        Card(
+            id="other",
+            name="Other Card",
+            issuer="Example",
+            account="other card",
+            rewards=Rewards(base=2),
+        ),
     )
+    cat = Catalog(cards=cards, offers=catalog.offers, ignore_accounts="savings")
     accts = [*accounts, Account("a-sav", "Savings"), Account("a-new", "New Card")]
-    snapshot = Snapshot(
-        accts,
-        [
-            txn("a", "a-gold", date(2026, 11, 2), -10, "Coffee Co"),
-            txn("b", "a-gold", date(2026, 11, 3), -20, "Hardware"),
-            txn("c", "a-other", date(2026, 11, 3), -50, "Hardware"),
-        ],
-    )
-    sync(store, cat, settings, snapshot, date(2026, 11, 5), None, None)
+    txns = [
+        txn("p", "a-gold", date(2026, 9, 3), -12, "Coffee Co"),
+        txn("c", "a-gold", date(2026, 9, 4), 7, "Coffee Co"),
+        txn("o", "a-other", date(2026, 10, 3), -50, "Hardware"),
+    ]
+    sync(store, cat, settings, Snapshot(accts, txns), date(2026, 11, 5), None, None)
     client = TestClient(
         create_app(settings, cat, web_dist=settings.db_path.parent / "none", clock=TODAY)
     )
     grid = client.get("/api/tracker").json()
-    cards = {c["card_id"]: c for c in grid["cards"]}
-    assert set(cards) == {"gold", "other"}
-    assert cards["other"]["rows"] == []
-    gold = cards["gold"]["rewards"]["months"][-1]
-    assert (gold["spend"], gold["points"], gold["value"]) == (30, 60, 1.2)
-    assert cards["other"]["rewards"]["months"][-1]["value"] == 1.0
-    assert grid["rewards_month"] == 2.2
-    assert grid["unmatched_accounts"] == ["Flex Card", "New Card"]
+    by_id = {c["card_id"]: c for c in grid["cards"]}
+    assert by_id["other"]["rows"] == []
+    assert by_id["other"]["rewards"] == {
+        "currency": "cash",
+        "program": None,
+        "base": 2.0,
+        "rules": [],
+        "note": None,
+    }
+    assert by_id["gold"]["rewards"]["rules"][0] == {
+        "name": "Dining",
+        "rate": 4.0,
+        "detail": "dining",
+    }
+    assert by_id["gold"]["total"] == {"captured": 7.0, "since": "2026-09-03", "months": 3}
+    assert grid["captured_total"] == 7.0
+    assert grid["unmatched_accounts"] == ["New Card"]

@@ -12,8 +12,8 @@ from typing import Protocol
 from homelab_ai import AITask, HomelabAIError
 from pydantic import BaseModel, Field
 
-from offers.catalog import Card, MerchantType, Offer
-from offers.models import AIDecision, Candidate, EvidenceKind, Txn
+from offers.catalog import Card, Offer
+from offers.models import AIDecision, Candidate, EvidenceKind
 
 logger = logging.getLogger(__name__)
 
@@ -77,7 +77,8 @@ class OfferMatcher:
             f"Date: {txn.date.isoformat()}\n"
             f"Amount: ${abs(txn.amount):.2f}\n"
             f"Payee: {txn.payee}\n"
-            f"Bank description: {txn.description}"
+            f"Bank description: {txn.description}\n"
+            f"Budget category: {txn.category or 'none'}"
         )
         try:
             out = self.task.run_sync(prompt, stable_prefix=_offer_text(offer, card))
@@ -85,58 +86,3 @@ class OfferMatcher:
             logger.warning("AI decision failed for offer %s: %s", offer.id, exc)
             return None
         return AIDecision(out.match, out.confidence, out.reason.strip())
-
-
-MERCHANT_INSTRUCTIONS = """You classify one merchant from a credit card statement into one type.
-
-Types:
-- dining: restaurants, cafes, bars, coffee shops, fast food, food delivery from restaurants
-- groceries: supermarkets and grocery stores, farmers markets
-- gas: gas stations and EV charging
-- transit: public transit, trains, buses, subway, tolls, parking
-- rideshare: Uber, Lyft, taxis
-- airline: airlines
-- hotel: hotels and lodging
-- travel: travel agencies, car rental, cruises, other travel
-- drugstore: pharmacies and drugstores
-- streaming: video and music streaming services
-- entertainment: events, tickets, theaters, museums, attractions
-- online_retail: online marketplaces such as Amazon
-- retail: stores for clothing, home, electronics, and general goods
-- utilities: electricity, gas, water, internet, cable
-- phone: mobile phone plans
-- subscription: software and other recurring subscriptions
-- health: doctors, clinics, therapy, fitness
-- other: anything else
-
-Rules:
-- Bank descriptions are abbreviated and noisy. Look through prefixes such as "SQ *" or "TST*".
-- Use the budget category only as a hint.
-- If you are not sure, give a low confidence.
-"""
-
-
-class MerchantDecision(BaseModel):
-    type: MerchantType
-    confidence: float = Field(ge=0.0, le=1.0)
-
-
-class MerchantClassifier:
-    def __init__(self, task: AITask[MerchantDecision] | None = None) -> None:
-        self.task = task or AITask(
-            name="offers-merchant-type",
-            output_type=MerchantDecision,
-            instructions=MERCHANT_INSTRUCTIONS,
-        )
-
-    def classify(self, txn: Txn) -> MerchantDecision | None:
-        prompt = (
-            f"Payee: {txn.payee}\n"
-            f"Bank description: {txn.description}\n"
-            f"Budget category: {txn.category or 'none'}"
-        )
-        try:
-            return self.task.run_sync(prompt)
-        except HomelabAIError as exc:
-            logger.warning("Merchant classification failed: %s", exc)
-            return None

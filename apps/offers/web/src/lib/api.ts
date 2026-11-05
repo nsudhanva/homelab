@@ -148,26 +148,15 @@ export type TrackerCard = {
   };
   rows: TrackerRow[];
   rewards: CardRewards | null;
-};
-
-export type RewardMonth = {
-  month: string;
-  spend: number;
-  value: number;
-  points: number;
-  missed: number;
-  by_bonus: { name: string; rate: number; spend: number; value: number }[];
+  total: { captured: number; since: string | null; months: number } | null;
 };
 
 export type CardRewards = {
   currency: "cash" | "points";
   program: string | null;
-  point_value: number;
   base: number;
   rules: { name: string; rate: number; detail: string }[];
   note: string | null;
-  months: RewardMonth[];
-  year_value: number;
 };
 
 export type Tracker = {
@@ -186,7 +175,7 @@ export type Tracker = {
   };
   last_run: { started_at: string; finished_at: string | null; status: string; message: string } | null;
   cards: TrackerCard[];
-  rewards_month: number;
+  captured_total: number;
   unmatched_accounts: string[];
   unlinked: Txn[];
 };

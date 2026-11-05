@@ -12,10 +12,10 @@ from fastapi.responses import FileResponse, PlainTextResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from offers import rewards, views
-from offers.catalog import Catalog, Kind, load_catalog
+from offers import views
+from offers.catalog import Catalog, Kind, describe, load_catalog
 from offers.config import Settings
-from offers.engine import OfferStatus, anniversaries, card_accounts, instances, unlinked_credits
+from offers.engine import OfferStatus, card_accounts, instances, unlinked_credits
 from offers.models import Account, OverrideStatus, Txn
 from offers.store import Store
 from offers.sync import evaluate
@@ -155,22 +155,6 @@ class FeeOut(BaseModel):
     year_captured: float
 
 
-class BonusOut(BaseModel):
-    name: str
-    rate: float
-    spend: float
-    value: float
-
-
-class RewardMonthOut(BaseModel):
-    month: str
-    spend: float
-    value: float
-    points: float
-    missed: float
-    by_bonus: list[BonusOut]
-
-
 class RuleOut(BaseModel):
     name: str
     rate: float
@@ -180,12 +164,15 @@ class RuleOut(BaseModel):
 class RewardsOut(BaseModel):
     currency: str
     program: str | None
-    point_value: float
     base: float
     rules: list[RuleOut]
     note: str | None
-    months: list[RewardMonthOut]
-    year_value: float
+
+
+class TotalOut(BaseModel):
+    captured: float
+    since: date | None
+    months: int
 
 
 class TrackerCard(BaseModel):
@@ -197,6 +184,7 @@ class TrackerCard(BaseModel):
     year_captured: float
     fee: FeeOut
     rewards: RewardsOut | None = None
+    total: TotalOut | None = None
     rows: list[TrackerRow]
 
 
@@ -218,7 +206,7 @@ class TrackerOut(BaseModel):
     current: MonthSummary
     last_run: RunOut | None
     cards: list[TrackerCard]
-    rewards_month: float = 0
+    captured_total: float = 0
     unmatched_accounts: list[str] = []
     unlinked: list[TxnOut] = []
 
@@ -476,51 +464,33 @@ def tracker(store: Store, catalog: Catalog, today: date, months_back: int) -> Tr
     order = {(c.id, a.id): i for i, (c, a) in enumerate(pairs)}
     cards = dict(sorted(cards.items(), key=lambda kv: order.get(kv[0], 0)))
 
-    earned = rewards.earnings(
-        catalog,
-        accounts,
-        txns,
-        store.merchant_types(),
-        store.overrides(),
-        anniversaries(catalog, accounts, txns),
-    )
-    monthly = rewards.by_month(earned)
+    first_seen: dict[str, date] = {}
+    for t in txns:
+        if t.account_id not in first_seen or t.date < first_seen[t.account_id]:
+            first_seen[t.account_id] = t.date
     for (card_id, account_id), tc in cards.items():
-        program = catalog.card(card_id).rewards
-        if program is None:
-            continue
-        mine = [e for e in earned if e.account_id == account_id]
-        months_out = []
-        for key in months:
-            m = monthly.get(account_id, {}).get(key)
-            months_out.append(
-                RewardMonthOut(
-                    month=key,
-                    spend=(m.spend_cents if m else 0) / 100,
-                    value=round((m.value_cents if m else 0) / 100, 2),
-                    points=round(m.points if m else 0, 1),
-                    missed=round((m.missed_cents if m else 0) / 100, 2),
-                    by_bonus=[
-                        BonusOut(name=n, rate=b[0], spend=b[1] / 100, value=round(b[2] / 100, 2))
-                        for n, b in sorted(
-                            (m.by_bonus if m else {}).items(), key=lambda kv: -kv[1][2]
-                        )
-                    ],
-                )
+        since = first_seen.get(account_id)
+        tc.total = TotalOut(
+            captured=sum(
+                r.captured_cents
+                for r in rows
+                if r.instance.card.id == card_id and r.instance.account.id == account_id
             )
-        tc.rewards = RewardsOut(
-            currency=program.currency,
-            program=program.program,
-            point_value=program.point_value,
-            base=program.base,
-            rules=[
-                RuleOut(name=b.name, rate=b.rate, detail=rewards.describe(b))
-                for b in program.bonuses
-            ],
-            note=program.note,
-            months=months_out,
-            year_value=round(sum(e.value_cents for e in mine if e.day.year == today.year) / 100, 2),
+            / 100,
+            since=since,
+            months=len(month_list(since, today)) if since else 0,
         )
+        program = catalog.card(card_id).rewards
+        if program is not None:
+            tc.rewards = RewardsOut(
+                currency=program.currency,
+                program=program.program,
+                base=program.base,
+                rules=[
+                    RuleOut(name=b.name, rate=b.rate, detail=describe(b)) for b in program.bonuses
+                ],
+                note=program.note,
+            )
 
     now = [r for r in rows if r.window.contains(today) and r.instance.offer.kind is Kind.CREDIT]
     last_month = [
@@ -546,13 +516,7 @@ def tracker(store: Store, catalog: Catalog, today: date, months_back: int) -> Tr
         ),
         last_run=RunOut(**run.__dict__) if run else None,
         cards=list(cards.values()),
-        rewards_month=sum(
-            m.value
-            for c in cards.values()
-            if c.rewards
-            for m in c.rewards.months
-            if m.month == current_key
-        ),
+        captured_total=sum(c.total.captured for c in cards.values() if c.total),
         unmatched_accounts=[
             a.name
             for a in accounts

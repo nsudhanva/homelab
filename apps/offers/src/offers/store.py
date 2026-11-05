@@ -9,7 +9,6 @@ from dataclasses import dataclass
 from datetime import UTC, date, datetime
 from pathlib import Path
 
-from offers.catalog import MerchantType
 from offers.engine import AIKey, DecisionKey
 from offers.models import (
     Account,
@@ -360,22 +359,6 @@ class Store:
             return
         self._write(
             [("INSERT OR REPLACE INTO overrides VALUES (?, ?, ?, ?, ?)", (*key, status, _now()))]
-        )
-
-    def merchant_types(self) -> dict[str, MerchantType]:
-        rows = self.conn.execute("SELECT merchant, type FROM merchant_types")
-        return {r["merchant"]: MerchantType(r["type"]) for r in rows}
-
-    def save_merchant_type(
-        self, merchant: str, kind: MerchantType, source: str, confidence: float
-    ) -> None:
-        self._write(
-            [
-                (
-                    "INSERT OR REPLACE INTO merchant_types VALUES (?, ?, ?, ?, ?)",
-                    (merchant, kind.value, source, confidence, _now()),
-                )
-            ]
         )
 
     def was_sent(self, key: str) -> bool:
