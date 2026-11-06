@@ -1,0 +1,14 @@
+# Offers
+
+> A private dashboard that tracks which credit card credits and offers are used or unused in each period, from bank transactions in Actual Budget.
+
+## Pages
+
+- [Tracker](https://offers.sudhanva.me/): each card, its offers as rows, and the last six months as columns
+- [Cards](https://offers.sudhanva.me/cards): fee years, earning rates, and credits that no offer explains
+- [AI log](https://offers.sudhanva.me/review): low-confidence AI decisions
+
+## API
+
+- [GET /api/tracker](https://offers.sudhanva.me/api/tracker): the tracker grid as JSON
+- [GET /api/review](https://offers.sudhanva.me/api/review): the AI log as JSON

@@ -329,7 +329,7 @@ function OfferLine({ row, card, last }: { row: TrackerRow; card: TrackerCard; la
               : `${money(row.value)} / ${PER[row.period] ?? row.period}${row.uses > 1 ? ` · ${row.uses} uses` : ""}`}
           </div>
           {row.next_reset && row.period !== "once" && (
-            <div className={cn("mt-0.5 text-[11px]", row.period === "cardmember_year" ? "text-info" : "text-muted-foreground/80")}>
+            <div className={cn("mt-0.5 text-[11px]", row.period === "cardmember_year" ? "text-info" : "text-muted-foreground")}>
               {row.period === "cardmember_year" ? "Card year · " : ""}resets {shortDate(row.next_reset)}
               {row.period !== "monthly" && `, ${new Date(`${row.next_reset}T00:00:00`).getFullYear()}`}
             </div>

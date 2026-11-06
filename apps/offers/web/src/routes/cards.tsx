@@ -113,7 +113,7 @@ function Cards() {
                         Everything else
                       </li>
                     </ul>
-                    {card.rewards.note && <p className="text-muted-foreground/80">{card.rewards.note}</p>}
+                    {card.rewards.note && <p className="text-muted-foreground">{card.rewards.note}</p>}
                   </div>
                 )}
 

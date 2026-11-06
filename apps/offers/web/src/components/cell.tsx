@@ -116,7 +116,7 @@ export function CellCaption({ cell, l }: { cell: Cell; l: Look }) {
     if (cell.days_left !== null && cell.days_left <= 7) tone = "text-warning font-semibold";
   } else if (l === "missed") {
     text = money(cell.remaining || cell.value);
-    tone = "text-destructive/80";
+    tone = "text-destructive";
   } else if (l === "unknown") text = "no data";
   else if (l === "pending") text = "pending";
   else if (l === "skipped") text = "skipped";

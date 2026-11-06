@@ -1,0 +1,16 @@
+{
+  "entries": [
+    {
+      "identifier": "urn:air:offers.sudhanva.me:dashboard:offers",
+      "displayName": "Offers",
+      "description": "Credit card credits and offers, used and unused, by card and month.",
+      "type": "text/markdown; profile=\"urn:air:agent-skills\"",
+      "url": "https://offers.sudhanva.me/llms.txt",
+      "representativeQueries": [
+        "which card credits are unused this month",
+        "how much have I captured from my Amex Gold credits",
+        "when does the Sapphire Reserve travel credit reset"
+      ]
+    }
+  ]
+}
