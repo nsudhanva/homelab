@@ -71,7 +71,7 @@ function Cards() {
                       <span className="tabular text-2xl font-semibold text-success">{money(captured)}</span>
                       <span className="tabular text-xs text-muted-foreground">{Math.round(coverage)}% of the fee</span>
                     </div>
-                    <Progress value={Math.min(100, coverage)} className="h-2" />
+                    <Progress value={Math.min(100, coverage)} className="h-2" aria-label="Share of the annual fee earned back" />
                     <div className="text-xs text-muted-foreground">
                       {f.source === "fee" && f.fee_date
                         ? `Annual fee posted ${longDate(f.fee_date)}.`
@@ -90,7 +90,7 @@ function Cards() {
                       <span className="font-medium text-foreground">
                         Earns{card.rewards.program ? ` ${card.rewards.program}` : ""}
                       </span>
-                      {card.total && card.total.since && (
+                      {card.rows.length > 0 && card.total && card.total.since && (
                         <span className="tabular text-success">
                           {money(card.total.captured)} in credits since {monthYear(card.total.since)}
                         </span>

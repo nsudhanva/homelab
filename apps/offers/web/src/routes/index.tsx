@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link, createFileRoute } from "@tanstack/react-router";
 import { AlertTriangle, Check, ChevronRight, Coins, Hand, KeyRound, ReceiptText, RotateCcw, SkipForward, Smartphone, TriangleAlert } from "lucide-react";
-import { useState } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import { CellCaption, LOOK_LABEL, Mark, look, type Look } from "@/components/cell";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -210,15 +210,21 @@ const PER: Record<string, string> = {
 function CardGrid({ card, months }: { card: TrackerCard; months: string[] }) {
   const fee = card.annual_fee;
   const last = months[months.length - 1];
+  const scroller = useRef<HTMLDivElement>(null);
+  useLayoutEffect(() => {
+    const el = scroller.current;
+    if (el) el.scrollLeft = el.scrollWidth;
+  }, [months.length]);
+  const hasOffers = card.rows.length > 0;
   return (
     <Card className="gap-0 overflow-hidden py-0">
-      <header className="flex flex-wrap items-center gap-3 border-b px-4 py-3.5 sm:px-5">
+      <header className={cn("flex flex-wrap items-center gap-3 px-4 py-3.5 sm:px-5", hasOffers && "border-b")}>
         <span className={cn("h-8 w-12 shrink-0 rounded-md bg-gradient-to-br shadow-sm", issuerAccent(card.issuer))} />
         <div className="min-w-0 flex-1">
           <div className="font-semibold">{shortCard(card.name)}</div>
           <div className="text-xs text-muted-foreground">
             {holderLabel(card.account)}
-            {card.total && card.total.since && (
+            {hasOffers && card.total && card.total.since && (
               <>
                 {" · "}
                 <span className="tabular font-medium text-success">{money(card.total.captured)}</span> captured since{" "}
@@ -230,18 +236,19 @@ function CardGrid({ card, months }: { card: TrackerCard; months: string[] }) {
         </div>
         {fee > 0 && <FeeYear card={card} />}
       </header>
-      <div className="overflow-x-auto">
+      {hasOffers && (
+      <div ref={scroller} className="overflow-x-auto overscroll-x-contain">
         <table className="w-full border-separate border-spacing-0 text-sm">
           <thead>
             <tr>
-              <th className="sticky left-0 z-10 min-w-40 bg-card px-4 py-2 text-left text-xs font-medium text-muted-foreground sm:min-w-56 sm:px-5">
+              <th className="sticky left-0 z-10 min-w-36 bg-card px-4 py-2 text-left text-xs font-medium text-muted-foreground sm:min-w-56 sm:px-5">
                 Offer
               </th>
               {months.map((m) => (
                 <th
                   key={m}
                   className={cn(
-                    "min-w-16 px-1 py-2 text-center text-xs font-medium text-muted-foreground",
+                    "min-w-[3.75rem] px-1 py-2 text-center text-xs font-medium text-muted-foreground sm:min-w-16",
                     m === last && "bg-accent/60 text-foreground",
                   )}
                 >
@@ -258,6 +265,7 @@ function CardGrid({ card, months }: { card: TrackerCard; months: string[] }) {
           </tbody>
         </table>
       </div>
+      )}
     </Card>
   );
 }
