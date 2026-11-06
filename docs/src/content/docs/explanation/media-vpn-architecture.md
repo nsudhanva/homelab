@@ -134,3 +134,13 @@ flowchart LR
 File system events (`inotify`) can be lost across container mount boundaries. Thus, Radarr and Sonarr send a webhook notification to Jellyfin after each import.
 
 When an import completes, Radarr sends a notification to `http://jellyfin.media.svc:80`. The `jellyfin` Service forwards port 80 to container port 8096. You set up this connection in the Radarr and Sonarr UI. The [media automation guide](/how-to/media-automation/#step-8-configure-jellyfin-library-scan-notifications) shows the procedure. Jellyfin then starts a library scan on the directory of the new item.
+
+## Client Connections
+
+Jellyfin clients (Android TV, phone, and web) connect to `https://jellyfin.sudhanva.me`. The Tailscale gateway sends the request to the `jellyfin` Service, and the Service sends it to the pod that runs at that time. Thus, a new pod name or pod IP does not change the client connection.
+
+A client identifies the server by its server ID. Jellyfin keeps this ID in `/config/data/device.txt` on the `jellyfin-config` volume, so the ID stays the same when the pod restarts.
+
+The Deployment sets `hostname: jellyfin`. Jellyfin uses the hostname as the server name when the server name in the dashboard is empty. Without this setting, the server name is the pod name, and it changes with each rollout.
+
+The Deployment uses the `Recreate` strategy, because only one Jellyfin process can use the database at a time. During a rollout, the server is not available until the new pod is ready. Playback stops for that time, and clients connect again when the server is available.

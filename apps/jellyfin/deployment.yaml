@@ -15,6 +15,7 @@ spec:
       labels:
         app: jellyfin
     spec:
+      hostname: jellyfin
       automountServiceAccountToken: false
       securityContext:
         seccompProfile:
