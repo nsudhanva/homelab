@@ -1,12 +1,12 @@
 import { useQuery } from "@tanstack/react-query";
 import { Link, createFileRoute } from "@tanstack/react-router";
 import { AlertTriangle, Check, ChevronRight, Coins, Hand, KeyRound, ReceiptText, RotateCcw, SkipForward, Smartphone, TriangleAlert } from "lucide-react";
-import { useLayoutEffect, useRef, useState } from "react";
+import { createContext, useContext, useLayoutEffect, useRef, useState, type Dispatch, type SetStateAction } from "react";
 import { CellCaption, LOOK_LABEL, Mark, look, type Look } from "@/components/cell";
 import { Card } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Popover, PopoverAnchor, PopoverContent } from "@/components/ui/popover";
 import {
   trackerApi,
   type CardRewards,
@@ -39,10 +39,16 @@ export const Route = createFileRoute("/")({
   component: TrackerPage,
 });
 
+type Selected = { cell: Cell; row: TrackerRow; card: TrackerCard; el: HTMLButtonElement };
+
+const SelectCell = createContext<Dispatch<SetStateAction<Selected | null>>>(() => {});
+
 function TrackerPage() {
   const { data } = useQuery({ queryKey: trackerApi.key(MONTHS), queryFn: () => trackerApi.get(MONTHS) });
+  const [selected, setSelected] = useState<Selected | null>(null);
   if (!data) return <TrackerSkeleton />;
   return (
+    <SelectCell.Provider value={setSelected}>
     <div className="space-y-6">
       <Hero data={data} />
       <Resets cards={data.cards} />
@@ -57,6 +63,8 @@ function TrackerPage() {
         </p>
       )}
     </div>
+    <CellPanel selected={selected} onClose={() => setSelected(null)} />
+    </SelectCell.Provider>
   );
 }
 
@@ -351,12 +359,86 @@ function OfferLine({ row, card, last }: { row: TrackerRow; card: TrackerCard; la
   );
 }
 
+function fractionOf(cell: Cell): number {
+  return cell.uses > 1 ? cell.used / cell.uses : cell.value ? cell.captured / cell.value : 0;
+}
+
+function warns(cell: Cell, l: Look): boolean {
+  return cell.elsewhere > 0 && (l === "open" || l === "missed");
+}
+
 function CellView({ cell, row, card, highlight }: { cell: Cell; row: TrackerRow; card: TrackerCard; highlight: boolean }) {
-  const [open, setOpen] = useState(false);
-  const mark = useCellMark();
+  const select = useContext(SelectCell);
   const l = look(cell);
-  const fraction = cell.uses > 1 ? cell.used / cell.uses : cell.value ? cell.captured / cell.value : 0;
-  const warn = cell.elsewhere > 0 && (l === "open" || l === "missed");
+  return (
+    <td colSpan={cell.span} className={cn("border-t px-1 py-2 text-center align-middle", highlight && "bg-accent/40")}>
+      {cell.state ? (
+        <button
+          type="button"
+          aria-haspopup="dialog"
+          aria-label={`${row.name}, ${cell.period_label}: ${LOOK_LABEL[l]}`}
+          onClick={(e) => {
+            const el = e.currentTarget;
+            select((prev) => (prev?.el === el ? null : { cell, row, card, el }));
+          }}
+          className="block w-full rounded-lg transition hover:bg-accent/60 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+        >
+          <div
+            className={cn(
+              "relative mx-auto flex flex-col items-center gap-1 rounded-lg px-1 py-1.5",
+              cell.span > 1 && "flex-row justify-center gap-2 border bg-background/60 px-3",
+            )}
+          >
+            <Mark look={l} fraction={fractionOf(cell)} />
+            <div className={cn("flex flex-col items-center", cell.span > 1 && "items-start")}>
+              <CellCaption cell={cell} l={l} />
+              {cell.span > 1 && cell.period_label && (
+                <span className="mt-0.5 text-[10px] text-muted-foreground">{cell.period_label}</span>
+              )}
+            </div>
+            {warns(cell, l) && <span className="absolute top-0.5 right-0.5 size-2 rounded-full bg-warning ring-2 ring-card" />}
+            {cell.override && <Hand className="absolute right-0.5 bottom-0.5 size-3 text-muted-foreground" />}
+          </div>
+        </button>
+      ) : (
+        <div className="mx-auto grid h-12 place-items-center">
+          <Mark look="none" />
+        </div>
+      )}
+    </td>
+  );
+}
+
+function CellPanel({ selected, onClose }: { selected: Selected | null; onClose: () => void }) {
+  const anchor = useRef<HTMLButtonElement | null>(null);
+  const mark = useCellMark();
+  if (selected) anchor.current = selected.el;
+  return (
+    <Popover open={selected !== null} onOpenChange={(o) => !o && onClose()}>
+      <PopoverAnchor virtualRef={anchor} />
+      {selected && (
+        <PopoverContent
+          side="top"
+          className="w-72 space-y-3 text-left"
+          onInteractOutside={(e) => {
+            if (e.target instanceof Node && selected.el.contains(e.target)) e.preventDefault();
+          }}
+          onCloseAutoFocus={(e) => {
+            e.preventDefault();
+            anchor.current?.focus();
+          }}
+        >
+          <PanelBody {...selected} mark={mark} onDone={onClose} />
+        </PopoverContent>
+      )}
+    </Popover>
+  );
+}
+
+function PanelBody({ cell, row, card, mark, onDone }: Selected & { mark: ReturnType<typeof useCellMark>; onDone: () => void }) {
+  const l = look(cell);
+  const fraction = fractionOf(cell);
+  const warn = warns(cell, l);
   const activation = row.kind === "activation";
   const canMark = !cell.override && cell.state !== null && ["unused", "partial", "pending", "to_activate"].includes(cell.state);
   const offerId = cell.offer_id ?? row.offer_id;
@@ -371,95 +453,58 @@ function CellView({ cell, row, card, highlight }: { cell: Cell; row: TrackerRow;
       name: row.name,
       label: cell.period_label ?? "",
     });
-    setOpen(false);
+    onDone();
   };
-  const content = (
-    <div
-      className={cn(
-        "relative mx-auto flex flex-col items-center gap-1 rounded-lg px-1 py-1.5",
-        cell.span > 1 && "flex-row justify-center gap-2 border bg-background/60 px-3",
-      )}
-    >
-      <Mark look={l} fraction={fraction} />
-      <div className={cn("flex flex-col items-center", cell.span > 1 && "items-start")}>
-        <CellCaption cell={cell} l={l} />
-        {cell.span > 1 && cell.period_label && (
-          <span className="mt-0.5 text-[10px] text-muted-foreground">{cell.period_label}</span>
-        )}
-      </div>
-      {warn && <span className="absolute top-0.5 right-0.5 size-2 rounded-full bg-warning ring-2 ring-card" />}
-      {cell.override && <Hand className="absolute right-0.5 bottom-0.5 size-3 text-muted-foreground" />}
-    </div>
-  );
   return (
-    <td colSpan={cell.span} className={cn("border-t px-1 py-2 text-center align-middle", highlight && "bg-accent/40")}>
-      {cell.state ? (
-        <Popover open={open} onOpenChange={setOpen}>
-          <PopoverTrigger asChild>
-            <button
-              type="button"
-              aria-label={`${row.name}, ${cell.period_label}: ${LOOK_LABEL[l]}`}
-              className="block w-full rounded-lg transition hover:bg-accent/60 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-            >
-              {content}
-            </button>
-          </PopoverTrigger>
-          <PopoverContent side="top" className="w-72 space-y-3 text-left">
-            <div>
-              <div className="font-medium">{row.name}</div>
-              <div className="text-xs text-muted-foreground">{cell.period_label}</div>
-            </div>
-            <div className="flex items-center gap-2 text-sm">
-              <Mark look={l} size="sm" fraction={fraction} />
-              <span>
-                {LOOK_LABEL[l]}
-                {cell.captured > 0 && ` · ${money(cell.captured)} captured`}
-                {cell.remaining > 0 && ` · ${money(cell.remaining)} ${l === "missed" ? "missed" : "left"}`}
-              </span>
-            </div>
-            <p className="rounded-md bg-muted px-2.5 py-1.5 text-xs text-muted-foreground">{row.cycle}</p>
-            {cell.override && <p className="text-xs text-muted-foreground">You marked this period yourself.</p>}
-            {cell.data_from && (
-              <p className="text-xs text-muted-foreground">
-                Your Actual Budget data starts {cell.data_from}. Use before that date is not visible.
-              </p>
-            )}
-            {warn && (
-              <p className="text-xs text-warning">
-                {cell.elsewhere} matching order{cell.elsewhere === 1 ? " was" : "s were"} paid with another card. Pay
-                with this card to use the credit.
-              </p>
-            )}
-            {canMark && (
-              <div className="grid grid-cols-2 gap-2">
-                <Button size="sm" disabled={mark.isPending} onClick={() => send("used")}>
-                  <Check className="size-4" /> {activation ? "I activated it" : "I used it"}
-                </Button>
-                <Button size="sm" variant="outline" disabled={mark.isPending} onClick={() => send("ignored")}>
-                  <SkipForward className="size-4" /> Not interested
-                </Button>
-              </div>
-            )}
-            {cell.override && (
-              <Button size="sm" variant="outline" className="w-full" disabled={mark.isPending} onClick={() => send(null)}>
-                <RotateCcw className="size-4" /> Undo my mark
-              </Button>
-            )}
-            <Link
-              to="/offers/$offerId/$accountId"
-              params={{ offerId, accountId: card.account.id }}
-              className="flex items-center justify-between rounded-md px-1 py-1 text-xs text-muted-foreground hover:text-foreground"
-            >
-              History and transactions <ChevronRight className="size-3.5" />
-            </Link>
-          </PopoverContent>
-        </Popover>
-      ) : (
-        <div className="mx-auto grid h-12 place-items-center">
-          <Mark look="none" />
+    <>
+      <div>
+        <div className="font-medium">{row.name}</div>
+        <div className="text-xs text-muted-foreground">{cell.period_label}</div>
+      </div>
+      <div className="flex items-center gap-2 text-sm">
+        <Mark look={l} size="sm" fraction={fraction} />
+        <span>
+          {LOOK_LABEL[l]}
+          {cell.captured > 0 && ` · ${money(cell.captured)} captured`}
+          {cell.remaining > 0 && ` · ${money(cell.remaining)} ${l === "missed" ? "missed" : "left"}`}
+        </span>
+      </div>
+      <p className="rounded-md bg-muted px-2.5 py-1.5 text-xs text-muted-foreground">{row.cycle}</p>
+      {cell.override && <p className="text-xs text-muted-foreground">You marked this period yourself.</p>}
+      {cell.data_from && (
+        <p className="text-xs text-muted-foreground">
+          Your Actual Budget data starts {cell.data_from}. Use before that date is not visible.
+        </p>
+      )}
+      {warn && (
+        <p className="text-xs text-warning">
+          {cell.elsewhere} matching order{cell.elsewhere === 1 ? " was" : "s were"} paid with another card. Pay with
+          this card to use the credit.
+        </p>
+      )}
+      {canMark && (
+        <div className="grid grid-cols-2 gap-2">
+          <Button size="sm" disabled={mark.isPending} onClick={() => send("used")}>
+            <Check className="size-4" /> {activation ? "I activated it" : "I used it"}
+          </Button>
+          <Button size="sm" variant="outline" disabled={mark.isPending} onClick={() => send("ignored")}>
+            <SkipForward className="size-4" /> Not interested
+          </Button>
         </div>
       )}
-    </td>
+      {cell.override && (
+        <Button size="sm" variant="outline" className="w-full" disabled={mark.isPending} onClick={() => send(null)}>
+          <RotateCcw className="size-4" /> Undo my mark
+        </Button>
+      )}
+      <Link
+        to="/offers/$offerId/$accountId"
+        params={{ offerId, accountId: card.account.id }}
+        className="flex items-center justify-between rounded-md px-1 py-1 text-xs text-muted-foreground hover:text-foreground"
+      >
+        History and transactions <ChevronRight className="size-3.5" />
+      </Link>
+    </>
   );
 }
 
