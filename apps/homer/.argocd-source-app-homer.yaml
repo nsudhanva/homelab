@@ -1,0 +1,3 @@
+kustomize:
+  images:
+  - b4bz/homer:v26.11.1
