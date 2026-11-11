@@ -1,5 +1,5 @@
 ---
-title: Deploy and Manage Actual Budget with SimpleFIN Sync
+title: Actual Budget with SimpleFIN Sync
 description: Deploy Actual Budget with ArgoCD, keep its data on local-path storage, expose it through the Tailscale Gateway, and connect bank accounts through SimpleFIN Bridge.
 keywords:
   - actual budget kubernetes

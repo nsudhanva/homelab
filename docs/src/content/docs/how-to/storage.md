@@ -1,5 +1,5 @@
 ---
-title: Persistent Storage with K3s Local-Path Provisioner
+title: K3s Persistent Storage with Local-Path
 description: Configure and manage persistent storage in the homelab cluster with the K3s local-path provisioner on the SSD storage path.
 keywords:
   - k3s storage

@@ -46,6 +46,17 @@ Preview the production build locally:
 bun run preview
 ```
 
+## Container Image
+
+The `Dockerfile` builds the site and serves `dist/` with nginx. The server configuration is in `nginx/default.conf`:
+
+- Requests to `docs.sudhanva.me` get a 301 redirect to the same path on `homelab.sudhanva.me`.
+- Redirects use relative `Location` headers, so they keep HTTPS behind the gateway.
+- Requests for old Markdown URLs, such as `/how-to/how-to/vault.md`, get a 301 redirect to the live page. The build runs `scripts/md-redirects.mjs`, which writes this map from the pages in `dist/`.
+- Unknown paths return the Starlight 404 page with status 404.
+
+Each page sets its own canonical URL from `site` in `astro.config.mjs`. Do not add a global canonical link in `head`.
+
 ## Documentation Structure
 
 The documentation uses the [Divio documentation system](https://docs.divio.com/documentation-system/):

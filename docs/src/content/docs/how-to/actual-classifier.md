@@ -1,5 +1,5 @@
 ---
-title: How to Auto-Classify Actual Budget Transactions
+title: Auto-Classify Actual Budget Transactions
 description: Configure, benchmark, and run the AI transaction classifier for Actual Budget, which uses Claude Haiku through the homelab-ai model chain.
 keywords:
   - actual budget classifier

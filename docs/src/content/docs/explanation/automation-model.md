@@ -1,5 +1,5 @@
 ---
-title: GitOps and Automation Model with Ansible and ArgoCD
+title: GitOps Model with Ansible and ArgoCD
 description: How Ansible, ArgoCD, the System Upgrade Controller, ArgoCD Image Updater, and Terraform each manage one layer of the homelab.
 keywords:
   - gitops automation

@@ -64,32 +64,21 @@ export default defineConfig({
           },
         },
         {
-          tag: 'link',
-          attrs: {
-            rel: 'canonical',
-            href: 'https://homelab.sudhanva.me',
-          },
-        },
-        {
           tag: 'script',
           attrs: {
             type: 'application/ld+json',
           },
           content: JSON.stringify({
             '@context': 'https://schema.org',
-            '@type': 'TechArticle',
-            'headline': 'Bare Metal Kubernetes Homelab',
-            'description': 'Complete guide to building a bare-metal K3s Kubernetes cluster on Ubuntu 26.04 LTS with ArgoCD GitOps, Envoy Gateway, and Ansible.',
+            '@type': 'WebSite',
+            'name': 'Bare-Metal K3s Homelab',
+            'url': 'https://homelab.sudhanva.me/',
+            'description': 'Guides and reference for a bare-metal K3s Kubernetes cluster on Ubuntu 26.04 LTS with ArgoCD GitOps, Envoy Gateway, and Ansible.',
             'author': {
               '@type': 'Person',
               'name': 'Sudhanva Narayana',
+              'url': 'https://sudhanva.me/',
             },
-            'publisher': {
-              '@type': 'Organization',
-              'name': 'homelab',
-              'url': 'https://github.com/nsudhanva/homelab',
-            },
-            'mainEntityOfPage': 'https://homelab.sudhanva.me',
           }),
         },
       ],

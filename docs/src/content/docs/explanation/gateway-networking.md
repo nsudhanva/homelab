@@ -1,5 +1,5 @@
 ---
-title: Kubernetes Gateway API and Tailscale Networking
+title: Gateway API and Tailscale Networking
 description: How traffic goes from tailnet clients through Tailscale, Envoy Gateway, and HTTPRoutes to cluster services, with TLS termination and split-horizon DNS.
 keywords:
   - kubernetes gateway api

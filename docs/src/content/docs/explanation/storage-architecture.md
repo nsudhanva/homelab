@@ -1,5 +1,5 @@
 ---
-title: Persistent Storage Architecture with Local-Path Provisioner
+title: Storage Architecture with Local-Path
 description: How the homelab stores persistent data with the K3s Local-Path Provisioner on the host SSD.
 keywords:
   - k3s local-path provisioner

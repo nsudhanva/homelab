@@ -1,5 +1,5 @@
 ---
-title: How to Add a Google Account to the AI Workloads
+title: How to Add a Google Account to AI Workloads
 description: Add a Google account to Gmail Classifier and Drive Organizer through the account matrix in apps/accounts.yaml, Vault, and ArgoCD.
 keywords:
   - multi-account google
