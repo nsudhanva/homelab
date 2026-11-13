@@ -28,7 +28,7 @@ A multi-node bare-metal Kubernetes cluster on Ubuntu 26.04 LTS. It uses K3s. Arg
   - **How-To Guides**: Problem-oriented (e.g., "How to add a worker node").
   - **Reference**: Information-oriented (e.g., "Version matrix").
   - **Explanation**: Understanding-oriented (e.g., "GitOps Workflow explanation").
-- Build custom apps on the frozen stack in `docs/src/content/docs/reference/app-stack.md` (React, TanStack Router, Query, and Table, shadcn/ui, Tailwind, Vite, Bun; FastAPI, SQLite, uv). Upgrade a shared package in all apps in one change. `scripts/check-app-stack.py` runs in pre-commit and fails when apps differ
+- Build custom apps on the frozen stack in `docs/src/content/docs/reference/app-stack.md` (React, TanStack Router, Query, and Table, shadcn/ui, Tailwind, Vite, Bun; FastAPI, SQLite, uv). Change UI components only in `packages/web-ui`, then run `scripts/sync-web-ui.py`. Upgrade a shared package in all apps in one change. `scripts/check-app-stack.py` runs in pre-commit and fails when apps differ
 - For all Python projects and microservices in `apps/`, use `uv` to manage packages and virtual environments. Use `ruff` for linting and formatting, and `ty` for static type checks. Always include `ruff` and `ty` in the dev dependencies of the project (`pyproject.toml`). Before you commit, make sure that `uv run ruff check`, `uv run ruff format --check`, and `uv run ty check` pass with no errors.
 
 ## Don'ts
@@ -58,7 +58,7 @@ homelab/
 │   └── root.yaml            # Entrypoint
 ├── infrastructure/          # Cluster components (storage, networking, etc.)
 ├── apps/                    # User workloads
-├── packages/                # Shared monorepo libraries (e.g. homelab-ai)
+├── packages/                # Shared libraries (homelab-ai, web-ui)
 ├── ansible/                # Ansible automation playbooks, roles, and inventory
 ├── terraform/               # Terraform for services outside the cluster (tailscale/)
 ├── scripts/                # Setup scripts (referenced by README)

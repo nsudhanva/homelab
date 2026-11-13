@@ -4,8 +4,10 @@
 Rules (docs/src/content/docs/reference/app-stack.md):
 - Every web app pins the frozen core packages with exact versions, and a package that two
   web apps use has the same version in both.
-- Shared frontend files (configs, theme, ui components, utils) are byte-identical across web
-  apps; vite.config.ts and the Dockerfile are identical after the app name is replaced.
+- Every web app holds an exact copy of the shared UI library (packages/web-ui/src) and no
+  other ui component. scripts/sync-web-ui.py makes the copies.
+- tsconfig.json and components.json are identical across web apps; vite.config.ts and the
+  Dockerfile are identical after the app name is replaced.
 - A Python package locked by two projects has the same version in both uv.lock files, and
   every project has the same requires-python.
 - The ruff pre-commit hook runs the same ruff version that the projects lock.
@@ -41,12 +43,8 @@ FROZEN_WEB = [
     "@types/react-dom",
     "@types/node",
 ]
-SHARED_FILES = [
-    "tsconfig.json",
-    "components.json",
-    "src/index.css",
-    "src/lib/utils.ts",
-]
+SHARED_FILES = ["tsconfig.json", "components.json"]
+LIBRARY = ROOT / "packages/web-ui/src"
 EXACT = re.compile(r"^\d+\.\d+\.\d+$")
 
 
@@ -76,18 +74,26 @@ def check_web(errors: list[str]) -> None:
         if len(set(by_app.values())) > 1:
             errors.append(f"web package {dep} differs: {by_app}")
 
+    library = sorted(p.relative_to(LIBRARY) for p in LIBRARY.rglob("*") if p.is_file())
+    ui_names = {p.name for p in library if p.parent == Path("components/ui")}
+    for name, web in apps.items():
+        for rel in library:
+            copy = web / "src" / rel
+            if not copy.is_file() or copy.read_bytes() != (LIBRARY / rel).read_bytes():
+                errors.append(
+                    f"{name}: src/{rel} differs from packages/web-ui/src/{rel}"
+                )
+        for extra in sorted((web / "src/components/ui").glob("*.tsx")):
+            if extra.name not in ui_names:
+                errors.append(
+                    f"{name}: ui component {extra.name} is not in packages/web-ui"
+                )
+
     if len(apps) < 2:
         return
     names = list(apps)
     first = names[0]
-    ui = defaultdict(list)
-    for name, web in apps.items():
-        for f in (web / "src/components/ui").glob("*.tsx"):
-            ui[f.name].append(name)
-    shared = SHARED_FILES + [
-        f"src/components/ui/{f}" for f, owners in ui.items() if len(owners) > 1
-    ]
-    for rel in shared:
+    for rel in SHARED_FILES:
         owners = [n for n in names if (apps[n] / rel).is_file()]
         texts = {n: (apps[n] / rel).read_text() for n in owners}
         if len(set(texts.values())) > 1:
@@ -151,8 +157,9 @@ def main() -> int:
         print(f"app stack: {e}")
     if errors:
         print(
-            "Run the upgrade for all apps together. See reference/app-stack in the docs."
+            "Change packages/web-ui, then run scripts/sync-web-ui.py. Upgrade packages"
         )
+        print("in all apps together. See reference/app-stack in the docs.")
     return 1 if errors else 0
 
 

@@ -21,7 +21,7 @@ The web apps are `apps/offers/` and `apps/jobs/`. Each app has a Python backend 
 | Routing | `@tanstack/react-router`, `@tanstack/router-plugin` (file routes, code splitting) | 1.170.46, 1.168.48 |
 | Server state | `@tanstack/react-query` | 5.106.1 |
 | Tables (Jobs only) | `@tanstack/react-table` | 9.3.1 |
-| Components | shadcn/ui (`new-york` style) on `radix-ui` | 1.8.1 |
+| Components | shadcn/ui 4.23.0 (`new-york` style) on `radix-ui`, from the shared library `packages/web-ui` | 1.8.1 |
 | Styles | `tailwindcss`, `@tailwindcss/vite`, `tw-animate-css` | 4.3.4, 4.3.4, 1.4.0 |
 | Class helpers | `class-variance-authority`, `clsx`, `tailwind-merge` | 0.7.1, 2.1.1, 3.7.0 |
 | Icons | `lucide-react` | 1.69.0 |
@@ -43,17 +43,22 @@ The web apps are `apps/offers/` and `apps/jobs/`. Each app has a Python backend 
 | Lint, format, types, tests | `ruff`, `ty`, `pytest` |
 | Image | The multi-stage Dockerfile of `apps/offers/Dockerfile`: Bun builds the frontend, uv installs the backend, and the image runs as user 10001 |
 
+### Shared UI Library
+
+`packages/web-ui/src` is the only source of the UI components, the theme, and the shared controls:
+
+| File | Contents |
+| --- | --- |
+| `components/ui/*.tsx` | shadcn/ui components: button, card, popover, progress, skeleton, sonner, tooltip |
+| `components/search.tsx` | Search box and filter chips |
+| `index.css` | Tailwind 4 theme tokens for light and dark mode |
+| `lib/utils.ts` | `cn` helper |
+
+Each web app has a copy of these files at the same paths under `web/src`. To change one, change it in `packages/web-ui`, then run `python3 scripts/sync-web-ui.py`. An app cannot have a ui component that is not in the library. Put app-only components in `web/src/components/` (not in `ui/`). `packages/web-ui/README.md` tells how to add a shadcn/ui component.
+
 ### Files That Must Be the Same
 
-These files are byte-identical in all web apps:
-
-- `web/tsconfig.json`
-- `web/components.json`
-- `web/src/index.css` (theme tokens for light and dark mode)
-- `web/src/lib/utils.ts`
-- Each file in `web/src/components/ui/` that two or more apps use
-
-`web/vite.config.ts` and `Dockerfile` are identical after the script replaces the app name.
+`web/tsconfig.json` and `web/components.json` are identical in all web apps. `web/vite.config.ts` and `Dockerfile` are identical after the script replaces the app name.
 
 ### Page Conventions
 
@@ -92,6 +97,6 @@ Step 6: Update the version tables on this page.
 
 Step 1: Copy `apps/offers/` without its `src/offers/` code, `tests/`, and `catalog.yaml`.
 
-Step 2: Keep the shared files above unchanged. Add new shadcn/ui components with the same versions as the other apps.
+Step 2: Run `python3 scripts/sync-web-ui.py` to copy the shared UI library into the app. Keep the shared files above unchanged.
 
 Step 3: Run `python3 scripts/check-app-stack.py`. It must pass before you commit.
