@@ -74,6 +74,7 @@ class Cache:
                     self.store.answers(),
                     self.store.company_names(),
                     self.settings.no_reply_days,
+                    ignore_domains=self.settings.ignored_domains,
                 )
                 self._version = version
             return self._value

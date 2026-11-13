@@ -66,3 +66,21 @@ def test_renames_merge_companies_and_doubts_are_listed():
     companies, doubts = build(threads, verdicts, {}, {"facebook": "Meta"})
     assert [c.name for c in companies] == ["Meta"]
     assert [d.thread_id for d in doubts] == ["t2"]
+
+
+def test_ignored_domains_drop_personal_threads_and_contacts():
+    gmail_only = thread("t1", message(1, sender="friend@gmail.com"))
+    mixed = thread("t2", message(2), message(3, sender="pal@gmail.com"))
+    verdicts = {
+        "t1": verdict(company="Beta", contacts=[{"name": "Pal", "email": "friend@gmail.com"}]),
+        "t2": verdict(
+            contacts=[
+                {"name": "Ann Lee", "email": "ann@acme.com", "role": "recruiter"},
+                {"name": "Pal Two", "email": "pal@gmail.com", "role": "other"},
+            ]
+        ),
+    }
+    ignored = frozenset({"gmail.com"})
+    companies, _ = build([gmail_only, mixed], verdicts, {}, {}, ignore_domains=ignored)
+    assert [c.name for c in companies] == ["Acme"]
+    assert [r.name for r in companies[0].recruiters] == ["Ann Lee"]

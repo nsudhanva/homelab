@@ -45,6 +45,7 @@ def main(argv: list[str] | None = None) -> None:
             store.answers(),
             store.company_names(),
             settings.no_reply_days,
+            ignore_domains=settings.ignored_domains,
         )
         args.path.write_bytes(workbook(companies, doubts))
         print(f"{len(companies)} companies written to {args.path}")

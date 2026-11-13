@@ -105,6 +105,19 @@ def no_reply(thread: Thread, days: int, today: datetime) -> bool:
     return today - last >= timedelta(days=days)
 
 
+def domain(email: str | None) -> str:
+    return (email or "").rsplit("@", 1)[-1].lower() if email and "@" in email else ""
+
+
+def personal_only(thread: Thread, ignored: frozenset[str]) -> bool:
+    """Everyone the owner dealt with in the thread uses an ignored domain, such as gmail.com."""
+    others = set()
+    for m in thread.messages:
+        others.update(m.to + m.cc if m.sent else [m.sender_email])
+    others.discard("")
+    return bool(others) and all(domain(a) in ignored for a in others)
+
+
 def _merge_dates(obj: Any, first: str, last: str) -> None:
     obj.first_date = min(filter(None, [obj.first_date, first]), default=first)
     obj.last_date = max(obj.last_date, last)
@@ -117,6 +130,7 @@ def build(
     renames: dict[str, str],
     no_reply_days: int = 14,
     today: datetime | None = None,
+    ignore_domains: frozenset[str] = frozenset(),
 ) -> tuple[list[Company], list[Conversation]]:
     today = today or datetime.now(UTC)
     companies: dict[str, Company] = {}
@@ -127,7 +141,7 @@ def build(
 
     for thread in threads:
         v = verdicts.get(thread.id)
-        if not v:
+        if not v or (ignore_domains and personal_only(thread, ignore_domains)):
             continue
         name = v.get("company") or v.get("agency") or _sender_domain_company(thread)
         relevant = v["kind"] in RELEVANT_KINDS
@@ -146,7 +160,11 @@ def build(
             stage=v.get("stage", "unknown"),
             summary=v.get("summary", ""),
             roles=v.get("roles", []),
-            contacts=[c["name"] for c in v.get("contacts", []) if not TEAM.search(c["name"])],
+            contacts=[
+                c["name"]
+                for c in v.get("contacts", [])
+                if not TEAM.search(c["name"]) and domain(c.get("email")) not in ignore_domains
+            ],
             company=display,
             company_key=key,
             agency=v.get("agency"),
@@ -178,6 +196,8 @@ def build(
 
         for c in v.get("contacts", []):
             if TEAM.search(c["name"]) or len(c["name"].split()) > 5:
+                continue
+            if domain(c.get("email")) in ignore_domains:
                 continue
             email = (c.get("email") or "").strip().lower() or None
             if email and NO_REPLY.search(email):
