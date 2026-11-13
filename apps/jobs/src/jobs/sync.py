@@ -22,10 +22,13 @@ class Extract(Protocol):
 
 
 def start_date(store: Store, lookback_years: int, overlap_days: int) -> date:
+    """Search from the lookback start once, then from the last sync."""
+    oldest = datetime.now(UTC).date() - timedelta(days=365 * lookback_years + 3)
+    done = store.get_meta("searched_from")
     last = store.get_meta("last_sync")
-    if last:
+    if last and done and date.fromisoformat(done) <= oldest:
         return datetime.fromisoformat(last).date() - timedelta(days=overlap_days)
-    return datetime.now(UTC).date() - timedelta(days=365 * lookback_years + 3)
+    return oldest
 
 
 def fetch(store: Store, gmail: Gmail, since: date, workers: int) -> int:
@@ -66,7 +69,8 @@ def evaluate(
     max_calls: int | None = None,
     progress: Callable[[int, int], None] | None = None,
 ) -> tuple[int, int]:
-    pending = store.pending()[:max_calls] if max_calls else store.pending()
+    pending = store.pending(extract.model)
+    pending = pending[:max_calls] if max_calls else pending
     done = failed = 0
     with ThreadPoolExecutor(workers) as pool:
         futures = {pool.submit(evaluate_one, store, extract, t): t for t in pending}
@@ -100,8 +104,12 @@ def sync(
     max_calls: int | None = None,
 ) -> None:
     started = now()
-    fetch(store, gmail, since or start_date(store, lookback_years, overlap_days), workers)
+    since = since or start_date(store, lookback_years, overlap_days)
+    fetch(store, gmail, since, workers)
     _, failed = evaluate(store, extract, workers, max_calls)
     store.set_meta("last_fetch", started)
     if failed < MAX_AI_FAILURES:
         store.set_meta("last_sync", started)
+        searched = store.get_meta("searched_from")
+        if not searched or since < date.fromisoformat(searched):
+            store.set_meta("searched_from", since.isoformat())

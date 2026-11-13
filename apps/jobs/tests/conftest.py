@@ -46,7 +46,7 @@ def verdict(**kw: Any) -> dict[str, Any]:
 
 
 class FakeExtractor:
-    model = "test:fake"
+    model = "test#v1"
 
     def __init__(self) -> None:
         self.answers: list[dict[str, Any] | None] = []

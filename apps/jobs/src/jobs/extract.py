@@ -97,17 +97,25 @@ Rules:
 - company is the employer of the job. Staffing and recruiting agencies (for example Robert
   Half, TEKsystems, Hays, Randstad) are never the company: put them in agency, and put the
   client in company only when the thread names it. Use your knowledge to tell agencies from
-  employers.
-- Use the plain company name ("Stripe", not "Stripe, Inc." or "Stripe Recruiting").
+  employers. A sender who writes about "my client", "our client", or "on behalf of" a
+  company is an agency. In LinkedIn "your application was sent to X" emails, X can be an
+  agency. Job boards and platforms (LinkedIn, Indeed, Naukri, Wellfound, Hired, Toptal) and
+  venture firms are never the company unless the job is at that firm.
+- Use the plain brand name ("Stripe", not "Stripe, Inc." or "Stripe Recruiting"). Never use a
+  placeholder such as "Stealth startup" or "a portfolio company"; use null instead.
 - contacts are people on the company or agency side who wrote to the owner, scheduled with
   them, or were named as the owner's recruiter or coordinator. Never include the owner.
   Each contact is one real person with a personal name. Team or department senders such as
   "Acme Talent Acquisition" or "Acme Recruiting Team" are not contacts. Do not invent
   people. A no-reply sender is not a person; use the name in the signature or the
-  "X via LinkedIn" name instead, with email null.
+  "X via LinkedIn" name instead, with email null. Include interviewers and hiring managers
+  that an invite or schedule names. Do not include people from LinkedIn suggestions or
+  footers, university placement staff, or the owner's own colleagues.
 - An email address in contacts must appear in the thread. Do not guess addresses.
-- stage is the furthest point the thread shows: outreach, applied, screening (recruiter or
-  first call), interview (technical or onsite), offer, rejected, withdrawn (the owner declined).
+- stage is the furthest point the thread shows: outreach, applied, screening (a recruiter or
+  first intro call), interview (any technical, hiring manager, panel, or onsite round, and
+  their scheduling), offer, rejected, withdrawn (the owner declined). An account sign-up or a
+  coding test invite alone is not "applied"; use unknown or screening.
 - confidence is your certainty about kind, company, and contacts together.
 - When an important fact is unclear and the owner can answer it (is this a real job contact,
   is the owner the candidate, which company), set doubt to one short question and give 2 to 4
@@ -141,6 +149,9 @@ def render(thread: Thread, answer: dict[str, Any] | None = None) -> str:
     return text
 
 
+PROMPT_VERSION = 2
+
+
 class Extractor:
     """Wraps the shared AI task so tests can replace it."""
 
@@ -148,7 +159,7 @@ class Extractor:
         from homelab_ai import AITask
 
         self.task = AITask(name="jobs", output_type=Verdict, instructions=INSTRUCTIONS)
-        self.model = self.task.describe().split(" -> ")[0]
+        self.model = f"{self.task.describe().split(' -> ')[0]}#v{PROMPT_VERSION}"
 
     def __call__(self, thread: Thread, answer: dict[str, Any] | None = None) -> Verdict:
         return self.task.run_sync(render(thread, answer))

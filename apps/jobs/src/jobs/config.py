@@ -8,7 +8,7 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_prefix="JOBS_", env_file=".env", extra="ignore")
 
     db_path: Path = Path("jobs.db")
-    lookback_years: int = 10
+    lookback_years: int = 12
     overlap_days: int = 3
     no_reply_days: int = 14
     workers: int = 8

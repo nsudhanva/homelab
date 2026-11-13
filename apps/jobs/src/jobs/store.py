@@ -100,16 +100,20 @@ class Store:
         rows = self._all("SELECT data FROM threads ORDER BY last_date")
         return [Thread.from_dict(json.loads(r["data"])) for r in rows]
 
-    def pending(self) -> list[str]:
-        """Threads without a verdict for their current messages or latest answer."""
-        rows = self._all("""
+    def pending(self, model: str | None = None) -> list[str]:
+        """Threads without a verdict for their messages, latest answer, or prompt version."""
+        rows = self._all(
+            """
             SELECT t.id FROM threads t
             LEFT JOIN verdicts v ON v.thread_id = t.id
             LEFT JOIN answers a ON a.thread_id = t.id
             WHERE v.thread_id IS NULL OR v.digest != t.digest
+               OR (? IS NOT NULL AND v.model NOT LIKE '%#v' || ?)
                OR (a.thread_id IS NOT NULL AND (v.answer_at IS NULL OR v.answer_at < a.created_at))
             ORDER BY t.last_date DESC
-            """)
+            """,
+            (model, model and model.split("#v")[-1]),
+        )
         return [r["id"] for r in rows]
 
     def save_verdict(

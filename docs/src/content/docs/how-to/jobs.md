@@ -24,7 +24,7 @@ flowchart LR
 
 - Search: The sync runs a set of Gmail searches. The searches find recruiting words, interview words, emails from hiring tools (Greenhouse, Lever, Ashby, Workday, and others), LinkedIn InMail, calendar invites, outcome words, and job emails in Sent. The search includes archived mail. It does not include Spam or Trash.
 - Threads: The sync reads each thread that matches. A thread that gets a new message is read again.
-- AI: Claude Haiku reads each new or changed thread once. It returns the kind of thread, the hiring company, the agency, the roles, the people on the company side, the stage, and a confidence value. The AI uses only the Anthropic API (`AI_FALLBACK_MODELS=none`), so email text does not go to other model providers.
+- AI: Claude Haiku reads each new or changed thread once. A change to the prompt (`PROMPT_VERSION` in `apps/jobs/src/jobs/extract.py`) makes the next sync read all threads again. It returns the kind of thread, the hiring company, the agency, the roles, the people on the company side, the stage, and a confidence value. The AI uses only the Anthropic API (`AI_FALLBACK_MODELS=none`), so email text does not go to other model providers.
 - Grouping: The app puts threads into companies. Different spellings of a company name (for example "Stripe" and "Stripe, Inc.") become one company. Recruiters of the same company are listed together. An agency recruiter is listed under each client company, or under the agency when the client is not named.
 - Web app: The `jobs` Deployment serves a single-page app (React, TanStack Router, Query, and Table, shadcn/ui) and a JSON API under `/api`.
 
@@ -48,7 +48,7 @@ A thread is "no reply" when your message is the last message and nobody answered
 
 ## Answer the Open Questions
 
-The AI asks a question when it cannot decide an important fact, for example whether a thread is a real job contact or which company it is about. Threads with a confidence below 0.7 also show on the Questions page.
+The AI asks a question when it cannot decide an important fact, for example whether a thread is a real job contact or which company it is about. Threads with a confidence below 0.7 also show on the Questions page. The app does not count team names such as "Acme Recruiting Team" as recruiters.
 
 Step 1: Open the Questions page.
 
@@ -81,7 +81,7 @@ uv run jobs export recruiters.xlsx
 
 ## Sync Schedule and History
 
-The `jobs-sync` CronJob runs each day at 05:00 America/Los_Angeles. It searches from three days before the last successful sync. The first sync searches the last 10 years (`JOBS_LOOKBACK_YEARS`).
+The `jobs-sync` CronJob runs each day at 05:00 America/Los_Angeles. It searches from three days before the last successful sync. The first sync searches the last 12 years (`JOBS_LOOKBACK_YEARS`).
 
 To run a sync now, start a Job from the CronJob:
 
@@ -94,7 +94,7 @@ kubectl create job -n jobs --from=cronjob/jobs-sync jobs-sync-manual
 | Variable | Default | Description |
 | --- | --- | --- |
 | `JOBS_DB_PATH` | `jobs.db` | SQLite file |
-| `JOBS_LOOKBACK_YEARS` | `10` | Years that the first sync searches |
+| `JOBS_LOOKBACK_YEARS` | `12` | Years that the sync searches back. A larger value makes the next sync search the older years one time |
 | `JOBS_OVERLAP_DAYS` | `3` | Days before the last sync that each sync searches again |
 | `JOBS_NO_REPLY_DAYS` | `14` | Days without an answer before a thread is "no reply" |
 | `JOBS_WORKERS` | `8` | Parallel Gmail reads and AI calls |

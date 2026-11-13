@@ -16,6 +16,11 @@ SUFFIXES = re.compile(
     r"technologies inc|recruiting|careers|talent|hiring|team)\b\.?",
     re.IGNORECASE,
 )
+TEAM = re.compile(
+    r"\b(team|recruiting|recruitment|talent|careers?|hiring|hr|people ops|staffing|jobs?|"
+    r"no-?reply|notifications?)\b",
+    re.IGNORECASE,
+)
 NO_REPLY = re.compile(r"no-?reply|do-?not-?reply|notifications?@|mailer|bounce", re.IGNORECASE)
 
 
@@ -141,7 +146,7 @@ def build(
             stage=v.get("stage", "unknown"),
             summary=v.get("summary", ""),
             roles=v.get("roles", []),
-            contacts=[c["name"] for c in v.get("contacts", [])],
+            contacts=[c["name"] for c in v.get("contacts", []) if not TEAM.search(c["name"])],
             company=display,
             company_key=key,
             agency=v.get("agency"),
@@ -172,6 +177,8 @@ def build(
             company.stage = stage
 
         for c in v.get("contacts", []):
+            if TEAM.search(c["name"]) or len(c["name"].split()) > 5:
+                continue
             email = (c.get("email") or "").strip().lower() or None
             if email and NO_REPLY.search(email):
                 email = None
