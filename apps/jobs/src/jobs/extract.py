@@ -4,7 +4,7 @@ from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
-from .gmail import Thread
+from .gmail import Thread, clean_body
 
 Kind = Literal[
     "recruiter_outreach",
@@ -136,7 +136,7 @@ def render(thread: Thread, answer: dict[str, Any] | None = None) -> str:
         extra = f"\nAttachments: {', '.join(m.attachments)}" if m.attachments else ""
         blocks.append(
             f"--- {m.date[:10]} FROM {who} TO {', '.join(m.to[:5])}\n"
-            f"Subject: {m.subject}{extra}\n{m.text[:2500]}"
+            f"Subject: {m.subject}{extra}\n{clean_body(m.text)[:2500]}"
         )
     text = "\n\n".join(blocks)
     if len(thread.messages) > len(messages):
@@ -149,7 +149,7 @@ def render(thread: Thread, answer: dict[str, Any] | None = None) -> str:
     return text
 
 
-PROMPT_VERSION = 2
+PROMPT_VERSION = 3
 
 
 class Extractor:
