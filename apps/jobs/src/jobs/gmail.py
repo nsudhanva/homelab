@@ -112,6 +112,11 @@ QUERIES: dict[str, str] = {
 }
 
 MAX_BODY_CHARS = 4000
+_FOOTER = re.compile(
+    r"^.{0,20}(People you may know|People to follow|More jobs for you|Explore (more |relevant )?"
+    r"(jobs|opportunities)|This email was intended for|You are receiving|Unsubscribe)",
+    re.MULTILINE | re.IGNORECASE,
+)
 _QUOTE_START = re.compile(
     r"^(On .{0,200} wrote:|-----Original Message-----|From: .+|_{5,}|Sent from my )",
     re.MULTILINE,
@@ -218,9 +223,10 @@ def _walk(part: dict[str, Any], out: dict[str, list[str]]) -> None:
 
 
 def clean_body(text: str) -> str:
-    match = _QUOTE_START.search(text)
-    if match and match.start() > 40:
-        text = text[: match.start()]
+    for pattern in (_QUOTE_START, _FOOTER):
+        match = pattern.search(text)
+        if match and match.start() > 40:
+            text = text[: match.start()]
     lines = [ln.rstrip() for ln in text.splitlines() if not ln.lstrip().startswith(">")]
     text = re.sub(r"\n{3,}", "\n\n", "\n".join(lines)).strip()
     text = re.sub("[ \\t\u00a0\u200c]{2,}", " ", text)

@@ -36,6 +36,8 @@ def test_parse_message_reads_html_calendar_and_sent_label():
     assert "Calendar invite: SUMMARY:Onsite" in m.text and "Hi" in m.text and "x{}" not in m.text
 
 
-def test_clean_body_drops_quoted_history():
+def test_clean_body_drops_quoted_history_and_footers():
     body = "Thanks, see you Monday at 10am for the call.\n\nOn Tue, Ann wrote:\n> old text"
     assert clean_body(body) == "Thanks, see you Monday at 10am for the call."
+    body = "Your application was sent to Acme for the role.\nPeople to follow\nBob Smith"
+    assert clean_body(body) == "Your application was sent to Acme for the role."
