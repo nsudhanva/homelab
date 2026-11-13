@@ -259,7 +259,7 @@ def test_nested_file_move_with_model_fallback(make_task):
     client.get_or_create_path = MagicMock(return_value="target-folder-id")
     client.move_and_tag_file = MagicMock()
 
-    settings = Settings(pacing_seconds=0.0)
+    settings = Settings(PACING_SECONDS=0.0)
     stats = OrganizerRunStats()
 
     success = process_single_file(

@@ -19,7 +19,7 @@ def settings(monkeypatch):
     monkeypatch.setenv("GMAIL_REFRESH_TOKEN", "rtoken")
     for name in ("AUTO_ARCHIVE_ENABLED", "ARCHIVE_OLDER_THAN_DAYS"):
         monkeypatch.delenv(name, raising=False)
-    return Settings(_env_file=None, auto_archive_enabled=True, archive_older_than_days=90)
+    return Settings(_env_file=None, AUTO_ARCHIVE_ENABLED=True, ARCHIVE_OLDER_THAN_DAYS=90)
 
 
 def test_parse_arguments():

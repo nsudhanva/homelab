@@ -24,7 +24,7 @@ def make_classifier(model: TestModel, threshold: float = 0.6) -> TransactionClas
         settings=AISettings(_env_file=None, AI_ATTEMPTS=1),
         models=[model],
     )
-    return TransactionClassifier(Settings(confidence_threshold=threshold), task=task)
+    return TransactionClassifier(Settings(CONFIDENCE_THRESHOLD=threshold), task=task)
 
 
 def tx(payee: str, amount_cents: int = -4500) -> TransactionInput:
