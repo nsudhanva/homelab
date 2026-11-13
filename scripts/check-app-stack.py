@@ -51,7 +51,10 @@ EXACT = re.compile(r"^\d+\.\d+\.\d+$")
 
 
 def web_apps() -> dict[str, Path]:
-    return {p.parent.parent.name: p.parent for p in sorted(ROOT.glob("apps/*/web/package.json"))}
+    return {
+        p.parent.parent.name: p.parent
+        for p in sorted(ROOT.glob("apps/*/web/package.json"))
+    }
 
 
 def check_web(errors: list[str]) -> None:
@@ -62,7 +65,9 @@ def check_web(errors: list[str]) -> None:
         deps = {**pkg.get("dependencies", {}), **pkg.get("devDependencies", {})}
         for dep, version in deps.items():
             if not EXACT.match(version):
-                errors.append(f"{name}: {dep} must be an exact version, not {version!r}")
+                errors.append(
+                    f"{name}: {dep} must be an exact version, not {version!r}"
+                )
             versions[dep][name] = version
         for dep in FROZEN_WEB:
             if dep not in deps:
@@ -79,12 +84,16 @@ def check_web(errors: list[str]) -> None:
     for name, web in apps.items():
         for f in (web / "src/components/ui").glob("*.tsx"):
             ui[f.name].append(name)
-    shared = SHARED_FILES + [f"src/components/ui/{f}" for f, owners in ui.items() if len(owners) > 1]
+    shared = SHARED_FILES + [
+        f"src/components/ui/{f}" for f, owners in ui.items() if len(owners) > 1
+    ]
     for rel in shared:
         owners = [n for n in names if (apps[n] / rel).is_file()]
         texts = {n: (apps[n] / rel).read_text() for n in owners}
         if len(set(texts.values())) > 1:
-            errors.append(f"{rel} differs between {owners}; copy one version to all apps")
+            errors.append(
+                f"{rel} differs between {owners}; copy one version to all apps"
+            )
     for rel, root in (("web/vite.config.ts", "apps/{}/"), ("Dockerfile", "apps/{}/")):
         texts = {}
         for n in names:
@@ -99,12 +108,16 @@ def check_web(errors: list[str]) -> None:
 
 
 def check_python(errors: list[str]) -> dict[str, str]:
-    projects = sorted(ROOT.glob("apps/*/pyproject.toml")) + sorted(ROOT.glob("packages/*/pyproject.toml"))
+    projects = sorted(ROOT.glob("apps/*/pyproject.toml")) + sorted(
+        ROOT.glob("packages/*/pyproject.toml")
+    )
     pythons = {}
     locked: dict[str, dict[str, str]] = defaultdict(dict)
     for pyproject in projects:
         name = pyproject.parent.name
-        pythons[name] = tomllib.loads(pyproject.read_text())["project"].get("requires-python")
+        pythons[name] = tomllib.loads(pyproject.read_text())["project"].get(
+            "requires-python"
+        )
         lock = pyproject.parent / "uv.lock"
         if not lock.is_file():
             errors.append(f"{name}: uv.lock is missing")
@@ -137,7 +150,9 @@ def main() -> int:
     for e in errors:
         print(f"app stack: {e}")
     if errors:
-        print("Run the upgrade for all apps together. See reference/app-stack in the docs.")
+        print(
+            "Run the upgrade for all apps together. See reference/app-stack in the docs."
+        )
     return 1 if errors else 0
 
 
