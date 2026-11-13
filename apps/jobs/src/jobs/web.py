@@ -189,7 +189,7 @@ def create_app(
         try:
             from .sync import evaluate_one
 
-            verdict = evaluate_one(store, extractor(), thread_id)
+            verdict = evaluate_one(store, extractor(), thread_id, settings.ignored_domains)
             return {"saved": True, "applied": True, "verdict": verdict and verdict.model_dump()}
         except Exception as exc:
             logger.warning(f"answer saved, AI update deferred to the next sync: {exc}")

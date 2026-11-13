@@ -174,6 +174,21 @@ class Store:
         )
         return tuple(row) if row else ()
 
+    def delete_threads(self, ids: list[str]) -> None:
+        with self._tx() as db:
+            for table, column in (
+                ("threads", "id"),
+                ("verdicts", "thread_id"),
+                ("answers", "thread_id"),
+            ):
+                db.executemany(f"DELETE FROM {table} WHERE {column} = ?", [(i,) for i in ids])
+
+    def replace_verdict_data(self, thread_id: str, data: dict[str, Any]) -> None:
+        with self._tx() as db:
+            db.execute(
+                "UPDATE verdicts SET data = ? WHERE thread_id = ?", (json.dumps(data), thread_id)
+            )
+
     def get_meta(self, key: str) -> str | None:
         row = self._one("SELECT value FROM meta WHERE key = ?", (key,))
         return row["value"] if row else None

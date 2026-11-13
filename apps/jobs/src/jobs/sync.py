@@ -6,6 +6,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import UTC, date, datetime, timedelta
 from typing import Any, Protocol
 
+from .build import domain, personal_only
 from .extract import Verdict
 from .gmail import Gmail, Thread
 from .store import Store, now
@@ -31,7 +32,26 @@ def start_date(store: Store, lookback_years: int, overlap_days: int) -> date:
     return oldest
 
 
-def fetch(store: Store, gmail: Gmail, since: date, workers: int) -> int:
+def purge(store: Store, ignored: frozenset[str]) -> tuple[int, int]:
+    """Delete threads with only ignored-domain people, and their contacts from verdicts."""
+    if not ignored:
+        return 0, 0
+    gone = [t.id for t in store.threads() if personal_only(t, ignored)]
+    store.delete_threads(gone)
+    cleaned = 0
+    for thread_id, data in store.verdicts().items():
+        contacts = data.get("contacts", [])
+        kept = [c for c in contacts if domain(c.get("email")) not in ignored]
+        if len(kept) != len(contacts):
+            store.replace_verdict_data(thread_id, {**data, "contacts": kept})
+            cleaned += 1
+    logger.info(f"purged {len(gone)} personal threads, cleaned {cleaned} verdicts")
+    return len(gone), cleaned
+
+
+def fetch(
+    store: Store, gmail: Gmail, since: date, workers: int, ignored: frozenset[str] = frozenset()
+) -> int:
     ids = gmail.candidate_threads(since)
     logger.info(f"{len(ids)} candidate threads since {since}")
     changed = 0
@@ -39,7 +59,10 @@ def fetch(store: Store, gmail: Gmail, since: date, workers: int) -> int:
         futures = [pool.submit(gmail.thread, i) for i in ids]
         for n, future in enumerate(as_completed(futures), 1):
             try:
-                changed += store.save_thread(future.result())
+                thread = future.result()
+                if ignored and personal_only(thread, ignored):
+                    continue
+                changed += store.save_thread(thread)
             except Exception as exc:
                 logger.warning(f"could not read a thread: {exc}")
             if n % 250 == 0:
@@ -48,12 +71,15 @@ def fetch(store: Store, gmail: Gmail, since: date, workers: int) -> int:
     return changed
 
 
-def evaluate_one(store: Store, extract: Extract, thread_id: str) -> Verdict | None:
+def evaluate_one(
+    store: Store, extract: Extract, thread_id: str, ignored: frozenset[str] = frozenset()
+) -> Verdict | None:
     thread = store.thread(thread_id)
     if thread is None:
         return None
     answer = store.answer(thread_id)
     verdict = extract(thread, answer)
+    verdict.contacts = [c for c in verdict.contacts if domain(c.email) not in ignored]
     if answer:
         verdict.doubt, verdict.options = None, []
     store.save_verdict(
@@ -68,12 +94,13 @@ def evaluate(
     workers: int,
     max_calls: int | None = None,
     progress: Callable[[int, int], None] | None = None,
+    ignored: frozenset[str] = frozenset(),
 ) -> tuple[int, int]:
     pending = store.pending(extract.model)
     pending = pending[:max_calls] if max_calls else pending
     done = failed = 0
     with ThreadPoolExecutor(workers) as pool:
-        futures = {pool.submit(evaluate_one, store, extract, t): t for t in pending}
+        futures = {pool.submit(evaluate_one, store, extract, t, ignored): t for t in pending}
         for future in as_completed(futures):
             try:
                 future.result()
@@ -102,11 +129,13 @@ def sync(
     workers: int,
     since: date | None = None,
     max_calls: int | None = None,
+    ignored: frozenset[str] = frozenset(),
 ) -> None:
     started = now()
+    purge(store, ignored)
     since = since or start_date(store, lookback_years, overlap_days)
-    fetch(store, gmail, since, workers)
-    _, failed = evaluate(store, extract, workers, max_calls)
+    fetch(store, gmail, since, workers, ignored)
+    _, failed = evaluate(store, extract, workers, max_calls, ignored=ignored)
     store.set_meta("last_fetch", started)
     if failed < MAX_AI_FAILURES:
         store.set_meta("last_sync", started)

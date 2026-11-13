@@ -40,7 +40,7 @@ flowchart LR
 
 The app does not count job alert emails, newsletters, threads where you are the interviewer or hire for your own team, or other email.
 
-The app also ignores personal email domains (`JOBS_IGNORE_DOMAINS`, default `gmail.com,googlemail.com`). It does not show a thread in which all other people use an ignored domain, and it does not list a contact whose email address uses an ignored domain.
+The app also ignores personal email domains (`JOBS_IGNORE_DOMAINS`, default `gmail.com,googlemail.com`). The sync does not store a thread in which all other people use an ignored domain, and it removes contacts with an ignored domain from the AI results. At the start of each sync, it deletes such threads, their AI results, and their answers from the database, so a change to the setting applies to the stored data too.
 
 ## Statuses
 
@@ -103,7 +103,7 @@ kubectl create job -n jobs --from=cronjob/jobs-sync jobs-sync-manual
 | `JOBS_LOOKBACK_YEARS` | `12` | Years that the sync searches back. A larger value makes the next sync search the older years one time |
 | `JOBS_OVERLAP_DAYS` | `3` | Days before the last sync that each sync searches again |
 | `JOBS_NO_REPLY_DAYS` | `14` | Days without an answer before a thread is "no reply" |
-| `JOBS_IGNORE_DOMAINS` | `gmail.com,googlemail.com` | Email domains of personal addresses. Threads with only these addresses, and contacts with these addresses, are not shown |
+| `JOBS_IGNORE_DOMAINS` | `gmail.com,googlemail.com` | Email domains of personal addresses. The sync deletes threads with only these addresses, and contacts with these addresses, from the database |
 | `JOBS_WORKERS` | `8` | Parallel Gmail reads and AI calls |
 | `JOBS_AI_MAX_CALLS` | empty | Limit on AI calls for each sync |
 | `GMAIL_CLIENT_ID`, `GMAIL_CLIENT_SECRET`, `GMAIL_REFRESH_TOKEN` | none | Gmail OAuth client from `kv/gmail/credentials` |

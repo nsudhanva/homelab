@@ -60,7 +60,7 @@ def main(argv: list[str] | None = None) -> None:
     )
     if args.fetch_only:
         since = args.since or start_date(store, settings.lookback_years, settings.overlap_days)
-        fetch(store, gmail, since, settings.workers)
+        fetch(store, gmail, since, settings.workers, settings.ignored_domains)
         return
     sync(
         store,
@@ -71,6 +71,7 @@ def main(argv: list[str] | None = None) -> None:
         workers=settings.workers,
         since=args.since,
         max_calls=settings.ai_max_calls,
+        ignored=settings.ignored_domains,
     )
 
 
