@@ -12,27 +12,31 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { EXPORT_URL, api, keys, type Company, type Recruiter } from "@/lib/api";
 import { monthYear } from "@/lib/format";
 import { useWide } from "@/lib/media";
+import { STATUSES, hasStatus, parseStatus, statusCounts, statusWords, type StatusId } from "@/lib/status";
 import { columnHelper } from "@/lib/table";
 
+type CompanySearch = { q?: string; status?: StatusId; recruiter?: boolean };
+
 export const Route = createFileRoute("/")({
+  validateSearch: (search: Record<string, unknown>): CompanySearch => ({
+    q: typeof search.q === "string" && search.q ? search.q : undefined,
+    status: parseStatus(search.status) === "all" ? undefined : parseStatus(search.status),
+    recruiter: search.recruiter === true || search.recruiter === "true" ? true : undefined,
+  }),
   loader: ({ context }) => context.queryClient.ensureQueryData({ queryKey: keys.overview, queryFn: api.overview }),
   pendingComponent: () => <Skeleton className="h-80 rounded-xl" />,
   component: Companies,
 });
 
-type Filter = "all" | "recruiter" | "interviewed" | "no_reply" | "rejected";
-
-const FILTERS: Record<Filter, (c: Company) => boolean> = {
-  all: () => true,
-  recruiter: (c) => c.recruiters.length > 0,
-  interviewed: (c) => c.stage === "interview" || c.stage === "offer",
-  no_reply: (c) => c.no_reply,
-  rejected: (c) => c.outcome === "rejected",
-};
-
 function matches(c: Company, q: string): boolean {
   if (!q) return true;
-  const hay = [c.name, ...c.roles, ...c.agencies, ...c.recruiters.flatMap((r) => [r.name, r.email ?? ""])];
+  const hay = [
+    c.name,
+    ...c.roles,
+    ...c.agencies,
+    ...statusWords(c),
+    ...c.recruiters.flatMap((r) => [r.name, r.email ?? ""]),
+  ];
   return hay.some((s) => s.toLowerCase().includes(q));
 }
 
@@ -88,19 +92,26 @@ function Names({ recruiters }: { recruiters: Recruiter[] }) {
 function Companies() {
   const { data } = useQuery({ queryKey: keys.overview, queryFn: api.overview });
   const wide = useWide();
-  const [query, setQuery] = useState("");
-  const [filter, setFilter] = useState<Filter>("all");
+  const search = Route.useSearch();
+  const navigate = Route.useNavigate();
+  const query = search.q ?? "";
+  const status = search.status ?? "all";
+  const recruiterOnly = search.recruiter ?? false;
+  const update = (next: CompanySearch) =>
+    navigate({ search: (prev) => ({ ...prev, ...next }), replace: true });
   const [open, setOpen] = useState<string | null>(null);
   const companies = data?.companies;
+  const pool = useMemo(
+    () => (companies ?? []).filter((c) => !recruiterOnly || c.recruiters.length > 0),
+    [companies, recruiterOnly],
+  );
   const rows = useMemo(() => {
     const q = query.trim().toLowerCase();
-    return (companies ?? []).filter((c) => FILTERS[filter](c) && matches(c, q));
-  }, [companies, query, filter]);
+    return pool.filter((c) => hasStatus(c, status) && matches(c, q));
+  }, [pool, query, status]);
+  const counts = useMemo(() => statusCounts(pool), [pool]);
   if (!data) return null;
   const t = data.totals;
-  const counts = Object.fromEntries(
-    (Object.keys(FILTERS) as Filter[]).map((f) => [f, data.companies.filter(FILTERS[f]).length]),
-  ) as Record<Filter, number>;
   const toggle = (c: Company) => setOpen(open === c.key ? null : c.key);
 
   return (
@@ -127,19 +138,31 @@ function Companies() {
         </Link>
       </div>
 
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <Search value={query} onChange={setQuery} placeholder="Search company, recruiter, email, or role" />
+      <div className="space-y-3">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <Search
+            value={query}
+            onChange={(q) => update({ q: q || undefined })}
+            placeholder="Search company, recruiter, email, role, or status"
+          />
+          <label className="flex items-center gap-2 text-sm text-muted-foreground">
+            <input
+              type="checkbox"
+              checked={recruiterOnly}
+              onChange={(e) => update({ recruiter: e.target.checked || undefined })}
+              className="size-4 accent-foreground"
+            />
+            Only companies with a recruiter
+          </label>
+        </div>
         <Chips
-          value={filter}
-          onChange={setFilter}
-          options={[
-            { id: "all", label: "All", count: counts.all },
-            { id: "recruiter", label: "Has recruiter", count: counts.recruiter },
-            { id: "interviewed", label: "Interviewed", count: counts.interviewed },
-            { id: "no_reply", label: "No reply", count: counts.no_reply },
-            { id: "rejected", label: "Rejected", count: counts.rejected },
-          ]}
+          value={status}
+          onChange={(s) => update({ status: s === "all" ? undefined : s })}
+          options={STATUSES.map((s) => ({ id: s.id, label: s.label, count: counts[s.id] }))}
         />
+        <p className="text-xs text-muted-foreground">
+          {rows.length} of {data.companies.length} companies
+        </p>
       </div>
 
       {wide ? (

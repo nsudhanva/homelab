@@ -26,7 +26,7 @@ flowchart LR
 - Threads: The sync reads each thread that matches. A thread that gets a new message is read again.
 - AI: Claude Haiku reads each new or changed thread once. A change to the prompt (`PROMPT_VERSION` in `apps/jobs/src/jobs/extract.py`) makes the next sync read all threads again. It returns the kind of thread, the hiring company, the agency, the roles, the people on the company side, the stage, and a confidence value. The AI uses only the Anthropic API (`AI_FALLBACK_MODELS=none`), so email text does not go to other model providers.
 - Grouping: The app puts threads into companies. Different spellings of a company name (for example "Stripe" and "Stripe, Inc.") become one company. Recruiters of the same company are listed together. An agency recruiter is listed under each client company, or under the agency when the client is not named.
-- Web app: The `jobs` Deployment serves a single-page app (React, TanStack Router, Query, and Table, shadcn/ui) and a JSON API under `/api`.
+- Web app: The `jobs` Deployment serves a single-page app and a JSON API under `/api`. It uses the [custom app stack](/reference/app-stack/).
 
 ## What the App Counts
 
@@ -45,6 +45,10 @@ The app does not count job alert emails, newsletters, threads where you are the 
 Each company shows the furthest stage of all its threads: outreach, applied, screening, interview, or offer. A rejection or a withdrawal shows after the stage, for example `interview → rejected`.
 
 A thread is "no reply" when your message is the last message and nobody answered in 14 days. A company is "no reply" when all its threads are "no reply". Set `JOBS_NO_REPLY_DAYS` to change the number of days.
+
+## Search and Filter
+
+The Companies and Recruiters pages have a search box and status filters. The search finds company names, recruiter names and emails, roles, agencies, and statuses (for example "rejected", "interview", or "no reply"). The status filters show the number of companies for each status. The page keeps the search and the filter in the URL, for example `https://jobs.sudhanva.me/?status=rejected&q=google`.
 
 ## Answer the Open Questions
 
