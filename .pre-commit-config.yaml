@@ -29,7 +29,7 @@ repos:
         exclude: ^docs/node_modules/
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.17.2
+    rev: v0.17.5
     hooks:
       - id: ruff-check
         args: [--fix]
@@ -42,3 +42,9 @@ repos:
         entry: bash scripts/run-kubeconform.sh
         language: system
         pass_filenames: false
+      - id: app-stack
+        name: app stack is the same in all custom apps
+        entry: python3 scripts/check-app-stack.py
+        language: system
+        pass_filenames: false
+        files: ^(apps/|packages/|scripts/check-app-stack\.py$|\.pre-commit-config\.yaml$)

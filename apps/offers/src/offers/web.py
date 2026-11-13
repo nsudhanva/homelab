@@ -562,7 +562,9 @@ def create_app(
         response = await call_next(request)
         if request.url.path.startswith("/assets/"):
             response.headers["Cache-Control"] = "public, max-age=31536000, immutable"
-        elif not request.url.path.startswith("/api/"):
+        elif request.url.path.startswith("/api/"):
+            response.headers.setdefault("Cache-Control", "no-store")
+        else:
             response.headers.setdefault("Cache-Control", "no-cache")
         return response
 

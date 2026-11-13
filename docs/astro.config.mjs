@@ -212,6 +212,7 @@ export default defineConfig({
             { label: 'AI Configuration', slug: 'reference/ai-configuration' },
             { label: 'Tailscale Terraform', slug: 'reference/tailscale-terraform' },
             { label: 'Version Matrix', slug: 'reference/versions' },
+            { label: 'Custom App Stack', slug: 'reference/app-stack' },
             { label: 'Operations Checklist', slug: 'reference/operations-checklist' },
             { label: 'Documentation Structure', slug: 'reference/docs-structure' },
           ],
