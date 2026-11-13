@@ -89,9 +89,12 @@ kind:
 - follow_up: the owner or the company follows up on an earlier contact.
 - referral: someone refers the owner, or the owner asks for a referral, for a specific job.
 - job_alert: automated job lists, "jobs you may like", saved searches, newsletters from job
-  boards. These are not a contact.
+  boards, campus placement notices sent to a whole class or mailing list, and bulk "join our
+  talent community" campaigns. These are not a contact.
 - owner_hiring: the owner is the interviewer or hiring for their own team, or helps a friend.
-- not_job: anything else (sales, events, school, receipts, social).
+- not_job: anything else (sales, events, school, receipts, social), including career-portal
+  sign-ups or verification codes with no application, and onboarding mail after the owner
+  was hired.
 
 Rules:
 - company is the employer of the job. Staffing and recruiting agencies (for example Robert
@@ -108,9 +111,10 @@ Rules:
   Each contact is one real person with a personal name. Team or department senders such as
   "Acme Talent Acquisition" or "Acme Recruiting Team" are not contacts. Do not invent
   people. A no-reply sender is not a person; use the name in the signature or the
-  "X via LinkedIn" name instead, with email null. Include interviewers and hiring managers
-  that an invite or schedule names. Do not include people from LinkedIn suggestions or
-  footers, university placement staff, or the owner's own colleagues.
+  "X via LinkedIn" name instead, with email null. Include interviewers, hiring managers, and
+  "your recruiter" people that an invite, schedule, or the body names. Do not include people
+  from LinkedIn suggestions or footers, university placement staff, or the owner's own
+  colleagues.
 - An email address in contacts must appear in the thread. Do not guess addresses.
 - stage is the furthest point the thread shows: outreach, applied, screening (a recruiter or
   first intro call), interview (any technical, hiring manager, panel, or onsite round, and

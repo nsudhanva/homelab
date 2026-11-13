@@ -215,6 +215,8 @@ def build(
     for company in companies.values():
         company.name = company.names.most_common(1)[0][0] if company.names else company.name
         company.no_reply = all(c.no_reply for c in company.conversations)
+        if company.outcome and company.stage == "unknown":
+            company.stage = "applied"
         company.conversations.sort(key=lambda c: c.last_date, reverse=True)
         company.recruiters.sort(key=lambda r: r.last_date, reverse=True)
     ordered = sorted(companies.values(), key=lambda c: c.last_date, reverse=True)
