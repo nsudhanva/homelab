@@ -109,7 +109,7 @@ function Companies() {
     const q = query.trim().toLowerCase();
     return pool.filter((c) => hasStatus(c, status) && matches(c, q));
   }, [pool, query, status]);
-  const counts = useMemo(() => statusCounts(pool), [pool]);
+  const counts = useMemo(() => statusCounts(pool, (c) => c), [pool]);
   if (!data) return null;
   const t = data.totals;
   const toggle = (c: Company) => setOpen(open === c.key ? null : c.key);

@@ -3,11 +3,8 @@ from conftest import message, thread, verdict
 from jobs.build import build, company_key
 
 
-def test_company_key_ignores_suffixes_and_case():
-    assert company_key("Stripe, Inc.") == company_key("stripe") == company_key("Stripe Recruiting")
-
-
 def test_groups_companies_and_merges_recruiters():
+    assert company_key("Stripe, Inc.") == company_key("stripe") == company_key("Stripe Recruiting")
     threads = [
         thread("t1", message(1, days_ago=60)),
         thread("t2", message(2, days_ago=10)),

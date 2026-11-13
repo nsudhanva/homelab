@@ -9,7 +9,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { api, keys, type Company, type Recruiter } from "@/lib/api";
 import { label, monthYear } from "@/lib/format";
 import { useWide } from "@/lib/media";
-import { STATUSES, hasStatus, parseStatus, statusWords, type StatusId } from "@/lib/status";
+import { STATUSES, hasStatus, parseStatus, statusCounts, statusWords, type StatusId } from "@/lib/status";
 import { columnHelper } from "@/lib/table";
 
 type Row = Recruiter & { co: Company };
@@ -100,14 +100,7 @@ function Recruiters() {
           )),
     );
   }, [all, query, status]);
-  const counts = useMemo(
-    () =>
-      Object.fromEntries(STATUSES.map((s) => [s.id, all.filter((r) => hasStatus(r.co, s.id)).length])) as Record<
-        StatusId,
-        number
-      >,
-    [all],
-  );
+  const counts = useMemo(() => statusCounts(all, (r) => r.co), [all]);
   if (!data) return null;
   return (
     <div className="space-y-5">

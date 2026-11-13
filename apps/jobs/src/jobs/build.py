@@ -6,8 +6,10 @@ from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
+from .config import Settings
 from .extract import RELEVANT_KINDS
 from .gmail import Thread
+from .store import Store
 
 STAGE_ORDER = ["unknown", "outreach", "applied", "screening", "interview", "offer"]
 OUTCOMES = {"rejected", "withdrawn"}
@@ -242,3 +244,14 @@ def build(
     ordered = sorted(companies.values(), key=lambda c: c.last_date, reverse=True)
     doubts.sort(key=lambda c: c.last_date, reverse=True)
     return ordered, doubts
+
+
+def from_store(store: Store, settings: Settings) -> tuple[list[Company], list[Conversation]]:
+    return build(
+        store.threads(),
+        store.verdicts(),
+        store.answers(),
+        store.company_names(),
+        settings.no_reply_days,
+        ignore_domains=settings.ignored_domains,
+    )

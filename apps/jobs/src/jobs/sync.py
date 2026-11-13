@@ -1,12 +1,12 @@
 """Fetch new job threads from Gmail and run the AI extraction on them."""
 
 import logging
-from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import UTC, date, datetime, timedelta
 from typing import Any, Protocol
 
 from .build import domain, personal_only
+from .config import Settings
 from .extract import Verdict
 from .gmail import Gmail, Thread
 from .store import Store, now
@@ -92,9 +92,8 @@ def evaluate(
     store: Store,
     extract: Extract,
     workers: int,
-    max_calls: int | None = None,
-    progress: Callable[[int, int], None] | None = None,
     ignored: frozenset[str] = frozenset(),
+    max_calls: int | None = None,
 ) -> tuple[int, int]:
     pending = store.pending(extract.model)
     pending = pending[:max_calls] if max_calls else pending
@@ -113,30 +112,19 @@ def evaluate(
                     for f in futures:
                         f.cancel()
                     break
-            if progress and (done + failed) % 100 == 0:
-                progress(done + failed, len(pending))
     logger.info(f"AI: {done} threads done, {failed} failed, {len(pending)} pending at start")
     return done, failed
 
 
 def sync(
-    store: Store,
-    gmail: Gmail,
-    extract: Extract,
-    *,
-    lookback_years: int,
-    overlap_days: int,
-    workers: int,
-    since: date | None = None,
-    max_calls: int | None = None,
-    ignored: frozenset[str] = frozenset(),
+    store: Store, gmail: Gmail, extract: Extract, settings: Settings, since: date | None = None
 ) -> None:
     started = now()
+    ignored = settings.ignored_domains
     purge(store, ignored)
-    since = since or start_date(store, lookback_years, overlap_days)
-    fetch(store, gmail, since, workers, ignored)
-    _, failed = evaluate(store, extract, workers, max_calls, ignored=ignored)
-    store.set_meta("last_fetch", started)
+    since = since or start_date(store, settings.lookback_years, settings.overlap_days)
+    fetch(store, gmail, since, settings.workers, ignored)
+    _, failed = evaluate(store, extract, settings.workers, ignored, settings.ai_max_calls)
     if failed < MAX_AI_FAILURES:
         store.set_meta("last_sync", started)
         searched = store.get_meta("searched_from")

@@ -69,7 +69,7 @@ Each web app has a copy of these files at the same paths under `web/src`. To cha
 
 ## Python Apps
 
-The Python apps without a web frontend (`actual-classifier`, `alert-summarizer`, `drive-organizer`, `gmail-classifier`) use the same backend rows above that apply to them. A package that two projects lock has the same version in all `uv.lock` files.
+The Python apps without a web frontend (`actual-classifier`, `alert-summarizer`, `drive-organizer`, `gmail-classifier`) use the backend stack above, without the web parts. A package that two projects lock has the same version in all `uv.lock` files.
 
 ## Upgrade the Stack
 

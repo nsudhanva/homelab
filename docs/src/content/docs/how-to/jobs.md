@@ -24,7 +24,7 @@ flowchart LR
 
 - Search: The sync runs a set of Gmail searches. The searches find recruiting words, interview words, emails from hiring tools (Greenhouse, Lever, Ashby, Workday, and others), LinkedIn InMail, calendar invites, outcome words, and job emails in Sent. The search includes archived mail. It does not include Spam or Trash.
 - Threads: The sync reads each thread that matches. A thread that gets a new message is read again.
-- AI: Claude Haiku reads each new or changed thread once. A change to the prompt (`PROMPT_VERSION` in `apps/jobs/src/jobs/extract.py`) makes the next sync read all threads again. It returns the kind of thread, the hiring company, the agency, the roles, the people on the company side, the stage, and a confidence value. The AI uses only the Anthropic API (`AI_FALLBACK_MODELS=none`), so email text does not go to other model providers.
+- AI: Claude Haiku reads each new or changed thread once. It returns the kind of thread, the hiring company, the agency, the roles, the people on the company side, the stage, and a confidence value. The AI uses only the Anthropic API (`AI_FALLBACK_MODELS=none`), so email text does not go to other model providers. When `PROMPT_VERSION` in `apps/jobs/src/jobs/extract.py` changes, the next sync reads all threads again.
 - Grouping: The app puts threads into companies. Different spellings of a company name (for example "Stripe" and "Stripe, Inc.") become one company. Recruiters of the same company are listed together. An agency recruiter is listed under each client company, or under the agency when the client is not named.
 - Web app: The `jobs` Deployment serves a single-page app and a JSON API under `/api`. It uses the [custom app stack](/reference/app-stack/).
 
@@ -38,9 +38,13 @@ flowchart LR
 | Offer, rejection | Outcome messages |
 | Follow-up, referral | Follow-ups from either side, and referrals for a specific job |
 
-The app does not count job alert emails, newsletters, threads where you are the interviewer or hire for your own team, or other email.
+The app does not count job alert emails, newsletters, threads where you are the interviewer or hire for your own team, or other email. It does not count team names such as "Acme Recruiting Team" as recruiters.
 
-The app also ignores personal email domains (`JOBS_IGNORE_DOMAINS`, default `gmail.com,googlemail.com`). The sync does not store a thread in which all other people use an ignored domain, and it removes contacts with an ignored domain from the AI results. At the start of each sync, it deletes such threads, their AI results, and their answers from the database, so a change to the setting applies to the stored data too.
+The app ignores personal email domains (`JOBS_IGNORE_DOMAINS`, default `gmail.com,googlemail.com`):
+
+- The sync does not store a thread in which all other people use an ignored domain.
+- The sync removes contacts with an ignored domain from the AI results.
+- At the start of each sync, the app deletes these threads, their AI results, and their answers from the database. A change to the setting thus also applies to the stored data.
 
 ## Statuses
 
@@ -54,7 +58,7 @@ The Companies and Recruiters pages have a search box and status filters. The sea
 
 ## Answer the Open Questions
 
-The AI asks a question when it cannot decide an important fact, for example whether a thread is a real job contact or which company it is about. Threads with a confidence below 0.7 also show on the Questions page. The app does not count team names such as "Acme Recruiting Team" as recruiters.
+The AI asks a question when it cannot decide an important fact, for example whether a thread is a real job contact or which company it is about. Threads with a confidence below 0.7 also show on the Questions page.
 
 Step 1: Open the Questions page.
 

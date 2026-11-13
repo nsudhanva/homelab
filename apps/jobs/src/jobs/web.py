@@ -12,7 +12,7 @@ from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import FileResponse
 from pydantic import BaseModel, Field
 
-from .build import Company, Conversation, build
+from .build import Company, Conversation, from_store
 from .config import Settings
 from .export import status, workbook
 from .store import Store
@@ -68,14 +68,7 @@ class Cache:
         version = self.store.version()
         with self._lock:
             if version != self._version:
-                self._value = build(
-                    self.store.threads(),
-                    self.store.verdicts(),
-                    self.store.answers(),
-                    self.store.company_names(),
-                    self.settings.no_reply_days,
-                    ignore_domains=self.settings.ignored_domains,
-                )
+                self._value = from_store(self.store, self.settings)
                 self._version = version
             return self._value
 
@@ -122,7 +115,6 @@ def create_app(
         open_doubts = [d for d in doubts if not d.answered]
         return {
             "last_sync": store.get_meta("last_sync"),
-            "last_fetch": store.get_meta("last_fetch"),
             "totals": {
                 "companies": len(companies),
                 "recruiters": sum(len(c.recruiters) for c in companies),

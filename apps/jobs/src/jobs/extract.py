@@ -68,10 +68,6 @@ class Verdict(BaseModel):
         default_factory=list, description="2 to 4 short answers to the doubt, most likely first"
     )
 
-    @property
-    def relevant(self) -> bool:
-        return self.kind in RELEVANT_KINDS
-
 
 INSTRUCTIONS = """\
 You read one email thread from the mailbox of the owner, a software engineer.

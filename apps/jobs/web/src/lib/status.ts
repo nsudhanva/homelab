@@ -34,9 +34,10 @@ export function statusWords(c: Company): string[] {
   return words;
 }
 
-export function statusCounts(companies: Company[]): Record<StatusId, number> {
-  return Object.fromEntries(STATUSES.map((s) => [s.id, companies.filter((c) => hasStatus(c, s.id)).length])) as Record<
-    StatusId,
-    number
-  >;
+export function statusCounts<T>(items: T[], company: (item: T) => Company): Record<StatusId, number> {
+  const counts = Object.fromEntries(STATUSES.map((s) => [s.id, 0])) as Record<StatusId, number>;
+  for (const item of items) {
+    for (const s of STATUSES) if (hasStatus(company(item), s.id)) counts[s.id] += 1;
+  }
+  return counts;
 }

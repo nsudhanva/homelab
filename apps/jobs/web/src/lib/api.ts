@@ -56,7 +56,6 @@ export type Conversation = {
 
 export type Overview = {
   last_sync: string | null;
-  last_fetch: string | null;
   totals: { companies: number; recruiters: number; conversations: number; open_questions: number; no_reply: number };
   companies: Company[];
 };
