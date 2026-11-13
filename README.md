@@ -222,6 +222,7 @@ docs/             Astro Starlight documentation
 | Seerr | Media discovery and request interface | `seerr.sudhanva.me` |
 | Actual Budget | Privacy-focused personal finance tracking | `actual.sudhanva.me` |
 | Offers | Card and subscription credits used and unused each period, from Actual Budget transactions | `offers.sudhanva.me` |
+| Jobs | Recruiters and companies that contacted you, found in Gmail | `jobs.sudhanva.me` |
 | Technitium DNS | Recursive DNS server with ad blocking, the global tailnet nameserver | `dns.sudhanva.me` |
 | Home Assistant | Smart home automation platform | `homeassistant.sudhanva.me` |
 | Gemma 4 AI | Local LLM inference on NVIDIA GPU | `ai.sudhanva.me` |
@@ -229,6 +230,7 @@ docs/             Astro Starlight documentation
 | Drive Organizer | Family document organizer with the same folder structure for each person | CronJobs (02:00 and 02:15 America/Los_Angeles) |
 | Actual Classifier | Daily bank transaction categorization in Actual Budget | CronJob (07:00 America/Los_Angeles, after the bank sync) |
 | Offers Sync | Daily offer matching, AI review of unclear transactions, and Telegram reminders | CronJob (06:30 America/Los_Angeles) |
+| Jobs Sync | Daily read of new job threads in Gmail, and AI extraction of companies, recruiters, and roles | CronJob (05:00 America/Los_Angeles) |
 | Alert Summarizer | Alertmanager webhook that summarizes alerts with the AI model chain and posts them to Telegram | Deployment (no HTTPRoute) |
 | ArgoCD | GitOps control plane UI | `argocd.sudhanva.me` |
 | Vault | Central secrets management | `vault.sudhanva.me` |

@@ -142,6 +142,7 @@ export default defineConfig({
                 { label: 'Add a Google Account', slug: 'how-to/add-google-account' },
                 { label: 'Actual Classifier', slug: 'how-to/actual-classifier' },
                 { label: 'Offers', slug: 'how-to/offers' },
+                { label: 'Jobs', slug: 'how-to/jobs' },
                 { label: 'Drive Organizer', slug: 'how-to/drive-organizer' },
               ],
             },

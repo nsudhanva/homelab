@@ -50,6 +50,12 @@ spec:
           imageName: ghcr.io/nsudhanva/homelab-offers:latest
           commonUpdateSettings:
             updateStrategy: digest
+    - namePattern: app-jobs
+      images:
+        - alias: jobs
+          imageName: ghcr.io/nsudhanva/homelab-jobs:latest
+          commonUpdateSettings:
+            updateStrategy: digest
     - namePattern: app-docs
       images:
         - alias: docs

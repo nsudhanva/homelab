@@ -268,6 +268,18 @@ These apps share the `jellyfin-media` volume:
 | Catalog | `apps/offers/catalog.yaml` | Kustomize puts it in the ConfigMap `offers-catalog`, mounted at `/config` |
 | Vault Path | `kv/actual`, `kv/telegram/bot`, `kv/anthropic`, `kv/openrouter` | Actual server password and Telegram bot token through `offers-secrets`, and model API keys through `homelab-ai-credentials` |
 
+### Jobs
+
+| Property | Value | Notes |
+| --- | --- | --- |
+| Namespace | `jobs` | Dedicated namespace |
+| ArgoCD App | `apps/jobs/app.yaml` | Application manifest |
+| Container Image | `ghcr.io/nsudhanva/homelab-jobs:latest` | CI builds the image. ArgoCD Image Updater pins the digest |
+| Workload Type | Deployment and CronJob | Deployment `jobs` serves the web app. CronJob `jobs-sync` runs daily at 05:00 |
+| External URL | `https://jobs.sudhanva.me` | Tailscale Gateway HTTPS route |
+| Storage | `jobs-data` (1Gi) | `local-path` volume with the SQLite file `/data/jobs.db` |
+| Vault Path | `kv/gmail/credentials`, `kv/anthropic` | Gmail OAuth client through `jobs-secrets`, and the Anthropic key through `homelab-ai-credentials` |
+
 ### Alert Summarizer
 
 | Property | Value | Notes |

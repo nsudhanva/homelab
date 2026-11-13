@@ -65,3 +65,8 @@ apps/offers/*.db
 apps/offers/*.db-wal
 apps/offers/*.db-shm
 apps/offers/web/tsconfig.tsbuildinfo
+apps/jobs/src/jobs/web_dist/
+apps/jobs/*.db
+apps/jobs/*.db-wal
+apps/jobs/*.db-shm
+apps/jobs/web/tsconfig.tsbuildinfo

@@ -27,6 +27,7 @@ This guide tells how GitHub Actions runs CI and how ArgoCD runs CD.
 | `gitleaks` | Scans the full Git history with `gitleaks git --redact` | Every run |
 | `docs-build` | Builds the Astro Starlight site with Bun | When `docs/**` or `ci.yaml` changes |
 | `offers-web` | Type-checks and builds the Offers frontend in `apps/offers/web/` with Bun | When `apps/offers/web/**` or `ci.yaml` changes |
+| `jobs-web` | Type-checks and builds the Jobs frontend in `apps/jobs/web/` with Bun | When `apps/jobs/web/**` or `ci.yaml` changes |
 | `docs-push` | Builds the docs image from `docs/` for `linux/amd64` and pushes `ghcr.io/nsudhanva/homelab-docs` with the tags `latest` and the short SHA | Pushes to `master`, when `docs/**` or `ci.yaml` changes |
 | `python-changes` | Finds each `apps/*/pyproject.toml` and `packages/*/pyproject.toml`, and selects the projects whose directory, `packages/homelab-ai/`, or `ci.yaml` changed | Every run |
 | `python-test (<path>)` | Runs `uv run ruff check`, `uv run ruff format --check`, `uv run ty check`, and `uv run pytest` for each selected project | When `python-changes` selects a project |

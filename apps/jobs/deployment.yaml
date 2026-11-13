@@ -1,0 +1,89 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: jobs
+  namespace: jobs
+  labels:
+    app.kubernetes.io/name: jobs
+spec:
+  replicas: 1
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 0
+      maxSurge: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: jobs
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: jobs
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 10001
+        runAsGroup: 10001
+        fsGroup: 10001
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: jobs
+          image: ghcr.io/nsudhanva/homelab-jobs:latest
+          imagePullPolicy: Always
+          args:
+            - serve
+            - --port
+            - "8000"
+          ports:
+            - name: http
+              containerPort: 8000
+          securityContext:
+            runAsNonRoot: true
+            readOnlyRootFilesystem: true
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+          envFrom:
+            - configMapRef:
+                name: homelab-ai
+            - secretRef:
+                name: homelab-ai-credentials
+          env:
+            - name: AI_FALLBACK_MODELS
+              value: none
+            - name: JOBS_DB_PATH
+              value: /data/jobs.db
+            - name: HOME
+              value: /tmp
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 30
+          resources:
+            requests:
+              cpu: 50m
+              memory: 192Mi
+            limits:
+              cpu: "1"
+              memory: 512Mi
+          volumeMounts:
+            - name: data
+              mountPath: /data
+            - name: tmp
+              mountPath: /tmp
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: jobs-data
+        - name: tmp
+          emptyDir: {}

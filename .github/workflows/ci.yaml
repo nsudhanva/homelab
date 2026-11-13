@@ -98,6 +98,34 @@ jobs:
       run: bun run build
       working-directory: apps/offers/web
 
+  jobs-web:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v7
+    - name: Detect Jobs frontend changes
+      id: changes
+      uses: dorny/paths-filter@v4
+      with:
+        filters: |
+          web:
+            - "apps/jobs/web/**"
+            - ".github/workflows/ci.yaml"
+    - name: Set up Bun
+      if: steps.changes.outputs.web == 'true'
+      uses: oven-sh/setup-bun@v2
+      with:
+        bun-version: latest
+    - name: Install dependencies
+      if: steps.changes.outputs.web == 'true'
+      run: bun install --frozen-lockfile
+      working-directory: apps/jobs/web
+    - name: Type check and build
+      if: steps.changes.outputs.web == 'true'
+      run: bun run build
+      working-directory: apps/jobs/web
+
   docs-push:
     if: github.event_name == 'push'
     runs-on: ubuntu-latest
