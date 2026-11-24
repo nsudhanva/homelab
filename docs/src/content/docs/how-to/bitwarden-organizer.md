@@ -26,7 +26,7 @@ The organizer has these behaviors:
 - Folders: The model must choose one of the existing folders. The organizer does not create folders. If the model gives a folder that does not exist, the organizer skips the item.
 - Low confidence: The organizer moves each item to the chosen folder, also when the confidence is low. The Telegram summary lists the items with a confidence below `CONFIDENCE_THRESHOLD`, so that you can examine them.
 - Model outage: If no model answers, the organizer stops, locks the vault, and exits with an error. Kubernetes then retries the job.
-- Summary: The organizer sends a Telegram summary when items had no folder or when the run stopped.
+- Summary: The organizer sends a Telegram summary when a run finds items without a folder or stops with an error.
 
 ## Step 1: Store the Credentials in Vault
 
@@ -34,10 +34,10 @@ The organizer needs the Bitwarden personal API key and the master password.
 
 Get the API key in the Bitwarden web vault: **Settings** > **Security** > **Keys** > **View API key**.
 
-Write the values to Vault. Run the command in your own terminal. Vault asks for each value, so the values do not go into the shell history:
+Write the values to Vault. Run the command in your own terminal. The command asks for each value and hides the input, so the values do not go into the shell history:
 
 ```bash
-kubectl -n vault exec -it vault-0 -- sh -c 'read -r -p "client_id: " ID; read -r -s -p "client_secret: " SECRET; echo; read -r -s -p "master_password: " PW; echo; vault kv put kv/bitwarden/automation client_id="$ID" client_secret="$SECRET" master_password="$PW"'
+kubectl -n vault exec -it vault-0 -- sh -c 'read -r -s -p "client_id: " ID; echo; read -r -s -p "client_secret: " SECRET; echo; read -r -s -p "master_password: " PW; echo; vault kv put kv/bitwarden/automation client_id="$ID" client_secret="$SECRET" master_password="$PW"'
 ```
 
 The `bitwarden-credentials` ExternalSecret (`apps/bitwarden-organizer/secret.yaml`) reads `kv/bitwarden/automation` and `kv/telegram/bot`.
@@ -89,8 +89,8 @@ Change the `env` entries in `apps/bitwarden-organizer/cronjob.yaml`, then push t
 
 | Variable | Default | Description |
 | --- | --- | --- |
-| `CONFIDENCE_THRESHOLD` | `0.80` | Filed items below this value are listed for review |
-| `EXAMPLES_PER_FOLDER` | `20` | Filed items shown to the model for each folder |
+| `CONFIDENCE_THRESHOLD` | `0.80` | The summary lists filed items below this value for review |
+| `EXAMPLES_PER_FOLDER` | `20` | Filed items that the model sees for each folder |
 | `MAX_ITEMS` | `200` | Maximum number of items to file in one run |
 | `BW_SERVER` | `bw` default (`bitwarden.com`) | Bitwarden server URL |
 
@@ -98,7 +98,7 @@ Change the `env` entries in `apps/bitwarden-organizer/cronjob.yaml`, then push t
 
 | Symptom | Cause | Fix |
 | --- | --- | --- |
-| `bw login failed` | The API key in Vault is wrong or was rotated | Get a new API key and write it to `kv/bitwarden/automation` |
+| `bw login failed` | The API key in Vault is wrong, or you rotated the key | Get a new API key and write it to `kv/bitwarden/automation` |
 | `bw unlock failed` | The master password in Vault is wrong | Write the current master password to `kv/bitwarden/automation` |
 | `CreateContainerConfigError` | The `bitwarden-credentials` Secret does not exist | Do Step 1, then examine the ExternalSecret status |
 | `Run stopped: No model answered` | No model in the `homelab-ai` chain answered | Run `uv run homelab-ai ping`. Refer to [AI Configuration Reference](/reference/ai-configuration/) |

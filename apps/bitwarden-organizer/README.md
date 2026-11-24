@@ -13,7 +13,7 @@ A daily AI job that files Bitwarden items that have no folder into the existing 
 - Skips an item when the model gives a folder that does not exist.
 - Locks the vault at the end of each run.
 - Runs one CronJob, `bitwarden-organizer`, at 02:00 `America/Los_Angeles`.
-- Sends a Telegram summary when items had no folder or when the run stopped.
+- Sends a Telegram summary when a run finds items without a folder or stops with an error.
 
 ## Configuration
 
@@ -25,15 +25,15 @@ A daily AI job that files Bitwarden items that have no folder into the existing 
 | `BW_SERVER` | `bw` default (`bitwarden.com`) | Bitwarden server URL |
 | `BITWARDENCLI_APPDATA_DIR` | `/tmp/bitwarden` | Writable directory for the `bw` state |
 | `BW_TIMEOUT_SECONDS` | `180` | Timeout for one `bw` command |
-| `EXAMPLES_PER_FOLDER` | `20` | Filed items shown to the model for each folder |
+| `EXAMPLES_PER_FOLDER` | `20` | Filed items that the model sees for each folder |
 | `MAX_ITEMS` | `200` | Maximum number of items to file in one run |
-| `CONFIDENCE_THRESHOLD` | `0.80` | Filed items below this value are listed for review |
+| `CONFIDENCE_THRESHOLD` | `0.80` | The summary lists filed items below this value for review |
 | `TELEGRAM_BOT_TOKEN` | | Telegram bot token, from Vault |
 | `TELEGRAM_CHAT_ID` | `7341944813` | Telegram chat for the summary |
 
 ## Local Run
 
-The app needs the `bw` CLI on `PATH`. Put the three `BW_*` credentials in the environment or in a `.env` file in this directory. Do not commit the file.
+The job needs the `bw` CLI on `PATH`. Put the three `BW_*` credentials in the environment or in a `.env` file in this directory. Do not commit the file.
 
 ```bash
 cd apps/bitwarden-organizer

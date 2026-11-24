@@ -263,7 +263,7 @@ These apps share the `jellyfin-media` volume:
 | ArgoCD App | `apps/bitwarden-organizer/app.yaml` | Application manifest |
 | Container Image | `ghcr.io/nsudhanva/homelab-bitwarden-organizer:latest` | CI builds the image. The image contains the Bitwarden CLI |
 | Workload Type | Kubernetes CronJob | `bitwarden-organizer`, daily at 02:00 |
-| Vault Path | `kv/bitwarden/automation`, `kv/telegram/bot`, `kv/anthropic`, `kv/openrouter` | Bitwarden API key and master password and the Telegram bot token through `bitwarden-credentials`, and model API keys through `homelab-ai-credentials` |
+| Vault Path | `kv/bitwarden/automation`, `kv/telegram/bot`, `kv/anthropic`, `kv/openrouter` | The Bitwarden API key, the master password, and the Telegram bot token through `bitwarden-credentials`. The model API keys through `homelab-ai-credentials` |
 
 ### Offers
 
