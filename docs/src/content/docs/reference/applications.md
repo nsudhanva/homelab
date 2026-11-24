@@ -15,7 +15,7 @@ This reference lists the user workloads in the cluster. ArgoCD syncs each applic
 
 CronJob times are in the `America/Los_Angeles` time zone, which each CronJob declares with `timeZone`.
 
-A Vault path marked "manual" stores credentials for people. No ExternalSecret or manifest in this repository reads it. All Bitwarden items are manual records, except the two Actual Budget items that `scripts/sync-actual-budget-bw.sh` creates.
+A Vault path marked "manual" stores credentials for people. No ExternalSecret or manifest in this repository reads it. All Bitwarden items are manual records, except the two Actual Budget items that `scripts/sync-actual-budget-bw.sh` creates. The `bitwarden-organizer` CronJob moves items that have no folder into the existing folders.
 
 ---
 
@@ -254,6 +254,16 @@ These apps share the `jellyfin-media` volume:
 | Container Image | `ghcr.io/nsudhanva/homelab-actual-classifier:latest` | CI builds the image |
 | Workload Type | Kubernetes CronJob | `actual-classifier`, daily at 07:00, after the bank sync |
 | Vault Path | `kv/actual`, `kv/anthropic`, `kv/openrouter` | Actual server password, and model API keys through `homelab-ai-credentials` |
+
+### Bitwarden Organizer
+
+| Property | Value | Notes |
+| --- | --- | --- |
+| Namespace | `bitwarden-organizer` | Dedicated namespace |
+| ArgoCD App | `apps/bitwarden-organizer/app.yaml` | Application manifest |
+| Container Image | `ghcr.io/nsudhanva/homelab-bitwarden-organizer:latest` | CI builds the image. The image contains the Bitwarden CLI |
+| Workload Type | Kubernetes CronJob | `bitwarden-organizer`, daily at 02:00 |
+| Vault Path | `kv/bitwarden/automation`, `kv/telegram/bot`, `kv/anthropic`, `kv/openrouter` | Bitwarden API key and master password and the Telegram bot token through `bitwarden-credentials`, and model API keys through `homelab-ai-credentials` |
 
 ### Offers
 

@@ -144,6 +144,7 @@ export default defineConfig({
                 { label: 'Offers', slug: 'how-to/offers' },
                 { label: 'Jobs', slug: 'how-to/jobs' },
                 { label: 'Drive Organizer', slug: 'how-to/drive-organizer' },
+                { label: 'Bitwarden Organizer', slug: 'how-to/bitwarden-organizer' },
               ],
             },
             {

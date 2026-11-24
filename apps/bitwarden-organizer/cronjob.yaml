@@ -1,0 +1,75 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: bitwarden-organizer
+  namespace: bitwarden-organizer
+spec:
+  schedule: "0 2 * * *"
+  timeZone: America/Los_Angeles
+  suspend: false
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      ttlSecondsAfterFinished: 86400
+      template:
+        metadata:
+          labels:
+            app: bitwarden-organizer
+        spec:
+          restartPolicy: OnFailure
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 10001
+            runAsGroup: 10001
+            fsGroup: 10001
+            seccompProfile:
+              type: RuntimeDefault
+          containers:
+            - name: bitwarden-organizer
+              image: ghcr.io/nsudhanva/homelab-bitwarden-organizer:latest
+              imagePullPolicy: Always
+              securityContext:
+                runAsNonRoot: true
+                runAsUser: 10001
+                runAsGroup: 10001
+                readOnlyRootFilesystem: true
+                allowPrivilegeEscalation: false
+                capabilities:
+                  drop:
+                    - ALL
+              resources:
+                requests:
+                  cpu: 100m
+                  memory: 256Mi
+                limits:
+                  cpu: 500m
+                  memory: 768Mi
+              envFrom:
+                - configMapRef:
+                    name: homelab-ai
+                - secretRef:
+                    name: homelab-ai-credentials
+                - secretRef:
+                    name: bitwarden-credentials
+              env:
+                - name: HOME
+                  value: "/tmp"
+                - name: BITWARDENCLI_APPDATA_DIR
+                  value: "/tmp/bitwarden"
+                - name: TELEGRAM_CHAT_ID
+                  value: "7341944813"
+                - name: CONFIDENCE_THRESHOLD
+                  value: "0.80"
+                - name: EXAMPLES_PER_FOLDER
+                  value: "20"
+                - name: MAX_ITEMS
+                  value: "200"
+              volumeMounts:
+                - name: tmp
+                  mountPath: /tmp
+          volumes:
+            - name: tmp
+              emptyDir: {}
