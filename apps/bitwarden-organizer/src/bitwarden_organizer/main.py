@@ -1,13 +1,14 @@
 import argparse
 import logging
 import sys
+from typing import Any, Protocol
 
 from homelab_ai import LLMConnectionError
 
-from .bw_client import BitwardenCLI, BitwardenError
-from .classifier import FolderClassifier
+from .bw_client import BitwardenCLI, BitwardenError, Folder
+from .classifier import Decision, FolderClassifier
 from .config import Settings
-from .items import render_folder_guide, summarize, untagged_items
+from .items import ItemSummary, render_folder_guide, summarize, untagged_items
 from .notifier import FiledItem, RunReport, TelegramNotifier
 
 logging.basicConfig(
@@ -17,6 +18,20 @@ logging.basicConfig(
 for noisy_logger in ("httpx", "httpx2", "httpcore"):
     logging.getLogger(noisy_logger).setLevel(logging.WARNING)
 logger = logging.getLogger("bitwarden_organizer")
+
+
+class Vault(Protocol):
+    def login(self, client_id: str, client_secret: str) -> None: ...
+    def unlock(self, password: str) -> str: ...
+    def sync(self, session: str) -> None: ...
+    def list_folders(self, session: str) -> list[Folder]: ...
+    def list_items(self, session: str) -> list[dict[str, Any]]: ...
+    def set_folder(self, session: str, item: dict[str, Any], folder_id: str) -> None: ...
+    def lock(self) -> None: ...
+
+
+class Classifier(Protocol):
+    def classify(self, item: ItemSummary, folders: list[Folder], guide: str) -> Decision | None: ...
 
 
 def parse_arguments(args: list[str] | None = None) -> argparse.Namespace:
@@ -37,8 +52,8 @@ def parse_arguments(args: list[str] | None = None) -> argparse.Namespace:
 
 
 def organize(
-    cli: BitwardenCLI,
-    classifier: FolderClassifier,
+    cli: Vault,
+    classifier: Classifier,
     settings: Settings,
     dry_run: bool = False,
     limit: int | None = None,

@@ -18,7 +18,7 @@ The organizer runs as one Kubernetes CronJob, `bitwarden-organizer`, each day at
 The organizer has these behaviors:
 
 - Bitwarden CLI: The image contains the official Bitwarden CLI (`bw`). The `Dockerfile` pins the version and the SHA-256 checksum of the release archive.
-- Login: The organizer logs in with the personal API key (`bw login --apikey`). It unlocks the vault with the master password (`bw unlock --passwordenv`). It gives the secrets to `bw` through environment variables, not through command arguments. It locks the vault at the end of each run.
+- Login: The organizer logs in with the personal API key (`bw login --apikey`). It unlocks the vault with the master password (`bw unlock --passwordenv`). It gives the credentials to `bw` through environment variables and the item data through standard input. Neither shows in the process arguments. It locks the vault at the end of each run.
 - Scope: The organizer processes only active items that have no folder. It does not change items that are in a folder.
 - Examples: For each folder, the model gets up to `EXAMPLES_PER_FOLDER` items that are already in the folder. The model uses these examples to learn the filing habits of the owner.
 - Data sent to the model: The item name, the item type, the website hosts, the email domain of the username, and the card brand. The organizer does not send passwords, notes, custom field values, card numbers, or the local part of the username.

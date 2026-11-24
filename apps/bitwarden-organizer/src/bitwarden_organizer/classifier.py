@@ -11,8 +11,6 @@ logger = logging.getLogger(__name__)
 
 INSTRUCTIONS = """\
 You file the items of a Bitwarden password vault into the owner's existing folders.
-The owner is Sudhanva, a machine learning engineer in the SF Bay Area who runs a homelab \
-and owns the company Initiable.
 You get the list of allowed folders. Each folder shows examples of items the owner already \
 filed there. Choose exactly one folder for the item.
 

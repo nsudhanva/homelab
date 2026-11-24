@@ -68,13 +68,9 @@ ITEMS = [
 ANSWERS: dict[str, str | None] = {"costco.com": "Shopping", "chase.com": "Finance"}
 
 
-def run(cli: Any, classifier: Any, settings: Settings, **kwargs: Any):
-    return organize(cli, classifier, settings, **kwargs)
-
-
 def test_files_untagged_items_and_locks(settings: Settings) -> None:
     cli = FakeCLI(ITEMS)
-    report = run(cli, FakeClassifier(ANSWERS), settings)
+    report = organize(cli, FakeClassifier(ANSWERS), settings)
     assert cli.moved == {"1": "f-shop", "2": "f-fin"}
     assert report.untagged == 3
     assert report.skipped == ["mystery"]
@@ -84,7 +80,7 @@ def test_files_untagged_items_and_locks(settings: Settings) -> None:
 
 def test_dry_run_changes_nothing(settings: Settings) -> None:
     cli = FakeCLI(ITEMS)
-    report = run(cli, FakeClassifier(ANSWERS), settings, dry_run=True)
+    report = organize(cli, FakeClassifier(ANSWERS), settings, dry_run=True)
     assert cli.moved == {}
     assert len(report.filed) == 2
     assert cli.events[-1] == "lock"
@@ -92,21 +88,21 @@ def test_dry_run_changes_nothing(settings: Settings) -> None:
 
 def test_limit_and_edit_failure(settings: Settings) -> None:
     cli = FakeCLI(ITEMS, fail_ids={"1"})
-    report = run(cli, FakeClassifier(ANSWERS), settings, limit=2)
+    report = organize(cli, FakeClassifier(ANSWERS), settings, limit=2)
     assert report.failed == ["costco.com"]
     assert cli.moved == {"2": "f-fin"}
 
 
 def test_model_outage_stops_run_and_still_locks(settings: Settings) -> None:
     cli = FakeCLI(ITEMS)
-    report = run(cli, FakeClassifier(ANSWERS, down_after=1), settings)
+    report = organize(cli, FakeClassifier(ANSWERS, down_after=1), settings)
     assert report.error == "No model answered"
     assert cli.moved == {"1": "f-shop"}
     assert cli.events[-1] == "lock"
 
 
 def test_summary_lists_low_confidence(settings: Settings) -> None:
-    report = run(FakeCLI(ITEMS), FakeClassifier(ANSWERS), settings)
+    report = organize(FakeCLI(ITEMS), FakeClassifier(ANSWERS), settings)
     text = "\n".join(TelegramNotifier(None, 1).format_summary(report, 0.8))
     assert "Filed:</b> 2" in text
     assert "Low confidence, check these (2)" in text

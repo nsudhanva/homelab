@@ -22,7 +22,8 @@ class Folder:
 
 
 class BitwardenCLI:
-    """Thin wrapper around the `bw` CLI. Secrets go through the environment, never argv."""
+    """Runs `bw` commands. Credentials go through the environment and item data through stdin,
+    so neither shows up in the process arguments."""
 
     def __init__(
         self,
@@ -61,8 +62,7 @@ class BitwardenCLI:
             result = subprocess.run(
                 [self.binary, *args],
                 env=self._env(session, extra_env),
-                input=stdin_text,
-                stdin=None if stdin_text is not None else subprocess.DEVNULL,
+                input=stdin_text or "",
                 capture_output=True,
                 text=True,
                 timeout=self.timeout,
